@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SalaryMaster (Cloud Live)</title>
+  <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4f46e5">
+<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2910/2910795.png">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+    .animate-bounce-short { animation: bounce-short 1s infinite; }
+    @keyframes bounce-short { 0%, 100% { transform: translateY(-5%); } 50% { transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.5s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+<body>
+  <div id="root"></div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('PWA Service Worker Registered', reg))
+          .catch((err) => console.log('PWA Registration Failed', err));
+      });
+    }
+  </script>
+
+  <script type="text/babel">
+    // ... (Your React App Code is here) ...
+  </script>
+</body>
+  
+  <script type="text/babel">
+    
+    // --- 1. SETUP GLOBALS ---
+    const { useState, useEffect, useMemo, Fragment } = React;
+    const { jsPDF } = window.jspdf;
+
+    // --- 2. FIREBASE CONFIG ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyAcnI1SduIdCVNKOZWcdSB2FFrGAkAXf8o",
+      authDomain: "unisalaries.firebaseapp.com",
+      projectId: "unisalaries",
+      storageBucket: "unisalaries.firebasestorage.app",
+      messagingSenderId: "503777169975",
+      appId: "1:503777169975:web:96dfda7bca9f8f552fa5b2"
+    };
+
+    // Initialize Firebase (Check if already initialized to prevent errors)
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+
+    // --- 3. UTILITIES & SERVICES ---
+
+    // PDF Generator Service
+    const generateAllPayslips = async (employees, attendance, advances, overtime, loans, transportation, config, sections, bonuses = []) => {
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const sortedAttendance = [...attendance].sort((a, b) => a.date.localeCompare(b.date));
+      const allDates = sortedAttendance.map(a => a.date);
+      const totalPotentialDays = allDates.length || 0;
+
+      employees.forEach((emp, index) => {
+        if (index !== 0) doc.addPage();
+        
+        const sectionName = sections.find(s => s.id === emp.sectionId)?.name || 'GENERAL';
+        const isNightShift = emp.shift === 'night';
+        const shiftFactor = isNightShift ? (config.nightShiftMultiplier || 1.0) : 1.0;
+        
+        // Attendance Calculations
+        const absenceRecords = sortedAttendance.filter(a => a.absentEmployeeIds && a.absentEmployeeIds.includes(emp.id));
+        const daysAbsent = absenceRecords.length;
+        const daysPresent = Math.max(0, totalPotentialDays - daysAbsent);
+        
+        // Financial Calculations
+        const baseDailyRate = emp.monthlyWage / config.daysInMonth;
+        const effectiveMonthlyWage = emp.monthlyWage * shiftFactor;
+        const totalAbsenceDeduction = daysAbsent * baseDailyRate * config.absentDeductionFactor;
+        const earnedBasicWages = Math.max(0, effectiveMonthlyWage - totalAbsenceDeduction);
+        
+        const effectiveDailyRate = baseDailyRate * shiftFactor;
+        const hourlyRate = effectiveDailyRate / config.hoursPerDay;
+        
+        const empOvertimeHours = overtime.filter(ot => ot.employeeId === emp.id).reduce((sum, curr) => sum + curr.hours, 0);
+        const overtimePay = empOvertimeHours * hourlyRate * config.otMultiplier;
+        
+        const empTransportation = transportation.filter(t => t.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
+        const empBonus = bonuses.filter(b => b.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
+
+        const loan = loans.find(l => l.employeeId === emp.id);
+        const loanDeduction = loan ? (loan.totalAmount * (loan.deductionPercentage / 100)) : 0;
+        const totalAdvances = advances.filter(a => a.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
+        
+        const totalEarnings = earnedBasicWages + overtimePay + empTransportation + empBonus;
+        const totalDeductions = totalAdvances + loanDeduction;
+        const netSalary = Math.max(0, totalEarnings - totalDeductions);
+
+        // --- PDF DRAWING ---
+        // Header Background
+        doc.setFillColor(isNightShift ? 15 : 79, isNightShift ? 23 : 70, isNightShift ? 42 : 229); 
+        doc.rect(0, 0, 210, 45, 'F');
+        
+        // Logo Box
+        doc.setFillColor(255, 255, 255, 0.2);
+        doc.roundedRect(170, 10, 25, 25, 5, 5, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(config.logoPlaceholder || 'S|M', 182.5, 26, { align: 'center' });
+
+        // Header Text
+        doc.setFontSize(22);
+        doc.text(config.companyName.toUpperCase(), 20, 25);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`VOUCHER: ${emp.shift?.toUpperCase() || 'DAY'} SHIFT • ${sectionName.toUpperCase()}`, 20, 34);
+        
+        const monthYear = totalPotentialDays > 0 ? new Date(allDates[0]).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : 'CURRENT PERIOD';
+        doc.text(`PAY PERIOD: ${monthYear.toUpperCase()}`, 115, 25);
+
+        // Employee Info
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('WORKER INFORMATION', 20, 60);
+        doc.line(20, 62, 55, 62);
+
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Full Name:`, 20, 72);
+        doc.setFont('helvetica', 'bold');
+        doc.text(emp.name, 65, 72);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Shift:`, 20, 80);
+        doc.setFont('helvetica', 'bold');
+        doc.text((emp.shift || 'day').toUpperCase(), 65, 80);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Base Wage:`, 20, 88);
+        doc.text(`${Math.round(emp.monthlyWage).toLocaleString()} SYP`, 65, 88);
+
+        if (isNightShift && shiftFactor > 1) {
+          doc.setTextColor(34, 197, 94); // Green
+          doc.text(`Shift Premium:`, 20, 96);
+          doc.text(`+${Math.round((shiftFactor - 1) * 100)}% (Night)`, 65, 96);
+          doc.setTextColor(30, 30, 30);
+        }
+
+        // Attendance Summary Box
+        doc.setFillColor(249, 250, 251);
+        doc.roundedRect(20, 105, 170, 35, 2, 2, 'F');
+        doc.setTextColor(31, 41, 55);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Total Attendance: ${daysPresent} Present / ${daysAbsent} Absent`, 30, 118);
+        doc.text(`Effective Daily Rate: ${Math.round(effectiveDailyRate).toLocaleString()} SYP`, 30, 128);
+
+        // Financial Table
+        doc.setDrawColor(243, 244, 246);
+        doc.roundedRect(20, 150, 170, 95, 3, 3, 'FD');
+        doc.setFontSize(12);
+        doc.text('EARNINGS & DEDUCTIONS', 30, 163);
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        let tableY = 175;
+        doc.text(`Gross Basic Pay (Adjusted):`, 30, tableY);
+        doc.text(`${Math.round(effectiveMonthlyWage).toLocaleString()} SYP`, 180, tableY, { align: 'right' });
+        tableY += 8;
+
+        doc.setTextColor(239, 68, 68);
+        doc.text(`Absence Penalty:`, 30, tableY);
+        doc.text(`- ${Math.round(totalAbsenceDeduction).toLocaleString()} SYP`, 180, tableY, { align: 'right' });
+        tableY += 8;
+
+        doc.setTextColor(30, 30, 30);
+        doc.text(`Overtime (${empOvertimeHours.toFixed(1)} hrs):`, 30, tableY);
+        doc.text(`${Math.round(overtimePay).toLocaleString()} SYP`, 180, tableY, { align: 'right' });
+        tableY += 8;
+
+        doc.text(`Transportation & Extras:`, 30, tableY);
+        doc.text(`${Math.round(empTransportation).toLocaleString()} SYP`, 180, tableY, { align: 'right' });
+        tableY += 8;
+
+        doc.setTextColor(34, 197, 94); // Green
+        doc.text(`Bonus Incentives:`, 30, tableY);
+        doc.text(`+ ${Math.round(empBonus).toLocaleString()} SYP`, 180, tableY, { align: 'right' });
+        tableY += 8;
+
+        doc.setTextColor(239, 68, 68);
+        doc.text(`Advances & Loan Repayment:`, 30, tableY);
+        doc.text(`- ${Math.round(totalDeductions).toLocaleString()} SYP`, 180, tableY, { align: 'right' });
+
+        // Net Pay Box
+        doc.setFillColor(isNightShift ? 15 : 79, isNightShift ? 23 : 70, isNightShift ? 42 : 229);
+        doc.rect(20, 230, 170, 15, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TOTAL NET PAYOUT:', 30, 240);
+        doc.text(`${Math.round(netSalary).toLocaleString()} SYP`, 180, 240, { align: 'right' });
+
+        doc.setTextColor(156, 163, 175);
+        doc.setFontSize(7);
+        doc.text(config.footerText || 'SalaryMaster Enterprise Protocol', 105, 290, { align: 'center' });
+      });
+
+      doc.save(`Payslips_${new Date().getTime()}.pdf`);
+    };
+
+    // --- 4. COMPONENTS ---
+
+    // LOGIN COMPONENT
+    const Login = ({ onLogin }) => {
+      const [username, setUsername] = useState('');
+      const [password, setPassword] = useState('');
+      const [error, setError] = useState('');
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        setError('');
+        const u = username.toLowerCase().trim();
+        const p = password.trim();
+
+        if (u === 'owner' && p === 'owner123') onLogin({ id: '0', username: 'owner', role: 'owner' });
+        else if (u === 'hr' && p === 'hr123') onLogin({ id: '1', username: 'hr', role: 'hr' });
+        else if (u === 'manager' && p === 'manager123') onLogin({ id: '2', username: 'manager', role: 'manager' });
+        else if (u === 'finance' && p === 'finance123') onLogin({ id: '3', username: 'finance', role: 'finance' });
+        else setError('Invalid credentials. Check the hint below.');
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-indigo-900 flex items-center justify-center p-4">
+          <div className="bg-white/95 backdrop-blur-sm w-full max-w-md rounded-[2.5rem] shadow-2xl p-10 border border-white/20">
+            <div className="text-center mb-10">
+              <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-indigo-500/30">
+                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+              </div>
+              <h2 className="text-3xl font-black text-indigo-950 tracking-tight">SalaryMaster</h2>
+              <p className="text-indigo-500/80 font-semibold mt-1 text-sm">Enterprise Payroll Access</p>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="block text-[10px] font-black text-indigo-600/70 uppercase tracking-[0.2em] ml-1 mb-2">Secure Identity</label>
+                <input type="text" required className="w-full px-5 py-4 rounded-2xl bg-white border border-indigo-100 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all font-bold text-slate-900 placeholder-slate-400" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-indigo-600/70 uppercase tracking-[0.2em] ml-1 mb-2">Secret Key</label>
+                <input type="password" required className="w-full px-5 py-4 rounded-2xl bg-white border border-indigo-100 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all font-bold text-slate-900 placeholder-slate-400" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+              {error && <p className="text-red-600 text-xs font-black text-center bg-red-50 py-3 rounded-xl border border-red-100 animate-pulse">{error}</p>}
+              <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-indigo-500/20 transform active:scale-[0.98] transition-all uppercase tracking-widest text-xs">Authorize Access</button>
+            </form>
+            <div className="mt-10 pt-6 border-t border-indigo-50/50 text-center grid grid-cols-2 gap-3 text-[9px] text-indigo-400/60 uppercase tracking-wider font-bold">
+              <p className="hover:text-indigo-600 cursor-pointer">Owner: owner / owner123</p>
+              <p className="hover:text-indigo-600 cursor-pointer">HR: hr / hr123</p>
+              <p className="hover:text-indigo-600 cursor-pointer">Manager: manager / manager123</p>
+              <p className="hover:text-indigo-600 cursor-pointer">Finance: finance / finance123</p>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // FINANCE DASHBOARD
+    const FinanceDashboard = ({ employees, loans, advances, transportation, overtime, updateLoan, config, lockedMonths }) => {
+      const [searchQuery, setSearchQuery] = useState('');
+      const [loanTarget, setLoanTarget] = useState(null);
+      const [loanAmount, setLoanAmount] = useState('');
+      const [loanPercent, setLoanPercent] = useState('10');
+
+      const activeEmployees = useMemo(() => employees.filter(emp => !emp.isResigned && emp.name.toLowerCase().includes(searchQuery.toLowerCase())), [employees, searchQuery]);
+      const stats = useMemo(() => {
+        const activeLoans = loans.filter(l => employees.find(e => e.id === l.employeeId && !e.isResigned));
+        return {
+          totalVolume: activeLoans.reduce((sum, l) => sum + l.totalAmount, 0),
+          monthlyCollection: activeLoans.reduce((sum, l) => sum + (l.totalAmount * (l.deductionPercentage / 100)), 0),
+          activeBorrowers: activeLoans.length
+        };
+      }, [loans, employees]);
+
+      const handleSaveLoan = () => { if (loanTarget) { updateLoan(loanTarget.id, parseFloat(loanAmount), parseFloat(loanPercent)); setLoanTarget(null); } };
+      const openLoanModal = (emp) => {
+        const existingLoan = loans.find(l => l.employeeId === emp.id);
+        setLoanTarget(emp);
+        setLoanAmount(existingLoan?.totalAmount.toString() || '');
+        setLoanPercent(existingLoan?.deductionPercentage.toString() || '10');
+      };
+      const getFinancialSummary = (emp) => {
+        const empAdvances = advances.filter(a => a.employeeId === emp.id);
+        const empTrans = transportation.filter(t => t.employeeId === emp.id);
+        const totalAdvances = empAdvances.reduce((s, c) => s + c.amount, 0);
+        const totalTrans = empTrans.reduce((s, c) => s + c.amount, 0);
+        const loan = loans.find(l => l.employeeId === emp.id);
+        const hasLockedRecords = empAdvances.some(a => lockedMonths.includes(a.date.substring(0, 7))) || empTrans.some(t => lockedMonths.includes(t.date.substring(0, 7)));
+        return { totalAdvances, totalTrans, loan, hasLockedRecords };
+      };
+
+      return (
+        <div className="space-y-8 max-w-7xl mx-auto pb-12 fade-in">
+          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div><h2 className="text-3xl font-black text-gray-900 tracking-tight uppercase">Liability Oversight</h2><p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest opacity-60">Debt Recovery & Portfolio Management</p></div>
+            <div className="flex flex-wrap gap-4"><div className="flex flex-col gap-1 w-full sm:w-72"><label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1">Search Finance Profiles</label><div className="relative"><span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></span><input type="text" placeholder="Name or ID..." className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 transition-all shadow-sm text-slate-900 font-bold" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div></div></div>
+          </header>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Outstanding Portfolio Value</p><p className="text-3xl font-black text-indigo-600">{stats.totalVolume.toLocaleString()} <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">SYP</span></p></div>
+            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Active Debtors</p><p className="text-3xl font-black text-gray-900">{stats.activeBorrowers} <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">Profiles</span></p></div>
+            <div className="bg-indigo-600 p-6 rounded-3xl shadow-xl shadow-indigo-100 text-white"><p className="text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-1">Monthly Recovery Projection</p><p className="text-3xl font-black">{stats.monthlyCollection.toLocaleString()} <span className="text-sm font-bold text-indigo-300 uppercase tracking-widest">SYP</span></p></div>
+          </div>
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-8 py-5 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center"><h3 className="font-black text-gray-800 uppercase text-xs tracking-widest">Workforce Debt Ledger</h3><div className="flex items-center gap-2 text-[8px] font-black text-red-600 uppercase tracking-widest"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>Historical Lock Active</div></div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-white text-[10px] uppercase font-black text-gray-400 tracking-widest"><tr><th className="px-8 py-5">Employee Info</th><th className="px-8 py-5 text-center">Remaining Debt</th><th className="px-8 py-5 text-center">Velocity</th><th className="px-8 py-5 text-center">Extras</th><th className="px-8 py-5 text-right">Actions</th></tr></thead>
+                <tbody className="divide-y divide-gray-50">
+                  {activeEmployees.length === 0 ? (<tr><td colSpan={5} className="px-8 py-24 text-center font-black uppercase tracking-widest text-[10px] text-gray-300">No matching financial records available.</td></tr>) : (
+                    activeEmployees.map(emp => {
+                      const { totalAdvances, totalTrans, loan, hasLockedRecords } = getFinancialSummary(emp);
+                      const monthlyCut = loan ? (loan.totalAmount * (loan.deductionPercentage / 100)) : 0;
+                      return (
+                        <tr key={emp.id} className="group hover:bg-indigo-50/30 transition-all">
+                          <td className="px-8 py-6"><div className="flex items-center gap-2"><p className="font-black text-gray-900 uppercase text-xs tracking-tight group-hover:text-indigo-600">{emp.name}</p>{hasLockedRecords && <svg className="w-3 h-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>}</div><p className="text-[9px] text-gray-400 uppercase font-black tracking-widest mt-0.5">Contract ID: {emp.id.toUpperCase()}</p></td>
+                          <td className="px-8 py-6 text-center">{loan ? (<span className="font-black text-indigo-700 text-sm">{loan.totalAmount.toLocaleString()} SYP</span>) : (<span className="text-gray-200 font-black italic text-[10px] uppercase tracking-widest">Debt-Free</span>)}</td>
+                          <td className="px-8 py-6 text-center">{loan ? (<div className="flex flex-col items-center"><span className="text-red-600 font-black text-sm">-{Math.round(monthlyCut).toLocaleString()} SYP</span><span className="text-[9px] text-gray-400 font-black uppercase tracking-widest">@{loan.deductionPercentage}%</span></div>) : (<span className="text-gray-200 font-black">-</span>)}</td>
+                          <td className="px-8 py-6 text-center"><div className="flex flex-col gap-1 items-center">{totalAdvances > 0 && <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100 uppercase tracking-widest">ADV: {totalAdvances.toLocaleString()}</span>}{totalTrans > 0 && <span className="text-[9px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded-lg border border-green-100 uppercase tracking-widest">TRN: {totalTrans.toLocaleString()}</span>}{!totalAdvances && !totalTrans && <span className="text-gray-200 text-xs">-</span>}</div></td>
+                          <td className="px-8 py-6 text-right"><button onClick={() => openLoanModal(emp)} className={`inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${loan ? 'bg-white text-gray-600 border border-gray-200 hover:border-indigo-600 hover:text-indigo-600' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>{loan ? 'Edit Contract' : 'Issue Loan'}</button></td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {loanTarget && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300">
+              <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full p-10 animate-in zoom-in-95 duration-200">
+                <h4 className="text-2xl font-black text-gray-900 mb-2 tracking-tight uppercase">Liability Contract</h4>
+                <p className="text-gray-500 font-black uppercase text-[10px] tracking-widest mb-8">Managing profile for <span className="text-indigo-600 underline">{loanTarget.name}</span></p>
+                <div className="space-y-6">
+                  <div className="space-y-2"><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Total Loan Amount (SYP)</label><input type="number" className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-600 outline-none font-black text-xl text-slate-900 bg-white" placeholder="Enter gross debt amount..." value={loanAmount} onChange={(e) => setLoanAmount(e.target.value)} autoFocus /></div>
+                  <div className="space-y-2"><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Monthly Deduction Percent (%)</label><div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-4"><input type="range" min="1" max="100" className="flex-1 accent-indigo-600 cursor-pointer" value={loanPercent} onChange={(e) => setLoanPercent(e.target.value)} /><span className="w-12 text-center font-black text-indigo-700 text-sm">{loanPercent}%</span></div></div>
+                  {parseFloat(loanAmount) > 0 && (<div className="bg-indigo-600 rounded-3xl p-6 text-center text-white shadow-xl"><p className="text-[10px] text-indigo-200 uppercase font-black tracking-widest mb-1">Impact Per Cycle</p><p className="text-3xl font-black">{Math.round(parseFloat(loanAmount) * parseFloat(loanPercent) / 100).toLocaleString()} <span className="text-xs">SYP</span></p></div>)}
+                  <div className="flex gap-4 pt-4"><button onClick={() => setLoanTarget(null)} className="flex-1 px-4 py-4 bg-gray-50 text-gray-700 font-black rounded-2xl uppercase text-[10px] tracking-widest">Discard</button><button onClick={handleSaveLoan} className="flex-1 px-4 py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:bg-indigo-700 uppercase text-[10px] tracking-widest">Save Contract</button></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // HR DASHBOARD
+    const HRDashboard = ({ employees, sections, addEmployee, updateEmployee, resignEmployee, deleteEmployee, addSection, updateSection, deleteSection, attendance, advances, overtime, transportation, loans, pdfConfig, updateLoan, setPdfConfig, deleteAdvance, addTransportation, deleteTransportation, bonuses }) => {
+      const [formData, setFormData] = useState({ name: '', wage: '', shift: 'day', joinDate: new Date().toISOString().split('T')[0], nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '', dateOfBirth: '', sectionId: '' });
+      const [isGenerating, setIsGenerating] = useState(false);
+      const [searchQuery, setSearchQuery] = useState('');
+      const [viewResigned, setViewResigned] = useState(false);
+      const [activeTab, setActiveTab] = useState('workers');
+      const [newSectionName, setNewSectionName] = useState('');
+      const [editingSectionId, setEditingSectionId] = useState(null);
+      const [editSectionName, setEditSectionName] = useState('');
+      const [editingId, setEditingId] = useState(null);
+      const [editFormData, setEditFormData] = useState({});
+      const [transTarget, setTransTarget] = useState(null);
+      const [transAmount, setTransAmount] = useState('');
+      const [showPdfSettings, setShowPdfSettings] = useState(false);
+      const [tempPdfConfig, setTempPdfConfig] = useState(pdfConfig);
+      const [expandedId, setExpandedId] = useState(null);
+      const [showDeleteModal, setShowDeleteModal] = useState(false);
+      const [showResignModal, setShowResignModal] = useState(false);
+      const [employeeTarget, setEmployeeTarget] = useState(null);
+
+      const filteredEmployees = useMemo(() => employees.filter(emp => {
+          const matchesSearch = emp.name.toLowerCase().includes(searchQuery.toLowerCase());
+          const matchesStatus = viewResigned ? emp.isResigned : !emp.isResigned;
+          return matchesSearch && matchesStatus;
+      }), [employees, searchQuery, viewResigned]);
+
+      const employeesBySection = useMemo(() => {
+        const grouped = { 'unassigned': [] };
+        sections.forEach(s => grouped[s.id] = []);
+        filteredEmployees.forEach(emp => {
+          if (emp.sectionId && grouped[emp.sectionId]) grouped[emp.sectionId].push(emp);
+          else grouped['unassigned'].push(emp);
+        });
+        return grouped;
+      }, [filteredEmployees, sections]);
+
+      const handleAdd = (e) => { e.preventDefault(); if (formData.name && formData.wage) { addEmployee({ name: formData.name, monthlyWage: parseFloat(formData.wage), shift: formData.shift, joinDate: formData.joinDate, nationalId: formData.nationalId, socialInsuranceId: formData.socialInsuranceId, fatherName: formData.fatherName, motherName: formData.motherName, dateOfBirth: formData.dateOfBirth, sectionId: formData.sectionId || undefined }); setFormData({ name: '', wage: '', shift: 'day', joinDate: new Date().toISOString().split('T')[0], nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '', dateOfBirth: '', sectionId: '' }); }};
+      const handleAddSection = (e) => { e.preventDefault(); if (newSectionName.trim()) { addSection(newSectionName.trim()); setNewSectionName(''); }};
+      const startEditingSection = (section) => { setEditingSectionId(section.id); setEditSectionName(section.name); };
+      const cancelEditingSection = () => { setEditingSectionId(null); setEditSectionName(''); };
+      const handleUpdateSection = (id) => { if (editSectionName.trim()) { updateSection(id, editSectionName.trim()); setEditingSectionId(null); setEditSectionName(''); }};
+      const startEditing = (emp) => { setEditingId(emp.id); setEditFormData({ name: emp.name, wage: emp.monthlyWage.toString(), shift: emp.shift || 'day', joinDate: emp.joinDate, nationalId: emp.nationalId || '', socialInsuranceId: emp.socialInsuranceId || '', fatherName: emp.fatherName || '', motherName: emp.motherName || '', dateOfBirth: emp.dateOfBirth || '', sectionId: emp.sectionId || '' }); };
+      const cancelEditing = () => setEditingId(null);
+      const handleUpdate = () => { if (editingId && editFormData.name && editFormData.wage) { updateEmployee(editingId, { name: editFormData.name, monthlyWage: parseFloat(editFormData.wage), shift: editFormData.shift, joinDate: editFormData.joinDate, nationalId: editFormData.nationalId, socialInsuranceId: editFormData.socialInsuranceId, fatherName: editFormData.fatherName, motherName: editFormData.motherName, dateOfBirth: editFormData.dateOfBirth, sectionId: editFormData.sectionId || undefined }); setEditingId(null); }};
+      const handleResign = () => { if (employeeTarget) { resignEmployee(employeeTarget.id); setShowResignModal(false); setEmployeeTarget(null); }};
+      const handleDelete = () => { if (employeeTarget) { deleteEmployee(employeeTarget.id); setShowDeleteModal(false); setEmployeeTarget(null); }};
+      const handleSaveTransportation = () => { if (transTarget && transAmount) { addTransportation(transTarget.id, parseFloat(transAmount), new Date().toISOString().split('T')[0]); setTransTarget(null); setTransAmount(''); }};
+      const handleSavePdfConfig = () => { setPdfConfig(tempPdfConfig); setShowPdfSettings(false); };
+      const handleGeneratePDF = async () => { setIsGenerating(true); try { await generateAllPayslips(employees.filter(e => !e.isResigned), attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses); } catch (err) { alert('Error generating PDF'); } finally { setIsGenerating(false); }};
+
+      return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative fade-in">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-gray-100 w-fit">
+              <button onClick={() => setActiveTab('workers')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'workers' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}>Worker Ledger</button>
+              <button onClick={() => setActiveTab('sections')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'sections' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}>Manage Sections</button>
+            </div>
+            {activeTab === 'workers' ? (
+              <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div><h3 className="font-semibold text-gray-800">{viewResigned ? 'Resigned Records' : 'Active Employees'}</h3><p className="text-xs text-gray-500">{filteredEmployees.length} profiles</p></div>
+                  <div className="flex bg-gray-200 p-1 rounded-lg"><button onClick={() => setViewResigned(false)} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${!viewResigned ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500'}`}>Active</button><button onClick={() => setViewResigned(true)} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${viewResigned ? 'bg-white shadow-sm text-red-600' : 'text-gray-500'}`}>Resigned</button></div>
+                  <div className="relative flex-1 max-sm:w-full"><input type="text" placeholder="Search workers..." className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm bg-white outline-none text-slate-900 font-bold" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /><span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></span></div>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {Object.entries(employeesBySection).map(([sId, emps]) => {
+                    if (emps.length === 0 && sId !== 'unassigned') return null;
+                    const sectionName = sId === 'unassigned' ? 'Unassigned Workers' : sections.find(s => s.id === sId)?.name || 'Unknown';
+                    return (
+                      <div key={sId} className="bg-white">
+                        <div className="bg-gray-50/50 px-6 py-2 border-y border-gray-100 text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] flex justify-between"><span>{sectionName}</span><span>{emps.length} Workers</span></div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse"><tbody className="divide-y divide-gray-50 text-sm">
+                              {emps.length === 0 ? (<tr><td className="px-6 py-8 text-center text-gray-400 italic font-medium">No workers in this section.</td></tr>) : (
+                                emps.map(emp => {
+                                  const isExpanded = expandedId === emp.id;
+                                  const isEditing = editingId === emp.id;
+                                  const loan = loans.find(l => l.employeeId === emp.id);
+                                  return (
+                                    <React.Fragment key={emp.id}>
+                                      <tr className={`hover:bg-indigo-50/30 transition-colors ${isEditing ? 'bg-indigo-50/50' : ''}`}>
+                                        <td className="px-4 py-4 w-10 text-center"><button onClick={() => setExpandedId(isExpanded ? null : emp.id)} className="text-gray-400 hover:text-indigo-600"><svg className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg></button></td>
+                                        <td className="px-6 py-4"><div className="flex items-center gap-2"><span className="font-bold text-gray-900">{emp.name}</span><span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${emp.shift === 'night' ? 'bg-slate-900 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>{emp.shift || 'day'}</span></div></td>
+                                        <td className="px-6 py-4 text-center font-bold text-gray-600">{emp.monthlyWage.toLocaleString()} SYP</td>
+                                        <td className="px-6 py-4 text-right"><div className="flex justify-end gap-2">{!viewResigned && (<><button onClick={() => setTransTarget(emp)} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg border border-green-100" title="Transportation"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg></button><button onClick={() => startEditing(emp)} className="text-indigo-600 font-black px-2 text-[10px] uppercase tracking-widest">Edit</button></>)}<button onClick={() => { setEmployeeTarget(emp); setShowDeleteModal(true); }} className="text-red-500 font-black px-2 text-[10px] uppercase tracking-widest">Delete</button></div></td>
+                                      </tr>
+                                      {(isExpanded || isEditing) && (
+                                        <tr className="bg-gray-50/80"><td colSpan={4} className="px-8 py-6"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-6">
+                                              <div><label className="text-[10px] font-black text-indigo-500 uppercase block mb-1">Worker Full Name</label>{isEditing ? <input className="w-full px-3 py-1.5 border rounded-lg bg-white text-slate-900 font-bold" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} /> : <p className="font-bold text-slate-900">{emp.name}</p>}</div>
+                                              <div><label className="text-[10px] font-black text-indigo-500 uppercase block mb-1">Section Assignment</label>{isEditing ? <select className="w-full px-3 py-1.5 border rounded-lg bg-white text-slate-900 font-bold" value={editFormData.sectionId} onChange={e => setEditFormData({...editFormData, sectionId: e.target.value})}><option value="">Unassigned</option>{sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select> : <p className="font-bold text-slate-900">{sections.find(s => s.id === emp.sectionId)?.name || 'Unassigned'}</p>}</div>
+                                              <div><label className="text-[10px] font-black text-indigo-500 uppercase block mb-1">Shift Type</label>{isEditing ? (<div className="flex bg-white rounded-lg border border-gray-200 p-0.5 w-fit"><button onClick={() => setEditFormData({...editFormData, shift: 'day'})} className={`px-3 py-1 rounded-md text-[10px] font-black uppercase transition-all flex items-center gap-1.5 ${editFormData.shift === 'day' ? 'bg-amber-100 text-amber-700 shadow-sm' : 'text-gray-400'}`}>Day</button><button onClick={() => setEditFormData({...editFormData, shift: 'night'})} className={`px-3 py-1 rounded-md text-[10px] font-black uppercase transition-all flex items-center gap-1.5 ${editFormData.shift === 'night' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400'}`}>Night</button></div>) : (<p className="font-bold text-slate-900 uppercase">{emp.shift || 'day'}</p>)}</div>
+                                              <div><label className="text-[10px] font-black text-indigo-500 uppercase block mb-1">Father's Name</label>{isEditing ? <input className="w-full px-3 py-1.5 border rounded-lg bg-white text-slate-900 font-bold" value={editFormData.fatherName} onChange={e => setEditFormData({...editFormData, fatherName: e.target.value})} /> : <p className="font-bold text-slate-900">{emp.fatherName || 'N/A'}</p>}</div>
+                                              <div><label className="text-[10px] font-black text-indigo-500 uppercase block mb-1">Monthly Wage</label>{isEditing ? <input type="number" className="w-full px-3 py-1.5 border rounded-lg bg-white text-slate-900 font-bold" value={editFormData.wage} onChange={e => setEditFormData({...editFormData, wage: e.target.value})} /> : <p className="font-bold text-slate-900">{emp.monthlyWage.toLocaleString()} SYP</p>}</div>
+                                              <div className="col-span-1 md:col-span-2 lg:col-span-2"><label className="text-[10px] font-black text-amber-600 uppercase block mb-1 tracking-widest">Active Financial Liabilities (Loan)</label><div className={`p-3 rounded-xl border ${loan ? 'bg-amber-50/50 border-amber-100' : 'bg-gray-100 border-gray-200 opacity-50'}`}>{loan ? (<div className="flex justify-between items-center"><div><p className="text-xs font-black text-amber-900">{loan.totalAmount.toLocaleString()} SYP <span className="text-[9px] font-normal text-amber-600 uppercase">Total Debt</span></p><p className="text-[9px] font-black text-amber-500 uppercase mt-0.5">Recovery Velocity: {loan.deductionPercentage}% / Month</p></div><div className="text-right"><p className="text-[9px] font-black text-amber-600 uppercase">Est. Monthly Deduction</p><p className="text-xs font-black text-amber-900">{Math.round(loan.totalAmount * (loan.deductionPercentage / 100)).toLocaleString()} SYP</p></div></div>) : (<p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center py-1">No active loans on record</p>)}</div></div>
+                                              {isEditing && <div className="col-span-full flex justify-end gap-2 mt-2"><button onClick={handleUpdate} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-black uppercase text-xs tracking-widest shadow-md">Update</button><button onClick={cancelEditing} className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-black uppercase text-xs tracking-widest">Cancel</button></div>}
+                                            </div></td></tr>
+                                      )}
+                                    </React.Fragment>
+                                  );
+                                })
+                              )}
+                          </tbody></table>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : (
+              <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight mb-6">Organization Sections</h3>
+                <form onSubmit={handleAddSection} className="flex gap-4 mb-8"><div className="flex-1"><label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-1 ml-1">New Section Name</label><input type="text" className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none font-bold text-slate-900 bg-white" placeholder="e.g. Manufacturing Lab A" value={newSectionName} onChange={e => setNewSectionName(e.target.value)} /></div><button type="submit" className="self-end px-8 py-3.5 bg-indigo-600 text-white font-black rounded-xl shadow-lg hover:bg-indigo-700 uppercase text-[10px] tracking-widest">Create Section</button></form>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {sections.map(s => (
+                     <div key={s.id} className="bg-gray-50 p-6 rounded-2xl border border-gray-100 flex items-center justify-between group hover:border-indigo-200 transition-all">
+                        {editingSectionId === s.id ? (
+                           <div className="flex gap-2 w-full"><input className="flex-1 border p-1" value={editSectionName} onChange={e => setEditSectionName(e.target.value)} /><button onClick={() => { updateSection(s.id, editSectionName); setEditingSectionId(null); }} className="text-xs font-black">Save</button></div>
+                        ) : (
+                           <>
+                             <span className="font-black uppercase">{s.name}</span>
+                             <div className="flex gap-2">
+                               <button onClick={() => { setEditingSectionId(s.id); setEditSectionName(s.name); }} className="text-indigo-600">✎</button>
+                               <button onClick={() => deleteSection(s.id)} className="text-red-600">×</button>
+                             </div>
+                           </>
+                        )}
+                     </div>
+                   ))}
+                </div>
+              </section>
+            )}
+          </div>
+          <div className="space-y-6">
+            <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-6">
+              <h3 className="font-black text-gray-800 text-lg uppercase tracking-tight mb-6 flex items-center gap-2"><div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg></div>Register Worker</h3>
+              <form onSubmit={handleAdd} className="space-y-5">
+                <div className="grid grid-cols-2 gap-4"><div><label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-1 ml-1">Section</label><select className="w-full px-3 py-2 border border-gray-200 rounded-xl outline-none text-xs font-bold text-slate-900 bg-white" value={formData.sectionId} onChange={e => setFormData({...formData, sectionId: e.target.value})}><option value="">Unassigned</option>{sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div><label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-1 ml-1">Shift Type</label><div className="flex bg-gray-50 rounded-xl border border-gray-200 p-1"><button type="button" onClick={() => setFormData({...formData, shift: 'day'})} className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center justify-center gap-1 ${formData.shift === 'day' ? 'bg-amber-100 text-amber-700 shadow-sm border border-amber-200' : 'text-gray-400 hover:text-gray-600'}`}>Day</button><button type="button" onClick={() => setFormData({...formData, shift: 'night'})} className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center justify-center gap-1 ${formData.shift === 'night' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>Night</button></div></div></div>
+                <div><label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-1 ml-1">Full Legal Name</label><input type="text" required className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none text-sm font-bold text-slate-900 bg-white" placeholder="John Doe" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
+                <div className="grid grid-cols-2 gap-3"><div><label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-1 ml-1">Father's Name</label><input type="text" className="w-full px-4 py-2 border border-gray-200 rounded-xl outline-none text-sm font-bold text-slate-900 bg-white" value={formData.fatherName} onChange={e => setFormData({...formData, fatherName: e.target.value})} /></div><div><label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-1 ml-1">Mother's Name</label><input type="text" className="w-full px-4 py-2 border border-gray-200 rounded-xl outline-none text-sm font-bold text-slate-900 bg-white" value={formData.motherName} onChange={e => setFormData({...formData, motherName: e.target.value})} /></div></div>
+                <div className="grid grid-cols-2 gap-3"><div><label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-1 ml-1">Monthly Base Wage</label><input type="number" required className="w-full px-4 py-2 border border-gray-200 rounded-xl outline-none text-sm font-bold text-slate-900 bg-white" placeholder="1500000" value={formData.wage} onChange={e => setFormData({...formData, wage: e.target.value})} /></div><div><label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-1 ml-1">Join Date</label><input type="date" required className="w-full px-4 py-2 border border-gray-200 rounded-xl outline-none text-sm font-bold text-slate-900 bg-white" value={formData.joinDate} onChange={e => setFormData({...formData, joinDate: e.target.value})} /></div></div>
+                <button type="submit" className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl shadow-xl hover:bg-indigo-700 transition-all uppercase tracking-widest text-xs">Authorize Entry</button>
+              </form>
+            </section>
+            <button onClick={() => setShowPdfSettings(true)} className="w-full py-4 bg-gray-100 text-gray-600 font-black rounded-xl uppercase text-xs">PDF Settings</button>
+            <button onClick={handleGeneratePDF} disabled={isGenerating} className="w-full py-4 bg-gray-900 text-white font-black rounded-xl uppercase text-xs shadow-xl">{isGenerating ? 'Processing...' : 'Export Payslips'}</button>
+          </div>
+
+          {/* Modals */}
+          {transTarget && (<div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"><div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 animate-in zoom-in-95 duration-200"><label className="text-[10px] font-black text-green-600 uppercase tracking-widest block mb-1">Set Transportation Allowance</label><h4 className="text-2xl font-black mb-2 text-gray-900">Coverage</h4><p className="text-sm text-gray-500 mb-6">Add allowance for <span className="font-black text-gray-800">{transTarget.name}</span>.</p><input type="number" className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none font-black text-lg mb-6 text-slate-900 bg-white" placeholder="0 SYP" value={transAmount} onChange={e => setTransAmount(e.target.value)} autoFocus /><div className="flex gap-3"><button onClick={() => setTransTarget(null)} className="flex-1 px-4 py-3 bg-gray-100 font-black rounded-xl uppercase text-xs tracking-widest">Discard</button><button onClick={handleSaveTransportation} className="flex-1 px-4 py-3 bg-green-600 text-white font-black rounded-xl shadow-lg transition-all active:scale-95 uppercase text-xs tracking-widest">Confirm</button></div></div></div>)}
+          {showResignModal && (<div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"><div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center animate-in zoom-in-95 duration-200"><h4 className="text-xl font-black mb-2 tracking-tight uppercase">Resign Worker</h4><p className="text-gray-500 text-sm mb-6">Archive <span className="font-black text-gray-900">{employeeTarget?.name}</span>? Record will move to history.</p><div className="flex gap-3"><button onClick={() => setShowResignModal(false)} className="flex-1 py-3 bg-gray-100 font-black rounded-lg uppercase text-xs tracking-widest">Keep</button><button onClick={handleResign} className="flex-1 py-3 bg-red-600 text-white font-black rounded-lg uppercase text-xs tracking-widest">Confirm</button></div></div></div>)}
+          {showDeleteModal && (<div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50"><div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center animate-in zoom-in-95"><h4 className="text-xl font-black mb-2 tracking-tight uppercase text-red-600">Delete Permanently</h4><p className="text-gray-500 text-sm mb-6">Erase all records for <span className="font-black text-gray-900">{employeeTarget?.name}</span>? This cannot be undone.</p><div className="flex gap-3"><button onClick={() => setShowDeleteModal(false)} className="flex-1 py-3 bg-gray-100 font-black rounded-lg uppercase text-xs tracking-widest">No</button><button onClick={handleDelete} className="flex-1 py-3 bg-red-600 text-white font-black rounded-lg uppercase text-xs tracking-widest">Erase</button></div></div></div>)}
+          {showPdfSettings && (<div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300"><div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 overflow-y-auto max-h-[90vh] animate-in zoom-in-95 duration-200"><h4 className="text-2xl font-black text-gray-900 mb-2 tracking-tight uppercase">System Branding</h4><div className="space-y-6 mt-6"><div><label className="block text-[10px] font-black text-indigo-400 uppercase mb-2 tracking-widest ml-1">Organization Name</label><input type="text" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-black text-slate-900 bg-white" placeholder="Organization Name" value={tempPdfConfig.companyName} onChange={e => setTempPdfConfig({...tempPdfConfig, companyName: e.target.value})} /></div><div className="flex gap-3 pt-6 border-t border-gray-50"><button onClick={() => setShowPdfSettings(false)} className="flex-1 py-3 bg-gray-50 text-gray-600 font-black rounded-2xl hover:bg-gray-100 transition-colors uppercase text-xs tracking-widest">Discard</button><button onClick={handleSavePdfConfig} className="flex-1 py-3 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all uppercase text-xs tracking-widest active:scale-95">Commit</button></div></div></div></div>)}
+        </div>
+      );
+    };
+
+    // MANAGER DASHBOARD
+    const ManagerDashboard = ({ employees, sections, attendance, advances, overtime, updateAttendance, addAdvance, addOvertime, deleteAdvance, deleteOvertime, config, lockedMonths }) => {
+      const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+      const [searchQuery, setSearchQuery] = useState('');
+      const [advanceAmount, setAdvanceAmount] = useState({});
+      const [otHours, setOtHours] = useState({});
+      
+      const existingRecord = useMemo(() => attendance.find(a => a.date === selectedDate), [attendance, selectedDate]);
+      const dailyRecord = useMemo(() => existingRecord || { date: selectedDate, absentEmployeeIds: [] }, [existingRecord, selectedDate]);
+      const isLocked = useMemo(() => lockedMonths.includes(selectedDate.substring(0, 7)), [lockedMonths, selectedDate]);
+      const filteredEmployees = useMemo(() => employees.filter(emp => !emp.isResigned && emp.name.toLowerCase().includes(searchQuery.toLowerCase())), [employees, searchQuery]);
+      const employeesBySection = useMemo(() => {
+        const grouped = { 'unassigned': [] };
+        sections.forEach(s => grouped[s.id] = []);
+        filteredEmployees.forEach(emp => {
+          if (emp.sectionId && grouped[emp.sectionId]) grouped[emp.sectionId].push(emp);
+          else grouped['unassigned'].push(emp);
+        });
+        return grouped;
+      }, [filteredEmployees, sections]);
+      const dailyAdvances = useMemo(() => advances.filter(a => a.date === selectedDate), [advances, selectedDate]);
+      const dailyOT = useMemo(() => overtime.filter(ot => ot.date === selectedDate), [overtime, selectedDate]);
+
+      const toggleAbsence = (employeeId) => { if (isLocked) return; const isCurrentlyAbsent = dailyRecord.absentEmployeeIds.includes(employeeId); const newAbsentIds = isCurrentlyAbsent ? dailyRecord.absentEmployeeIds.filter(id => id !== employeeId) : [...dailyRecord.absentEmployeeIds, employeeId]; updateAttendance(selectedDate, newAbsentIds); };
+      const handleConfirmAttendance = () => { if (isLocked) return; updateAttendance(selectedDate, dailyRecord.absentEmployeeIds); };
+      const handleAddAdvance = (e, employeeId) => { e.stopPropagation(); if (isLocked) return; const amount = parseFloat(advanceAmount[employeeId]); if (amount > 0) { addAdvance(employeeId, amount, selectedDate); setAdvanceAmount(prev => ({ ...prev, [employeeId]: '' })); }};
+      const handleAddOvertime = (e, employeeId) => { e.stopPropagation(); if (isLocked) return; const hours = parseFloat(otHours[employeeId]); if (hours > 0) { addOvertime(employeeId, hours, selectedDate); setOtHours(prev => ({ ...prev, [employeeId]: '' })); }};
+      const markAllPresent = () => { if (isLocked) return; updateAttendance(selectedDate, []); setSearchQuery(''); };
+
+      return (
+        <div className="max-w-5xl mx-auto space-y-6 fade-in">
+          <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row gap-6 items-center justify-between relative overflow-hidden">
+            {isLocked && (<div className="absolute top-0 right-0 px-6 py-1 bg-red-600 text-white text-[8px] font-black uppercase tracking-widest rounded-bl-xl shadow-lg flex items-center gap-1 animate-pulse"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>Period Locked by Owner</div>)}
+            <div><h2 className="text-xl font-black text-gray-800 tracking-tight uppercase">Daily Operations Hub</h2><p className="text-sm text-gray-500 font-medium">Recording for <span className="font-black text-indigo-600">{new Date(selectedDate).toLocaleDateString(undefined, { dateStyle: 'long' })}</span></p></div>
+            <div className="flex flex-col gap-1"><label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1">Operation Date</label><div className="flex items-center gap-4"><input type="date" className="px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm font-black text-slate-900 bg-white" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />{!isLocked && (<button onClick={markAllPresent} className="px-4 py-2 bg-gray-50 text-[10px] font-black text-indigo-600 hover:bg-indigo-50 rounded-xl border border-indigo-100 transition-all uppercase tracking-widest">Reset List</button>)}</div></div>
+          </section>
+          <section className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 transition-all ${existingRecord ? 'bg-green-50 border-green-100' : 'bg-indigo-50 border-indigo-100'}`}>
+            <div className="flex items-center gap-3"><div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${existingRecord ? 'bg-green-600 text-white' : 'bg-indigo-600 text-white'}`}>{existingRecord ? (<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>) : (<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>)}</div><div><p className={`font-black text-xs uppercase tracking-tight ${existingRecord ? 'text-green-900' : 'text-indigo-900'}`}>{existingRecord ? 'Attendance Verified for this Day' : 'Attendance Not Yet Logged'}</p><p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">{existingRecord ? `Record stored: ${existingRecord.absentEmployeeIds.length} workers were absent.` : 'Click to confirm that everyone present is recorded.'}</p></div></div>
+            {!isLocked && (<button onClick={handleConfirmAttendance} className={`px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all shadow-lg active:scale-95 ${existingRecord ? 'bg-white text-green-600 border border-green-200' : 'bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700'}`}>{existingRecord ? 'Update Daily Log' : 'Verify & Log Attendance'}</button>)}
+          </section>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className={`lg:col-span-2 space-y-6 ${isLocked ? 'opacity-70 grayscale-[0.2]' : ''}`}>
+              <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-4 border-b border-gray-100 bg-gray-50/30"><label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block mb-1 ml-1">Search Workforce</label><div className="relative"><input type="text" placeholder="Enter name..." className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all shadow-sm bg-white text-slate-900 font-bold" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /><span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></span></div></div>
+                <div className={`divide-y divide-gray-100 ${isLocked ? 'pointer-events-none' : ''}`}>
+                  {Object.entries(employeesBySection).map(([sId, emps]) => {
+                    if (emps.length === 0 && sId !== 'unassigned') return null;
+                    const sectionName = sId === 'unassigned' ? 'Unassigned Workers' : sections.find(s => s.id === sId)?.name || 'Unknown';
+                    return (
+                      <div key={sId}>
+                        <div className="bg-gray-50/50 px-6 py-2 border-y border-gray-100 text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">{sectionName}</div>
+                        <div className="divide-y divide-gray-50">
+                          {emps.length === 0 ? (<div className="px-6 py-4 text-center text-gray-400 font-black italic uppercase tracking-widest text-[9px]">No workers in this section.</div>) : (
+                            emps.map(emp => {
+                              const isAbsent = dailyRecord.absentEmployeeIds.includes(emp.id);
+                              const dailyRate = Math.round(emp.monthlyWage / config.daysInMonth);
+                              return (
+                                <div key={emp.id} className={`px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:bg-gray-50 ${isAbsent ? 'bg-red-50/30' : ''}`}>
+                                  <div onClick={() => toggleAbsence(emp.id)} className="flex items-center gap-4 cursor-pointer flex-1">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black shadow-sm border ${isAbsent ? 'bg-red-100 text-red-600 border-red-200' : 'bg-green-100 text-green-600 border-green-200'}`}>{emp.name.charAt(0)}</div>
+                                    <div><p className={`font-black text-sm ${isAbsent ? 'text-red-700' : 'text-gray-800'}`}>{emp.name}</p><p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{isAbsent ? 'Absent' : 'Present'} • {dailyRate.toLocaleString()} SYP/Day</p></div>
+                                  </div>
+                                  {!isAbsent && (
+                                    <div className="flex gap-4">
+                                      <div className="flex flex-col gap-1"><label className="text-[8px] font-black text-amber-500 uppercase tracking-widest">Advance</label><div className="flex bg-white rounded-lg border border-gray-200 p-1 px-2"><input type="number" disabled={isLocked} className="w-12 text-xs outline-none font-black text-slate-900 bg-transparent" value={advanceAmount[emp.id] || ''} onChange={e => setAdvanceAmount(prev => ({ ...prev, [emp.id]: e.target.value }))} onClick={e => e.stopPropagation()} /><button onClick={e => handleAddAdvance(e, emp.id)} disabled={!advanceAmount[emp.id] || isLocked} className="text-amber-600 text-[9px] font-black uppercase disabled:opacity-20">Save</button></div></div>
+                                      <div className="flex flex-col gap-1"><label className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">OT Hrs</label><div className="flex bg-white rounded-lg border border-indigo-100 p-1 px-2"><input type="number" disabled={isLocked} className="w-10 text-xs outline-none font-black text-slate-900 bg-transparent" value={otHours[emp.id] || ''} onChange={e => setOtHours(prev => ({ ...prev, [emp.id]: e.target.value }))} onClick={e => e.stopPropagation()} /><button onClick={e => handleAddOvertime(e, emp.id)} disabled={!otHours[emp.id] || isLocked} className="text-indigo-600 text-[9px] font-black uppercase disabled:opacity-20">Log</button></div></div>
+                                    </div>
+                                  )}
+                                  <button onClick={() => toggleAbsence(emp.id)} disabled={isLocked} className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all ${isAbsent ? 'bg-red-500 border-red-500' : 'bg-white border-gray-300'}`}>{isAbsent ? <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg> : <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}</button>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
+            <div className="space-y-6">
+               <section className="bg-white rounded-2xl shadow-sm border p-6 sticky top-6">
+                 <h3 className="font-black text-sm uppercase mb-4">Activity Log</h3>
+                 <div className="space-y-2">
+                   {dailyAdvances.map(adv => (<div key={adv.id} className="p-3 bg-amber-50 border border-amber-100 rounded-xl flex justify-between"><span className="text-xs font-black text-amber-900">{employees.find(e => e.id === adv.employeeId)?.name} • {adv.amount}</span>{!isLocked && <button onClick={() => deleteAdvance(adv.id)} className="text-red-400">×</button>}</div>))}
+                   {dailyOT.map(ot => (<div key={ot.id} className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl flex justify-between"><span className="text-xs font-black text-indigo-900">{employees.find(e => e.id === ot.employeeId)?.name} • {ot.hours}h</span>{!isLocked && <button onClick={() => deleteOvertime(ot.id)} className="text-red-400">×</button>}</div>))}
+                   {dailyAdvances.length === 0 && dailyOT.length === 0 && (<div className="text-center py-10 text-gray-400 font-black italic text-[10px] uppercase tracking-widest">No activity for this date.</div>)}
+                 </div>
+               </section>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // OWNER DASHBOARD
+    const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, attendance, employees, bonuses, addBonus, deleteBonus }) => {
+      const [tempConfig, setTempConfig] = useState(config);
+      const [activeOwnerTab, setActiveOwnerTab] = useState('logic');
+      const [bonusType, setBonusType] = useState('fixed');
+      const [bonusAmount, setBonusAmount] = useState('');
+      const [bonusPercent, setBonusPercent] = useState('5');
+      const [bonusDate, setBonusDate] = useState(new Date().toISOString().split('T')[0]);
+      const [bonusDescription, setBonusDescription] = useState('Quarterly Incentive');
+      const [selectedEmpIds, setSelectedEmpIds] = useState([]);
+      const [bonusSearch, setBonusSearch] = useState('');
+
+      const handleSave = () => { setConfig(tempConfig); alert('Global logic variables successfully synchronized.'); };
+      const availableMonths = useMemo(() => { const months = new Set(); attendance.forEach(a => months.add(a.date.substring(0, 7))); const now = new Date().toISOString().substring(0, 7); months.add(now); return Array.from(months).sort().reverse(); }, [attendance]);
+      const filteredBonusEmployees = useMemo(() => employees.filter(e => !e.isResigned && e.name.toLowerCase().includes(bonusSearch.toLowerCase())), [employees, bonusSearch]);
+      const handleDistributeBonus = () => { if (!bonusDate) return; const monthYear = bonusDate.substring(0, 7); if (lockedMonths.includes(monthYear)) { alert("Cannot apply bonuses to a locked month."); return; } const activeEmployees = employees.filter(e => !e.isResigned); let count = 0; if (bonusType === 'fixed') { const amt = parseFloat(bonusAmount); if (isNaN(amt) || amt <= 0) return; activeEmployees.forEach(emp => { addBonus(emp.id, amt, bonusDate, bonusDescription); count++; }); } else if (bonusType === 'percent') { const pct = parseFloat(bonusPercent); if (isNaN(pct) || pct <= 0) return; activeEmployees.forEach(emp => { const amt = Math.round(emp.monthlyWage * (pct / 100)); addBonus(emp.id, amt, bonusDate, bonusDescription); count++; }); } else if (bonusType === 'selective') { const amt = parseFloat(bonusAmount); if (isNaN(amt) || amt <= 0 || selectedEmpIds.length === 0) return; selectedEmpIds.forEach(id => { addBonus(id, amt, bonusDate, bonusDescription); count++; }); } alert(`Successfully distributed bonuses to ${count} profiles.`); setBonusAmount(''); setSelectedEmpIds([]); };
+      const calculatePreview = () => { const monthly = 2600000; const daysInMonth = tempConfig.daysInMonth; const hoursPerDay = tempConfig.hoursPerDay; const absFactor = tempConfig.absentDeductionFactor; const nightFactor = tempConfig.nightShiftMultiplier; const baseDailyRate = monthly / daysInMonth; const hourlyRate = baseDailyRate / hoursPerDay; const otPayPerHour = hourlyRate * tempConfig.otMultiplier; const absencePenalty = baseDailyRate * absFactor; const nightDailyRate = baseDailyRate * nightFactor; return { monthly, baseDailyRate, nightDailyRate, otPayPerHour, absencePenalty }; };
+      const preview = calculatePreview();
+
+      return (
+        <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
+          <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div><h2 className="text-4xl font-black text-gray-900 tracking-tight uppercase">Strategic Control</h2><p className="text-gray-500 font-black uppercase text-[10px] tracking-[0.2em] opacity-60">System Core Architecture & Financial Logic</p></div>
+            <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-gray-100"><button onClick={() => setActiveOwnerTab('logic')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeOwnerTab === 'logic' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400'}`}>System Logic</button><button onClick={() => setActiveOwnerTab('periods')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeOwnerTab === 'periods' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400'}`}>Periods</button><button onClick={() => setActiveOwnerTab('bonuses')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeOwnerTab === 'bonuses' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400'}`}>Bonus Center</button></div>
+          </header>
+          {activeOwnerTab === 'logic' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-6">
+                <div className="bg-white rounded-[2rem] shadow-xl border border-gray-50 p-8 space-y-6">
+                  <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight">System Variables</h3>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4"><div><label className="block text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1 mb-2">Days / Month</label><input type="number" className="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl focus:ring-4 focus:ring-indigo-100 outline-none font-black text-slate-900" value={tempConfig.daysInMonth} onChange={e => setTempConfig({...tempConfig, daysInMonth: parseInt(e.target.value) || 26})} /></div><div><label className="block text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1 mb-2">Hours / Day</label><input type="number" step="0.5" className="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl focus:ring-4 focus:ring-indigo-100 outline-none font-black text-slate-900" value={tempConfig.hoursPerDay} onChange={e => setTempConfig({...tempConfig, hoursPerDay: parseFloat(e.target.value) || 8})} /></div></div>
+                    <div className="grid grid-cols-2 gap-4"><div><label className="block text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1 mb-2">Overtime Factor (x)</label><input type="number" step="0.1" className="w-full px-5 py-4 bg-white border border-gray-100 rounded-2xl focus:ring-4 focus:ring-indigo-100 outline-none font-black text-indigo-600" value={tempConfig.otMultiplier} onChange={e => setTempConfig({...tempConfig, otMultiplier: parseFloat(e.target.value) || 1.5})} /></div><div><label className="block text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1 mb-2">Absence Penalty (x)</label><input type="number" step="0.1" min="1" className="w-full px-5 py-4 bg-white border border-red-100 rounded-2xl focus:ring-4 focus:ring-red-100 outline-none font-black text-red-600" value={tempConfig.absentDeductionFactor} onChange={e => setTempConfig({...tempConfig, absentDeductionFactor: parseFloat(e.target.value) || 1.0})} /></div></div>
+                    <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800"><label className="block text-[10px] font-black text-amber-400 uppercase tracking-widest ml-1 mb-2">Night Shift Multiplier (Premium)</label><input type="number" step="0.05" min="1.0" className="w-full px-5 py-4 bg-slate-900 border border-slate-800 rounded-2xl focus:ring-4 focus:ring-amber-500/20 outline-none font-black text-amber-400" value={tempConfig.nightShiftMultiplier} onChange={e => setTempConfig({...tempConfig, nightShiftMultiplier: parseFloat(e.target.value) || 1.0})} /><p className="text-[9px] text-slate-400 mt-2 font-black uppercase tracking-tight italic">Factor 1.2 = Night workers take 20% extra pay.</p></div>
+                    <button onClick={handleSave} className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-indigo-700 transition-all active:scale-95 uppercase text-[10px] tracking-widest">Commit Logic Updates</button>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-6"><div className="bg-indigo-600 rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden h-full"><div className="relative z-10"><p className="text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-6">Real-Time Logic Preview</p><div className="grid grid-cols-1 gap-6"><div className="space-y-4"><div className="flex justify-between py-2 border-b border-white/10"><span className="text-[10px] font-black uppercase tracking-widest opacity-60">Day Rate</span><span className="font-black text-sm">{Math.round(preview.baseDailyRate).toLocaleString()} SYP</span></div><div className="flex justify-between py-2 border-b border-white/10"><span className="text-[10px] font-black uppercase tracking-widest text-amber-300">Night Rate</span><span className="font-black text-sm text-amber-300">{Math.round(preview.nightDailyRate).toLocaleString()} SYP</span></div><div className="flex justify-between py-2 border-b border-white/10"><span className="text-[10px] font-black uppercase tracking-widest opacity-60">Absence Cut</span><span className="font-black text-sm text-red-300">-{Math.round(preview.absencePenalty).toLocaleString()} SYP</span></div><div className="flex justify-between py-2 border-b border-white/10"><span className="text-[10px] font-black uppercase tracking-widest opacity-60">OT / Hour</span><span className="font-black text-sm">{Math.round(preview.otPayPerHour).toLocaleString()} SYP</span></div></div></div></div></div></div>
+            </div>
+          )}
+          {activeOwnerTab === 'periods' && (
+            <div className="bg-white rounded-[2rem] shadow-xl border border-gray-50 p-8 max-w-2xl"><h3 className="text-xl font-black text-gray-800 uppercase tracking-tight mb-2">Payroll Periods</h3><p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-6">Lock finalized months to prevent edits</p><div className="space-y-3">{availableMonths.map(month => { const isLocked = lockedMonths.includes(month); const [year, mNum] = month.split('-'); const dateObj = new Date(parseInt(year), parseInt(mNum) - 1); const label = dateObj.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }); return (<div key={month} className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${isLocked ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}><div><p className={`font-black text-xs uppercase tracking-tight ${isLocked ? 'text-red-900' : 'text-green-900'}`}>{label}</p><span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${isLocked ? 'bg-red-200 text-red-700' : 'bg-green-200 text-green-700'}`}>{isLocked ? 'Closed & Locked' : 'Open for Edits'}</span></div><button onClick={() => toggleMonthLock(month)} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isLocked ? 'bg-red-600 text-white shadow-lg' : 'bg-white border-2 border-green-200 text-green-600 hover:bg-green-100'}`}>{isLocked ? <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>}</button></div>); })}</div></div>
+          )}
+          {activeOwnerTab === 'bonuses' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-6">
+                <div className="bg-white rounded-[2rem] shadow-xl border border-gray-50 p-8">
+                  <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight mb-6">Bonus Distribution Engine</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8"><button onClick={() => setBonusType('fixed')} className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${bonusType === 'fixed' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-100 text-gray-400'}`}><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg><span className="text-[10px] font-black uppercase tracking-widest">Fixed Amount</span></button><button onClick={() => setBonusType('percent')} className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${bonusType === 'percent' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-100 text-gray-400'}`}><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg><span className="text-[10px] font-black uppercase tracking-widest">% of Wage</span></button><button onClick={() => setBonusType('selective')} className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${bonusType === 'selective' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-100 text-gray-400'}`}><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg><span className="text-[10px] font-black uppercase tracking-widest">Selective</span></button></div>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Distribution Date</label><input type="date" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold" value={bonusDate} onChange={e => setBonusDate(e.target.value)} /></div><div><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Label / Description</label><input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold" value={bonusDescription} onChange={e => setBonusDescription(e.target.value)} /></div></div>
+                    {bonusType !== 'percent' ? (<div><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Bonus Amount (SYP)</label><input type="number" className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl font-black text-2xl text-indigo-600 outline-none focus:ring-4 focus:ring-indigo-100" placeholder="0" value={bonusAmount} onChange={e => setBonusAmount(e.target.value)} /></div>) : (<div><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Bonus Percentage (%)</label><div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-6"><input type="range" min="1" max="100" className="flex-1 accent-indigo-600 h-2 bg-gray-200 rounded-lg cursor-pointer" value={bonusPercent} onChange={e => setBonusPercent(e.target.value)} /><span className="text-2xl font-black text-indigo-600 w-16 text-center">{bonusPercent}%</span></div></div>)}
+                    {bonusType === 'selective' && (<div className="space-y-4"><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Select Beneficiaries</label><input type="text" className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm" placeholder="Search employees..." value={bonusSearch} onChange={e => setBonusSearch(e.target.value)} /><div className="max-h-48 overflow-y-auto border border-gray-100 rounded-2xl divide-y divide-gray-50">{filteredBonusEmployees.map(emp => (<div key={emp.id} className="p-3 flex items-center gap-3 hover:bg-gray-50 transition-colors"><input type="checkbox" className="w-5 h-5 accent-indigo-600 rounded" checked={selectedEmpIds.includes(emp.id)} onChange={e => { if (e.target.checked) setSelectedEmpIds([...selectedEmpIds, emp.id]); else setSelectedEmpIds(selectedEmpIds.filter(id => id !== emp.id)); }} /><span className="text-sm font-bold text-gray-700">{emp.name}</span><span className="text-[10px] text-gray-400 ml-auto uppercase font-black">{emp.monthlyWage.toLocaleString()} SYP</span></div>))}</div></div>)}
+                    <button onClick={handleDistributeBonus} className="w-full bg-indigo-600 text-white font-black py-5 rounded-[1.5rem] shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all uppercase text-xs tracking-[0.2em] active:scale-95">Distribute Bonus Capital</button>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-6"><div className="bg-white rounded-[2rem] shadow-xl border border-gray-50 p-6 h-fit max-h-[80vh] overflow-hidden flex flex-col"><h3 className="text-sm font-black text-gray-800 uppercase tracking-widest mb-4">Recent Distribution Logs</h3><div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">{bonuses.length === 0 ? (<div className="text-center py-12 opacity-30 italic text-xs font-black uppercase">No records found.</div>) : (bonuses.slice().reverse().map(bo => (<div key={bo.id} className="p-3 rounded-xl bg-gray-50 border border-gray-100 flex justify-between items-center group"><div><p className="text-[10px] font-black text-gray-900 truncate max-w-[120px]">{employees.find(e => e.id === bo.employeeId)?.name || 'Former'}</p><p className="text-[8px] text-gray-400 uppercase font-bold">{bo.description} • {bo.date}</p></div><div className="flex items-center gap-2"><span className="text-[10px] font-black text-green-600">+{bo.amount.toLocaleString()}</span><button onClick={() => deleteBonus(bo.id)} className="text-gray-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div></div>)))}</div></div></div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // --- 5. MAIN APP (WITH FIREBASE INTEGRATION) ---
+    
+    // Helper Hook: Real-time listener for Firestore Collections
+    const useCollection = (collectionName) => {
+      const [data, setData] = useState([]);
+      useEffect(() => {
+        // Use compat syntax: db.collection(...)
+        const unsubscribe = db.collection(collectionName).onSnapshot((snapshot) => {
+          const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setData(docs);
+        }, (error) => {
+          console.error("Error fetching " + collectionName, error);
+        });
+        return () => unsubscribe();
+      }, [collectionName]);
+      return data;
+    };
+
+    const App = () => {
+      const [currentUser, setCurrentUser] = useState(null);
+
+      // Data Hooks
+      const employees = useCollection('employees');
+      const sections = useCollection('sections');
+      const attendance = useCollection('attendance');
+      const advances = useCollection('advances');
+      const bonuses = useCollection('bonuses');
+      const overtime = useCollection('overtime');
+      const transportation = useCollection('transportation');
+      const loans = useCollection('loans');
+      const locksDocs = useCollection('locks');
+      
+      const lockedMonths = locksDocs.length > 0 ? (locksDocs[0].months || []) : [];
+      const configDocs = useCollection('config');
+      const pdfConfig = configDocs.length > 0 ? configDocs[0] : { companyName: 'My Company', daysInMonth: 26, hoursPerDay: 8, otMultiplier: 1.5, absentDeductionFactor: 1, nightShiftMultiplier: 1 };
+
+      // Firestore Actions (Compat V9 syntax)
+      const addEmployee = (data) => db.collection('employees').add(data);
+      const updateEmployee = (id, data) => db.collection('employees').doc(id).update(data);
+      const deleteEmployee = (id) => db.collection('employees').doc(id).delete();
+      const resignEmployee = (id) => db.collection('employees').doc(id).update({ isResigned: true });
+      
+      const addSection = (name) => db.collection('sections').add({ name });
+      const updateSection = (id, name) => db.collection('sections').doc(id).update({ name });
+      const deleteSection = (id) => db.collection('sections').doc(id).delete();
+      
+      const updateAttendance = (date, absentIds) => {
+        const existing = attendance.find(a => a.date === date);
+        if (existing) db.collection('attendance').doc(existing.id).update({ absentEmployeeIds: absentIds });
+        else db.collection('attendance').add({ date, absentEmployeeIds: absentIds });
+      };
+
+      const addAdvance = (eid, amt, date) => db.collection('advances').add({ employeeId: eid, amount: amt, date });
+      const deleteAdvance = (id) => db.collection('advances').doc(id).delete();
+      
+      const addOvertime = (eid, hrs, date) => db.collection('overtime').add({ employeeId: eid, hours: hrs, date });
+      const deleteOvertime = (id) => db.collection('overtime').doc(id).delete();
+
+      const addTransportation = (eid, amt, date) => db.collection('transportation').add({ employeeId: eid, amount: amt, date });
+      const deleteTransportation = (id) => db.collection('transportation').doc(id).delete();
+
+      const addBonus = (eid, amt, date, description) => db.collection('bonuses').add({ employeeId: eid, amount: amt, date, description });
+      const deleteBonus = (id) => db.collection('bonuses').doc(id).delete();
+
+      const updateLoan = (eid, total, pct) => {
+        const existing = loans.find(l => l.employeeId === eid);
+        if (total <= 0 && existing) db.collection('loans').doc(existing.id).delete();
+        else if (existing) db.collection('loans').doc(existing.id).update({ totalAmount: total, deductionPercentage: pct });
+        else db.collection('loans').add({ employeeId: eid, totalAmount: total, deductionPercentage: pct });
+      };
+
+      const setPdfConfig = (newConfig) => {
+        const existing = configDocs[0];
+        if (existing) db.collection('config').doc(existing.id).update(newConfig);
+        else db.collection('config').add(newConfig);
+      };
+
+      const toggleMonthLock = (m) => {
+        const newLocks = lockedMonths.includes(m) ? lockedMonths.filter(x => x !== m) : [...lockedMonths, m];
+        const existing = locksDocs[0];
+        if (existing) db.collection('locks').doc(existing.id).update({ months: newLocks });
+        else db.collection('locks').add({ months: newLocks });
+      };
+
+      if (!currentUser) return <Login onLogin={(u) => setCurrentUser(u)} />;
+
+      return (
+        <div className="min-h-screen bg-slate-50 flex flex-col fade-in">
+          <header className="bg-white shadow-sm px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+             <h1 className="text-2xl font-black text-indigo-600">SalaryMaster <span className="text-xs text-gray-400 font-normal align-middle ml-2">CLOUD</span></h1>
+             <div className="flex gap-4 items-center">
+               <span className="text-xs font-black uppercase text-gray-400 hidden sm:block">{currentUser.username}</span>
+               <button onClick={() => setCurrentUser(null)} className="text-xs font-black text-red-500 uppercase border border-red-100 px-3 py-1 rounded-lg hover:bg-red-50 transition-colors">Sign Out</button>
+             </div>
+          </header>
+          <main className="flex-1 p-6 w-full max-w-7xl mx-auto">
+            {currentUser.role === 'owner' && <OwnerDashboard config={pdfConfig} setConfig={setPdfConfig} lockedMonths={lockedMonths} toggleMonthLock={toggleMonthLock} attendance={attendance} employees={employees} bonuses={bonuses} addBonus={addBonus} deleteBonus={deleteBonus} />}
+            {currentUser.role === 'hr' && <HRDashboard employees={employees} sections={sections} addEmployee={addEmployee} updateEmployee={updateEmployee} resignEmployee={resignEmployee} deleteEmployee={deleteEmployee} addSection={addSection} updateSection={updateSection} deleteSection={deleteSection} attendance={attendance} advances={advances} overtime={overtime} loans={loans} transportation={transportation} pdfConfig={pdfConfig} updateLoan={updateLoan} setPdfConfig={setPdfConfig} deleteAdvance={deleteAdvance} addTransportation={addTransportation} deleteTransportation={deleteTransportation} bonuses={bonuses} />}
+            {currentUser.role === 'manager' && <ManagerDashboard employees={employees} sections={sections} attendance={attendance} advances={advances} overtime={overtime} updateAttendance={updateAttendance} addAdvance={addAdvance} addOvertime={addOvertime} deleteAdvance={deleteAdvance} deleteOvertime={deleteOvertime} config={pdfConfig} lockedMonths={lockedMonths} />}
+            {currentUser.role === 'finance' && <FinanceDashboard employees={employees} loans={loans} advances={advances} transportation={transportation} overtime={overtime} updateLoan={updateLoan} config={pdfConfig} lockedMonths={lockedMonths} />}
+          </main>
+        </div>
+      );
+    };
+
+    // --- 6. MOUNT ---
+    const rootElement = document.getElementById('root');
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+  </script>
+</body>
+</html>
