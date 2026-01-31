@@ -98,6 +98,7 @@
       confirm: { en: "Confirm", ar: "تأكيد" },
       locked: { en: "Locked", ar: "مغلق" },
       generatePdf: { en: "Export Global Payslips", ar: "تصدير كشوف المرتبات" },
+      exportCsv: { en: "Export Report (Excel)", ar: "تصدير تقرير (إكسل)" },
       strategicControl: { en: "Strategic Control", ar: "التحكم الاستراتيجي" },
       systemLogic: { en: "System Logic", ar: "منطق النظام" },
       periods: { en: "Periods", ar: "الفترات" },
@@ -189,13 +190,36 @@
       allActive: { en: "All Active Employees", ar: "جميع الموظفين النشطين" },
       individual: { en: "Individual", ar: "فردي" },
       target: { en: "Target", ar: "الهدف" },
-      distType: { en: "Distribution Type", ar: "نوع التوزيع" }
+      distType: { en: "Distribution Type", ar: "نوع التوزيع" },
+      saveAll: { en: "Save All", ar: "حفظ الكل" },
+      logged: { en: "Logged", ar: "مسجل" }
     };
 
     // --- 3. SERVICES (PDF) ---
     const generateAllPayslips = async (employees, attendance, advances, overtime, loans, transportation, config, sections, bonuses) => {
       const { jsPDF } = window.jspdf;
+      
+      // 1. Fetch Arabic Font (Amiri)
+      const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf';
+      const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+      
+      // 2. Convert to Base64
+      let binary = '';
+      const bytes = new Uint8Array(fontBytes);
+      const len = bytes.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64Font = window.btoa(binary);
+
+      // 3. Init PDF with Font
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      
+      // 4. Add & Set Font
+      doc.addFileToVFS('Amiri-Regular.ttf', base64Font);
+      doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
+      doc.setFont('Amiri'); // Set as default for Arabic support
+
       const sortedAttendance = [...attendance].sort((a, b) => a.date.localeCompare(b.date));
       const allDates = sortedAttendance.map(a => a.date);
       const totalPotentialDays = allDates.length || 0;
@@ -227,44 +251,41 @@
         const totalDeductions = totalAdvances + loanDeduction;
         const netSalary = Math.max(0, totalEarnings - totalDeductions);
 
+        // -- PDF DRAWING START --
         doc.setFillColor(isNightShift ? 15 : 79, isNightShift ? 23 : 70, isNightShift ? 42 : 229);
         doc.rect(0, 0, 210, 45, 'F');
         doc.setFillColor(255, 255, 255, 0.2);
         doc.roundedRect(170, 10, 25, 25, 5, 5, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
+        doc.setFont('Amiri', 'normal'); // Use Arabic Font
         doc.text(config.logoPlaceholder || 'S|M', 182.5, 26, { align: 'center' });
         doc.setFontSize(22);
         doc.text(config.companyName.toUpperCase(), 20, 25);
         doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
         doc.text(`VOUCHER: ${emp.shift?.toUpperCase() || 'DAY'} SHIFT • ${sectionName.toUpperCase()}`, 20, 34);
         const monthYear = totalPotentialDays > 0 ? new Date(allDates[0]).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : 'CURRENT PERIOD';
         doc.text(`PAY PERIOD: ${monthYear.toUpperCase()}`, 115, 25);
         
         doc.setTextColor(30, 30, 30);
         doc.setFontSize(13);
-        doc.setFont('helvetica', 'bold');
         doc.text('WORKER INFORMATION', 20, 58);
         doc.line(20, 60, 210-20, 60);
 
         doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
         let infoY = 68;
-        doc.text(`Full Name:`, 20, infoY); doc.setFont('helvetica', 'bold'); doc.text(emp.name, 50, infoY);
-        doc.setFont('helvetica', 'normal'); doc.text(`Join Date:`, 85, infoY); doc.setFont('helvetica', 'bold'); doc.text(emp.joinDate, 110, infoY);
-        doc.setFont('helvetica', 'normal'); doc.text(`Shift:`, 150, infoY); doc.setFont('helvetica', 'bold'); doc.text((emp.shift || 'day').toUpperCase(), 175, infoY);
+        doc.text(`Full Name:`, 20, infoY); doc.text(emp.name, 50, infoY); // Name (Arabic)
+        doc.text(`Join Date:`, 85, infoY); doc.text(emp.joinDate, 110, infoY);
+        doc.text(`Shift:`, 150, infoY); doc.text((emp.shift || 'day').toUpperCase(), 175, infoY);
         
         infoY += 8;
-        doc.setFont('helvetica', 'normal'); doc.text(`National ID:`, 20, infoY); doc.setFont('helvetica', 'bold'); doc.text(emp.nationalId || 'N/A', 50, infoY);
-        doc.setFont('helvetica', 'normal'); doc.text(`Insurance:`, 85, infoY); doc.setFont('helvetica', 'bold'); doc.text(emp.socialInsuranceId || 'N/A', 110, infoY);
+        doc.text(`National ID:`, 20, infoY); doc.text(emp.nationalId || 'N/A', 50, infoY);
+        doc.text(`Insurance:`, 85, infoY); doc.text(emp.socialInsuranceId || 'N/A', 110, infoY);
 
         doc.setFillColor(249, 250, 251);
         doc.roundedRect(20, infoY + 10, 170, 30, 2, 2, 'F');
         doc.setTextColor(31, 41, 55);
         doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
         doc.text(`Summary: ${daysPresent} Present / ${daysAbsent} Absent`, 30, infoY + 22);
         doc.text(`Monthly Wage: ${emp.monthlyWage.toLocaleString()} SYP`, 30, infoY + 30);
         doc.text(`Fixed Transportation: ${fixedTransportation.toLocaleString()} SYP`, 110, infoY + 30);
@@ -276,7 +297,6 @@
         doc.text('EARNINGS & DEDUCTIONS', 30, infoY + 63);
 
         doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
         let tableY = infoY + 75;
         doc.text(`Basic Pay:`, 30, tableY); doc.text(`${Math.round(effectiveMonthlyWage).toLocaleString()}`, 180, tableY, { align: 'right' }); tableY += 8;
         doc.setTextColor(239, 68, 68); doc.text(`Penalty:`, 30, tableY); doc.text(`- ${Math.round(totalAbsenceDeduction).toLocaleString()}`, 180, tableY, { align: 'right' }); tableY += 8;
@@ -289,7 +309,6 @@
         doc.rect(20, infoY + 130, 170, 15, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
         doc.text('NET PAY:', 30, infoY + 140);
         doc.text(`${Math.round(netSalary).toLocaleString()} SYP`, 180, infoY + 140, { align: 'right' });
       });
@@ -367,6 +386,61 @@
       const startEditing = (emp) => { setEditingId(emp.id); setEditFormData({ ...emp, wage: emp.monthlyWage, transportAllowance: emp.transportationAllowance }); };
       const handleUpdate = () => { updateEmployee(editingId, { ...editFormData, monthlyWage: parseFloat(editFormData.wage), transportationAllowance: parseFloat(editFormData.transportAllowance) }); setEditingId(null); };
       const handleGeneratePDF = async () => { setIsGenerating(true); await generateAllPayslips(employees.filter(e=>!e.isResigned), attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses); setIsGenerating(false); };
+
+      const handleExportCSV = () => {
+         const headers = ['Name', 'Section', 'Wage', 'Shift', 'Days Absent', 'Penalty Deduction', 'Overtime (Hrs)', 'Overtime (Amt)', 'Bonus', 'Transport', 'Advances', 'Loans', 'Net Salary'];
+         const sortedAttendance = [...attendance].sort((a, b) => a.date.localeCompare(b.date));
+         const totalPotentialDays = sortedAttendance.map(a => a.date).length || 0;
+
+         const rows = employees.filter(e => !e.isResigned).map(emp => {
+            const sectionName = sections.find(s => s.id === emp.sectionId)?.name || 'GENERAL';
+            const isNightShift = emp.shift === 'night';
+            const shiftFactor = isNightShift ? (pdfConfig.nightShiftMultiplier || 1.0) : 1.0;
+            const absenceRecords = sortedAttendance.filter(a => a.absentEmployeeIds.includes(emp.id));
+            const daysAbsent = absenceRecords.length;
+            const baseDailyRate = emp.monthlyWage / pdfConfig.daysInMonth;
+            const effectiveMonthlyWage = emp.monthlyWage * shiftFactor;
+            const totalAbsenceDeduction = daysAbsent * baseDailyRate * pdfConfig.absentDeductionFactor;
+            const earnedBasicWages = Math.max(0, effectiveMonthlyWage - totalAbsenceDeduction);
+            const effectiveDailyRate = baseDailyRate * shiftFactor;
+            const hourlyRate = effectiveDailyRate / pdfConfig.hoursPerDay;
+            const empOvertimeHours = overtime.filter(ot => ot.employeeId === emp.id).reduce((sum, curr) => sum + curr.hours, 0);
+            const overtimePay = empOvertimeHours * hourlyRate * pdfConfig.otMultiplier;
+            const empBonus = bonuses.filter(b => b.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
+            const fixedTransportation = emp.transportationAllowance || 0;
+            const extraTransportation = transportation.filter(t => t.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
+            const totalTransportation = fixedTransportation + extraTransportation;
+            const loan = loans.find(l => l.employeeId === emp.id);
+            const loanDeduction = loan ? (loan.totalAmount * (loan.deductionPercentage / 100)) : 0;
+            const totalAdvances = advances.filter(a => a.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
+            const totalEarnings = earnedBasicWages + overtimePay + totalTransportation + empBonus;
+            const totalDeductions = totalAdvances + loanDeduction;
+            const netSalary = Math.max(0, totalEarnings - totalDeductions);
+
+            return [
+               emp.name,
+               sectionName,
+               emp.monthlyWage,
+               emp.shift,
+               daysAbsent,
+               Math.round(totalAbsenceDeduction),
+               empOvertimeHours,
+               Math.round(overtimePay),
+               empBonus,
+               totalTransportation,
+               totalAdvances,
+               Math.round(loanDeduction),
+               Math.round(netSalary)
+            ].join(',');
+         });
+
+         const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+         const link = document.createElement('a');
+         link.href = URL.createObjectURL(blob);
+         link.download = `Payroll_Report_${new Date().toISOString().split('T')[0]}.csv`;
+         link.click();
+      };
 
       return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-20 relative">
@@ -491,7 +565,10 @@
               </div>
             </div>
           )}
-          <button onClick={handleGeneratePDF} disabled={isGenerating} className={`fixed bottom-6 right-6 px-8 py-4 rounded-3xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl transition-all z-50 ${isGenerating ? 'bg-gray-400 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>{isGenerating ? '...' : t('generatePdf')}</button>
+          <div className="fixed bottom-6 right-6 flex flex-col gap-4 z-50">
+             <button onClick={handleExportCSV} className="px-8 py-4 rounded-3xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl transition-all bg-green-600 hover:bg-green-700 text-white">{t('exportCsv')}</button>
+             <button onClick={handleGeneratePDF} disabled={isGenerating} className={`px-8 py-4 rounded-3xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl transition-all ${isGenerating ? 'bg-gray-400 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>{isGenerating ? '...' : t('generatePdf')}</button>
+          </div>
         </div>
       );
     };
@@ -502,9 +579,15 @@
       const [activeTab, setActiveTab] = React.useState('attendance');
       const [advanceAmount, setAdvanceAmount] = React.useState({});
       const [otHours, setOtHours] = React.useState({});
+      const [expandedSections, setExpandedSections] = React.useState({});
       
       const isLocked = lockedMonths.includes(selectedDate.substring(0, 7));
       const dailyRecord = attendance.find(a => a.date === selectedDate) || { date: selectedDate, absentEmployeeIds: [] };
+      
+      // Compute Daily Totals for Badge Display
+      const dailyAdvances = advances.filter(a => a.date === selectedDate);
+      const dailyOvertime = overtime.filter(o => o.date === selectedDate);
+
       const filteredEmployees = employees.filter(emp => !emp.isResigned && emp.name.toLowerCase().includes(searchQuery.toLowerCase()));
       const employeesBySection = React.useMemo(() => {
          const grouped = { 'unassigned': [] };
@@ -513,12 +596,53 @@
          return grouped;
       }, [filteredEmployees, sections]);
 
+      // Sorted Section Keys (Alphabetical)
+      const sortedSectionIds = React.useMemo(() => {
+         return Object.keys(employeesBySection).sort((a, b) => {
+            if (a === 'unassigned') return 1; 
+            if (b === 'unassigned') return -1;
+            const nameA = sections.find(s => s.id === a)?.name || '';
+            const nameB = sections.find(s => s.id === b)?.name || '';
+            return nameA.localeCompare(nameB);
+         });
+      }, [employeesBySection, sections]);
+
+      const toggleSection = (id) => setExpandedSections(prev => ({...prev, [id]: !prev[id]}));
       const toggleAbsence = (id) => { if(isLocked) return; const ids = dailyRecord.absentEmployeeIds.includes(id) ? dailyRecord.absentEmployeeIds.filter(x=>x!==id) : [...dailyRecord.absentEmployeeIds, id]; updateAttendance(selectedDate, ids); };
       const handleAddAdv = (id) => { if(isLocked) return; const val = parseFloat(advanceAmount[id]); if(val) { addAdvance(id, val, selectedDate); setAdvanceAmount({...advanceAmount, [id]:''}); }};
       const handleAddOT = (id) => { if(isLocked) return; const val = parseFloat(otHours[id]); if(val) { addOvertime(id, val, selectedDate); setOtHours({...otHours, [id]:''}); }};
 
+      // Bulk Action Handlers
+      const saveAllAdvances = () => {
+         if (isLocked) return;
+         let count = 0;
+         Object.entries(advanceAmount).forEach(([id, val]) => {
+            const amount = parseFloat(val);
+            if (amount > 0) {
+               addAdvance(id, amount, selectedDate);
+               count++;
+            }
+         });
+         setAdvanceAmount({});
+         if(count > 0) alert(`${count} advances saved successfully.`);
+      };
+
+      const saveAllOvertime = () => {
+         if (isLocked) return;
+         let count = 0;
+         Object.entries(otHours).forEach(([id, val]) => {
+            const hours = parseFloat(val);
+            if (hours > 0) {
+               addOvertime(id, hours, selectedDate);
+               count++;
+            }
+         });
+         setOtHours({});
+         if(count > 0) alert(`${count} overtime records saved successfully.`);
+      };
+
       return (
-        <div className="max-w-6xl mx-auto space-y-6 pb-20">
+        <div className="max-w-6xl mx-auto space-y-6 pb-20 relative">
            <section className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row gap-6 items-center justify-between relative overflow-hidden">
              {isLocked && <div className="absolute top-0 right-0 px-6 py-1 bg-red-600 text-white text-[8px] font-black uppercase tracking-widest shadow-lg">{t('locked')}</div>}
              <div className="flex-1"><h2 className="text-xl font-black text-black tracking-tight uppercase">{t('opsHub')}</h2><p className="text-sm text-black font-black">{t('recordingFor')} <span className="text-indigo-600">{selectedDate}</span></p></div>
@@ -529,39 +653,59 @@
                 </div>
              </div>
            </section>
+           
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
              <div className="lg:col-span-2 space-y-6">
                 <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
-                   <div className="p-6 border-b border-gray-100 bg-gray-50/30 flex justify-between">
+                   <div className="p-6 border-b border-gray-100 bg-gray-50/30 flex justify-between items-center">
                       <input type="text" placeholder={t('search')} className="w-full sm:w-80 py-4 bg-transparent border-b-2 border-gray-300 focus:border-indigo-600 outline-none font-bold text-black" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                    </div>
                    <div className={`divide-y divide-gray-50 ${isLocked ? 'pointer-events-none opacity-50' : ''}`}>
-                      {Object.entries(employeesBySection).map(([sId, emps]) => (
-                         <div key={sId}>
-                            <div className="bg-gray-100/50 px-8 py-3 text-[10px] font-black text-black uppercase tracking-[0.2em]">{sId === 'unassigned' ? t('unassigned') : sections.find(s => s.id === sId)?.name}</div>
-                            {emps.map(emp => {
-                               const isAbsent = dailyRecord.absentEmployeeIds.includes(emp.id);
-                               return (
-                                  <div key={emp.id} className={`px-8 py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition-all hover:bg-gray-50 ${isAbsent && activeTab==='attendance'?'bg-red-50/30':''}`}>
-                                     <div className="flex items-center gap-5 flex-1"><div className={`w-14 h-14 rounded-[1.25rem] flex items-center justify-center font-black text-lg shadow-sm border-2 ${isAbsent && activeTab==='attendance' ? 'bg-red-100 text-red-600 border-red-200' : 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>{emp.name.charAt(0)}</div><div><p className={`font-black text-base ${isAbsent && activeTab==='attendance' ? 'text-red-700' : 'text-black'}`}>{emp.name}</p><p className="text-[11px] font-black uppercase opacity-60">{t(emp.shift)}</p></div></div>
-                                     <div className="flex items-center gap-4 shrink-0">
-                                        {activeTab === 'attendance' && (
-                                           <button onClick={() => toggleAbsence(emp.id)} className={`w-12 h-12 rounded-2xl border-4 flex items-center justify-center transition-all ${isAbsent ? 'bg-red-600 border-red-200 text-white' : 'bg-white border-gray-100 text-black shadow-sm'}`}>
-                                              {isAbsent ? 'X' : '✓'}
-                                           </button>
-                                        )}
-                                        {activeTab === 'advances' && !isAbsent && (
-                                           <div className="flex gap-2"><input type="number" placeholder="0" className="w-24 px-3 py-2 font-bold text-black bg-white rounded-xl border-2 border-gray-300" value={advanceAmount[emp.id]||''} onChange={e => setAdvanceAmount({...advanceAmount, [emp.id]:e.target.value})} /><button onClick={() => handleAddAdv(emp.id)} className="px-4 py-2 bg-black text-white rounded-xl font-black uppercase text-[10px]">{t('add')}</button></div>
-                                        )}
-                                        {activeTab === 'overtime' && !isAbsent && (
-                                           <div className="flex gap-2"><input type="number" placeholder="Hrs" className="w-20 px-3 py-2 font-bold text-black bg-white rounded-xl border-2 border-gray-300" value={otHours[emp.id]||''} onChange={e => setOtHours({...otHours, [emp.id]:e.target.value})} /><button onClick={() => handleAddOT(emp.id)} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px]">{t('add')}</button></div>
-                                        )}
+                      {sortedSectionIds.map(sId => {
+                         const emps = employeesBySection[sId];
+                         if (emps.length === 0) return null;
+                         const isExpanded = expandedSections[sId] !== false; // Default Open
+                         return (
+                            <div key={sId}>
+                               <button onClick={() => toggleSection(sId)} className="w-full flex justify-between items-center bg-gray-100/50 px-8 py-3 text-[10px] font-black text-black uppercase tracking-[0.2em] hover:bg-gray-200/50 transition-colors">
+                                  <span>{sId === 'unassigned' ? t('unassigned') : sections.find(s => s.id === sId)?.name}</span>
+                                  <span className="text-xs font-bold text-gray-500">{isExpanded ? 'v' : '>'}</span>
+                               </button>
+                               
+                               {isExpanded && emps.map(emp => {
+                                  const isAbsent = dailyRecord.absentEmployeeIds.includes(emp.id);
+                                  // Find existing amounts for badges
+                                  const existingAdv = dailyAdvances.filter(a => a.employeeId === emp.id).reduce((sum, r) => sum + r.amount, 0);
+                                  const existingOT = dailyOvertime.filter(o => o.employeeId === emp.id).reduce((sum, r) => sum + r.hours, 0);
+
+                                  return (
+                                     <div key={emp.id} className={`px-8 py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition-all hover:bg-gray-50 ${isAbsent && activeTab==='attendance'?'bg-red-50/30':''}`}>
+                                        <div className="flex items-center gap-5 flex-1"><div className={`w-14 h-14 rounded-[1.25rem] flex items-center justify-center font-black text-lg shadow-sm border-2 ${isAbsent && activeTab==='attendance' ? 'bg-red-100 text-red-600 border-red-200' : 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>{emp.name.charAt(0)}</div><div><p className={`font-black text-base ${isAbsent && activeTab==='attendance' ? 'text-red-700' : 'text-black'}`}>{emp.name}</p><p className="text-[11px] font-black uppercase opacity-60">{t(emp.shift)}</p></div></div>
+                                        <div className="flex items-center gap-4 shrink-0">
+                                           {activeTab === 'attendance' && (
+                                              <button onClick={() => toggleAbsence(emp.id)} className={`w-12 h-12 rounded-2xl border-4 flex items-center justify-center transition-all ${isAbsent ? 'bg-red-600 border-red-200 text-white' : 'bg-white border-gray-100 text-black shadow-sm'}`}>
+                                                 {isAbsent ? 'X' : '✓'}
+                                              </button>
+                                           )}
+                                           {activeTab === 'advances' && !isAbsent && (
+                                              <div className="flex flex-col items-end gap-1">
+                                                 {existingAdv > 0 && <span className="text-[10px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded-lg">{t('logged')}: {existingAdv.toLocaleString()}</span>}
+                                                 <div className="flex gap-2"><input type="number" placeholder="0" className="w-24 px-3 py-2 font-bold text-black bg-white rounded-xl border-2 border-gray-300" value={advanceAmount[emp.id]||''} onChange={e => setAdvanceAmount({...advanceAmount, [emp.id]:e.target.value})} /><button onClick={() => handleAddAdv(emp.id)} className="px-4 py-2 bg-black text-white rounded-xl font-black uppercase text-[10px]">{t('add')}</button></div>
+                                              </div>
+                                           )}
+                                           {activeTab === 'overtime' && !isAbsent && (
+                                              <div className="flex flex-col items-end gap-1">
+                                                 {existingOT > 0 && <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">{t('logged')}: {existingOT}h</span>}
+                                                 <div className="flex gap-2"><input type="number" placeholder="Hrs" className="w-20 px-3 py-2 font-bold text-black bg-white rounded-xl border-2 border-gray-300" value={otHours[emp.id]||''} onChange={e => setOtHours({...otHours, [emp.id]:e.target.value})} /><button onClick={() => handleAddOT(emp.id)} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px]">{t('add')}</button></div>
+                                              </div>
+                                           )}
+                                        </div>
                                      </div>
-                                  </div>
-                               );
-                            })}
-                         </div>
-                      ))}
+                                  );
+                               })}
+                            </div>
+                         );
+                      })}
                    </div>
                 </section>
              </div>
@@ -573,6 +717,19 @@
                 </section>
              </div>
            </div>
+
+           {/* Sticky Bulk Action Bar */}
+           {!isLocked && (activeTab === 'advances' || activeTab === 'overtime') && (
+              <div className="fixed bottom-6 right-6 z-50 animate-bounce-in">
+                 <button 
+                    onClick={activeTab === 'advances' ? saveAllAdvances : saveAllOvertime} 
+                    className="bg-black text-white px-8 py-4 rounded-full shadow-2xl font-black uppercase text-xs tracking-widest hover:scale-105 transition-transform flex items-center gap-3"
+                 >
+                    <span>{t('saveAll')} {activeTab === 'advances' ? t('advances') : t('overtime')}</span>
+                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                 </button>
+              </div>
+           )}
         </div>
       );
     };
