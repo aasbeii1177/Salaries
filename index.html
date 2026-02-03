@@ -212,11 +212,16 @@
     // --- 3. SERVICES (PDF) ---
     const generateAllPayslips = async (targetMonth, employees, attendance, advances, overtime, loans, transportation, config, sections, bonuses) => {
       const { jsPDF } = window.jspdf;
+      
       const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf';
       const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+      
       let binary = '';
       const bytes = new Uint8Array(fontBytes);
-      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      const len = bytes.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
       const base64Font = window.btoa(binary);
 
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -229,6 +234,7 @@
       const monthOvertime = overtime.filter(o => o.date.startsWith(targetMonth));
       const monthBonuses = bonuses.filter(b => b.date.startsWith(targetMonth));
       const monthTransport = transportation.filter(t => t.date.startsWith(targetMonth));
+
       const totalPotentialDays = monthAttendance.length || 0;
 
       employees.forEach((emp, index) => {
@@ -281,6 +287,7 @@
         doc.text(`Full Name:`, 20, infoY); doc.text(emp.name, 50, infoY);
         doc.text(`Join Date:`, 85, infoY); doc.text(emp.joinDate, 110, infoY);
         doc.text(`Shift:`, 150, infoY); doc.text((emp.shift || 'day').toUpperCase(), 175, infoY);
+        
         infoY += 8;
         doc.text(`National ID:`, 20, infoY); doc.text(emp.nationalId || 'N/A', 50, infoY);
         doc.text(`Insurance:`, 85, infoY); doc.text(emp.socialInsuranceId || 'N/A', 110, infoY);
@@ -381,7 +388,13 @@
         const u = username.toLowerCase().trim();
         const p = password.trim();
         const foundUser = users.find(user => user.username.toLowerCase() === u && user.password === p);
-        if (foundUser) { onLogin(foundUser); } else { setError('Invalid identity or secret key. Access denied.'); }
+        if (foundUser) {
+           // USE SESSION STORAGE FOR TEMPORARY PERSISTENCE (Clears on close)
+           sessionStorage.setItem('sa_user', JSON.stringify(foundUser));
+           onLogin(foundUser); 
+        } else { 
+           setError('Invalid identity or secret key. Access denied.'); 
+        }
       };
       return (
         <div className={`min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-indigo-900 flex items-center justify-center p-4 ${lang === 'ar' ? 'font-arabic' : ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
@@ -441,6 +454,7 @@
       // Calculate recent months for Locking UI (Fixed to include locked months)
       const recentMonths = React.useMemo(() => {
          const dates = attendance.map(a => a.date);
+         // Ensure Owner can see locked months even if empty
          const months = [...new Set([...dates.map(d => d.substring(0, 7)), ...lockedMonths])];
          const now = new Date();
          const curr = now.toISOString().substring(0,7);
@@ -615,24 +629,6 @@
                       </div>
                     )
                   })}
-                </div>
-              </section>
-            )}
-            
-            {activeTab === 'sections' && (
-              <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <h3 className="text-xl font-black text-black uppercase mb-6">{t('sections')}</h3>
-                <div className="flex gap-4 mb-6">
-                  <input type="text" className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl outline-none font-bold text-black" placeholder={t('name')} value={newSectionName} onChange={e => setNewSectionName(e.target.value)} />
-                  <button onClick={() => { if(newSectionName) { addSection(newSectionName); setNewSectionName(''); }}} className="px-8 py-3 bg-indigo-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest">{t('add')}</button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {sections.map(s => (
-                    <div key={s.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center justify-between">
-                      <span className="font-black text-sm text-black">{s.name}</span>
-                      <button onClick={() => deleteSection(s.id)} className="text-red-600 font-black">X</button>
-                    </div>
-                  ))}
                 </div>
               </section>
             )}
@@ -1239,13 +1235,26 @@
 
       // Auto-Sync Current User if Updated Remotely (e.g. self-edit)
       React.useEffect(() => {
+         // Auto-Login on Load
+         const savedUser = sessionStorage.getItem('sa_user');
+         if (savedUser && !currentUser) {
+            setCurrentUser(JSON.parse(savedUser));
+         }
+
          if (currentUser) {
             const freshUser = users.find(u => u.id === currentUser.id);
             if (freshUser && JSON.stringify(freshUser) !== JSON.stringify(currentUser)) {
                setCurrentUser(freshUser);
+               sessionStorage.setItem('sa_user', JSON.stringify(freshUser));
             }
          }
       }, [users, currentUser]);
+
+      // Logout Function
+      const handleLogout = () => {
+         setCurrentUser(null);
+         sessionStorage.removeItem('sa_user');
+      };
 
       if (!currentUser) return <Login onLogin={setCurrentUser} users={users} lang={lang} t={t} toggleLanguage={toggleLanguage} />;
 
@@ -1291,7 +1300,7 @@
                <div className="flex items-center gap-4">
                   <button onClick={toggleLanguage} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-black border border-indigo-100 uppercase tracking-widest hover:bg-indigo-100 transition-colors">{lang === 'en' ? 'العربية' : 'English'}</button>
                   <div className="text-right hidden sm:block"><p className="text-sm font-black text-gray-800">{currentUser.username}</p><p className="text-[10px] uppercase font-black text-indigo-400 tracking-widest">{t(currentUser.role).toUpperCase()}</p></div>
-                  <button onClick={() => setCurrentUser(null)} className="px-5 py-2.5 bg-gray-50 hover:bg-red-50 hover:text-red-600 text-gray-500 rounded-2xl text-xs font-black transition-all border border-gray-100 uppercase tracking-widest">{t('signOut')}</button>
+                  <button onClick={handleLogout} className="px-5 py-2.5 bg-gray-50 hover:bg-red-50 hover:text-red-600 text-gray-500 rounded-2xl text-xs font-black transition-all border border-gray-100 uppercase tracking-widest">{t('signOut')}</button>
                </div>
             </header>
             <main className="flex-1 p-6 max-w-7xl mx-auto w-full animate-in fade-in duration-700">{renderDashboard()}</main>
