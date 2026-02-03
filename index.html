@@ -215,7 +215,9 @@
       printAndArchive: { en: "Print Settlement & Archive", ar: "طباعة التصفية والأرشفة" },
       netPay: { en: "Net Pay", ar: "الصافي للدفع" },
       daysWorked: { en: "Days Worked", ar: "أيام العمل" },
-      backupData: { en: "Backup Data", ar: "نسخ احتياطي للبيانات" }
+      backupData: { en: "Backup Data", ar: "نسخ احتياطي للبيانات" },
+      overtimePeriod: { en: "Overtime Period (Total Hrs/Month)", ar: "فترة الإضافي (ساعات/شهر)" },
+      absencePeriod: { en: "Absence Period (Total Days/Month)", ar: "فترة الغياب (أيام/شهر)" }
     };
 
     // --- 3. HELPER COMPONENT FOR VISUAL NUMBERS ---
@@ -263,6 +265,10 @@
 
       const totalPotentialDays = monthAttendance.length || 0;
 
+      // CALCULATION SETTINGS (NEW LOGIC)
+      const absDivisor = config.absencePeriod || config.daysInMonth;
+      const otDivisor = config.overtimePeriod || (config.daysInMonth * config.hoursPerDay);
+
       employees.forEach((emp, index) => {
         if (index !== 0) doc.addPage();
         const sectionName = sections.find(s => s.id === emp.sectionId)?.name || 'GENERAL';
@@ -271,13 +277,16 @@
         const absenceRecords = monthAttendance.filter(a => a.absentEmployeeIds.includes(emp.id));
         const daysAbsent = absenceRecords.length;
         const daysPresent = Math.max(0, totalPotentialDays - daysAbsent);
-        const baseDailyRate = emp.monthlyWage / config.daysInMonth;
+        
+        // NEW FORMULAS
         const effectiveMonthlyWage = emp.monthlyWage * shiftFactor;
-        const totalAbsenceDeduction = daysAbsent * baseDailyRate * config.absentDeductionFactor;
-        const effectiveDailyRate = baseDailyRate * shiftFactor;
-        const hourlyRate = effectiveDailyRate / config.hoursPerDay;
+        const baseDailyRateAbsence = emp.monthlyWage / absDivisor; 
+        const totalAbsenceDeduction = daysAbsent * baseDailyRateAbsence * config.absentDeductionFactor;
+        
+        const hourlyRateOT = emp.monthlyWage / otDivisor;
         const empOvertimeHours = monthOvertime.filter(ot => ot.employeeId === emp.id).reduce((sum, curr) => sum + curr.hours, 0);
-        const overtimePay = empOvertimeHours * hourlyRate * config.otMultiplier;
+        const overtimePay = empOvertimeHours * hourlyRateOT * config.otMultiplier;
+
         const empBonus = monthBonuses.filter(b => b.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
         const fixedTransportation = emp.transportationAllowance || 0;
         const extraTransportation = monthTransport.filter(t => t.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
@@ -285,6 +294,7 @@
         const loan = loans.find(l => l.employeeId === emp.id);
         const loanDeduction = loan ? (loan.totalAmount * (loan.deductionPercentage / 100)) : 0;
         const totalAdvances = monthAdvances.filter(a => a.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
+        
         const earnedBasicWages = Math.max(0, effectiveMonthlyWage - totalAbsenceDeduction);
         const totalEarnings = earnedBasicWages + overtimePay + totalTransportation + empBonus;
         const totalDeductions = totalAdvances + loanDeduction;
@@ -414,7 +424,6 @@
         const p = password.trim();
         const foundUser = users.find(user => user.username.toLowerCase() === u && user.password === p);
         if (foundUser) {
-           // USE SESSION STORAGE FOR BANK-LIKE SECURITY (CLEARS ON CLOSE)
            sessionStorage.setItem('sa_user', JSON.stringify(foundUser));
            onLogin(foundUser); 
         } else { 
@@ -512,14 +521,19 @@
             const shiftFactor = isNightShift ? (pdfConfig.nightShiftMultiplier || 1.0) : 1.0;
             const absenceRecords = monthAttendance.filter(a => a.absentEmployeeIds.includes(emp.id));
             const daysAbsent = absenceRecords.length;
-            const baseDailyRate = emp.monthlyWage / pdfConfig.daysInMonth;
+            
+            // NEW FORMULAS FOR CSV
+            const absDivisor = pdfConfig.absencePeriod || pdfConfig.daysInMonth;
+            const otDivisor = pdfConfig.overtimePeriod || (pdfConfig.daysInMonth * pdfConfig.hoursPerDay);
+            
+            const baseDailyRateAbsence = emp.monthlyWage / absDivisor;
             const effectiveMonthlyWage = emp.monthlyWage * shiftFactor;
-            const totalAbsenceDeduction = daysAbsent * baseDailyRate * pdfConfig.absentDeductionFactor;
-            const earnedBasicWages = Math.max(0, effectiveMonthlyWage - totalAbsenceDeduction);
-            const effectiveDailyRate = baseDailyRate * shiftFactor;
-            const hourlyRate = effectiveDailyRate / pdfConfig.hoursPerDay;
+            const totalAbsenceDeduction = daysAbsent * baseDailyRateAbsence * pdfConfig.absentDeductionFactor;
+            
+            const hourlyRateOT = emp.monthlyWage / otDivisor;
             const empOvertimeHours = monthOvertime.filter(ot => ot.employeeId === emp.id).reduce((sum, curr) => sum + curr.hours, 0);
-            const overtimePay = empOvertimeHours * hourlyRate * pdfConfig.otMultiplier;
+            const overtimePay = empOvertimeHours * hourlyRateOT * pdfConfig.otMultiplier;
+            
             const empBonus = monthBonuses.filter(b => b.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
             const fixedTransportation = emp.transportationAllowance || 0;
             const extraTransportation = monthTransport.filter(t => t.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
@@ -527,6 +541,7 @@
             const loan = loans.find(l => l.employeeId === emp.id);
             const loanDeduction = loan ? (loan.totalAmount * (loan.deductionPercentage / 100)) : 0;
             const totalAdvances = monthAdvances.filter(a => a.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
+            const earnedBasicWages = Math.max(0, effectiveMonthlyWage - totalAbsenceDeduction);
             const totalEarnings = earnedBasicWages + overtimePay + totalTransportation + empBonus;
             const totalDeductions = totalAdvances + loanDeduction;
             const netSalary = Math.max(0, totalEarnings - totalDeductions);
@@ -562,9 +577,13 @@
          const targetMonth = new Date().toISOString().substring(0,7);
          const monthAttendance = attendance.filter(a => a.date.startsWith(targetMonth));
          const daysAbsent = monthAttendance.filter(a => a.absentEmployeeIds.includes(emp.id)).length;
-         const basePay = emp.monthlyWage; // Simplified pro-rata logic can be added
-         const penalty = daysAbsent * (emp.monthlyWage / pdfConfig.daysInMonth) * pdfConfig.absentDeductionFactor;
-         const ot = overtime.filter(o => o.date.startsWith(targetMonth) && o.employeeId === emp.id).reduce((s,c) => s+c.hours,0) * (emp.monthlyWage/pdfConfig.daysInMonth/pdfConfig.hoursPerDay) * pdfConfig.otMultiplier;
+         
+         const absDivisor = pdfConfig.absencePeriod || pdfConfig.daysInMonth;
+         const otDivisor = pdfConfig.overtimePeriod || (pdfConfig.daysInMonth * pdfConfig.hoursPerDay);
+         
+         const basePay = emp.monthlyWage; 
+         const penalty = daysAbsent * (emp.monthlyWage / absDivisor) * pdfConfig.absentDeductionFactor;
+         const ot = overtime.filter(o => o.date.startsWith(targetMonth) && o.employeeId === emp.id).reduce((s,c) => s+c.hours,0) * (emp.monthlyWage/otDivisor) * pdfConfig.otMultiplier;
          const adv = advances.filter(a => a.date.startsWith(targetMonth) && a.employeeId === emp.id).reduce((s,c) => s+c.amount,0);
          const trans = (emp.transportationAllowance || 0) + transportation.filter(t => t.date.startsWith(targetMonth) && t.employeeId === emp.id).reduce((s,c) => s+c.amount,0);
          const bonus = bonuses.filter(b => b.date.startsWith(targetMonth) && b.employeeId === emp.id).reduce((s,c) => s+c.amount,0);
@@ -654,24 +673,6 @@
                       </div>
                     )
                   })}
-                </div>
-              </section>
-            )}
-            
-            {activeTab === 'sections' && (
-              <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <h3 className="text-xl font-black text-black uppercase mb-6">{t('sections')}</h3>
-                <div className="flex gap-4 mb-6">
-                  <input type="text" className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl outline-none font-bold text-black" placeholder={t('name')} value={newSectionName} onChange={e => setNewSectionName(e.target.value)} />
-                  <button onClick={() => { if(newSectionName) { addSection(newSectionName); setNewSectionName(''); }}} className="px-8 py-3 bg-indigo-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest">{t('add')}</button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {sections.map(s => (
-                    <div key={s.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center justify-between">
-                      <span className="font-black text-sm text-black">{s.name}</span>
-                      <button onClick={() => deleteSection(s.id)} className="text-red-600 font-black">X</button>
-                    </div>
-                  ))}
                 </div>
               </section>
             )}
@@ -1124,6 +1125,10 @@
                     <div><label className="block text-[10px] font-black uppercase mb-2">{t('otFactor')}</label><input type="number" step="0.1" className={inputClass} value={tempConfig.otMultiplier} onChange={e => setTempConfig({...tempConfig, otMultiplier: +e.target.value})} /></div>
                     <div><label className="block text-[10px] font-black uppercase mb-2">{t('nightMultiplier')}</label><input type="number" step="0.1" className={inputClass} value={tempConfig.nightShiftMultiplier} onChange={e => setTempConfig({...tempConfig, nightShiftMultiplier: +e.target.value})} /></div>
                     <div><label className="block text-[10px] font-black uppercase mb-2 text-red-600">{t('absencePenalty')}</label><input type="number" step="0.1" className={inputClass} value={tempConfig.absentDeductionFactor} onChange={e => setTempConfig({...tempConfig, absentDeductionFactor: +e.target.value})} /></div>
+                    
+                    {/* NEW INPUTS FOR PERIOD CALCULATIONS */}
+                    <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-600">{t('overtimePeriod')}</label><input type="number" className={inputClass} value={tempConfig.overtimePeriod || 208} onChange={e => setTempConfig({...tempConfig, overtimePeriod: +e.target.value})} /></div>
+                    <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-600">{t('absencePeriod')}</label><input type="number" className={inputClass} value={tempConfig.absencePeriod || 26} onChange={e => setTempConfig({...tempConfig, absencePeriod: +e.target.value})} /></div>
                  </div>
                  <button onClick={handleSave} className="w-full bg-black text-white font-black py-4 rounded-2xl shadow-xl uppercase text-[10px] tracking-widest">{t('commitLogic')}</button>
               </div>
