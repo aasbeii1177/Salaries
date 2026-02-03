@@ -385,15 +385,16 @@
         return grouped;
       }, [filteredEmployees, sections]);
 
-      // Calculate recent months for Locking UI
+      // Calculate recent months for Locking UI (Fixed to include locked months)
       const recentMonths = React.useMemo(() => {
          const dates = attendance.map(a => a.date);
-         const months = [...new Set(dates.map(d => d.substring(0, 7)))];
+         // Ensure Owner can see locked months even if empty
+         const months = [...new Set([...dates.map(d => d.substring(0, 7)), ...lockedMonths])];
          const now = new Date();
          const curr = now.toISOString().substring(0,7);
          if(!months.includes(curr)) months.push(curr);
          return months.sort().reverse();
-      }, [attendance]);
+      }, [attendance, lockedMonths]);
 
       const handleAdd = (e) => { e.preventDefault(); addEmployee({ ...formData, monthlyWage: parseFloat(formData.wage), transportationAllowance: parseFloat(formData.transportAllowance) || 0, sectionId: formData.sectionId || undefined }); setFormData({ ...formData, name: '', wage: '', nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '' }); };
       const startEditing = (emp) => { setEditingId(emp.id); setEditFormData({ ...emp, wage: emp.monthlyWage, transportAllowance: emp.transportationAllowance }); };
@@ -407,6 +408,7 @@
 
       const handleExportCSV = (targetMonth) => {
          const headers = ['Name', 'Section', 'Wage', 'Shift', 'Days Absent', 'Penalty Deduction', 'Overtime (Hrs)', 'Overtime (Amt)', 'Bonus', 'Transport', 'Advances', 'Loans', 'Net Salary'];
+         // Filter data by target month
          const monthAttendance = attendance.filter(a => a.date.startsWith(targetMonth));
          const monthAdvances = advances.filter(a => a.date.startsWith(targetMonth));
          const monthOvertime = overtime.filter(o => o.date.startsWith(targetMonth));
@@ -422,6 +424,7 @@
             const baseDailyRate = emp.monthlyWage / pdfConfig.daysInMonth;
             const effectiveMonthlyWage = emp.monthlyWage * shiftFactor;
             const totalAbsenceDeduction = daysAbsent * baseDailyRate * pdfConfig.absentDeductionFactor;
+            const earnedBasicWages = Math.max(0, effectiveMonthlyWage - totalAbsenceDeduction);
             const effectiveDailyRate = baseDailyRate * shiftFactor;
             const hourlyRate = effectiveDailyRate / pdfConfig.hoursPerDay;
             const empOvertimeHours = monthOvertime.filter(ot => ot.employeeId === emp.id).reduce((sum, curr) => sum + curr.hours, 0);
@@ -433,7 +436,6 @@
             const loan = loans.find(l => l.employeeId === emp.id);
             const loanDeduction = loan ? (loan.totalAmount * (loan.deductionPercentage / 100)) : 0;
             const totalAdvances = monthAdvances.filter(a => a.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
-            const earnedBasicWages = Math.max(0, effectiveMonthlyWage - totalAbsenceDeduction);
             const totalEarnings = earnedBasicWages + overtimePay + totalTransportation + empBonus;
             const totalDeductions = totalAdvances + loanDeduction;
             const netSalary = Math.max(0, totalEarnings - totalDeductions);
@@ -953,7 +955,7 @@
               <div className="bg-white rounded-[2rem] shadow-xl border border-gray-50 p-8">
                  <h3 className="text-xl font-black uppercase mb-6">{t('payrollPeriods')}</h3>
                  <div className="space-y-3">
-                    {[...new Set(attendance.map(a=>a.date.substring(0,7)))].sort().reverse().map(m => (
+                    {[...new Set([...attendance.map(a=>a.date.substring(0,7)), ...lockedMonths])].sort().reverse().map(m => (
                        <div key={m} className={`p-4 rounded-2xl border-2 flex items-center justify-between ${lockedMonths.includes(m)?'bg-red-50 border-red-600':'bg-green-50 border-green-600'}`}>
                           <span className="font-black text-black">{m}</span>
                           <button onClick={()=>toggleMonthLock(m)} className="w-10 h-10 rounded-xl bg-white border-2 border-black flex items-center justify-center font-bold">{lockedMonths.includes(m)?'L':'U'}</button>
