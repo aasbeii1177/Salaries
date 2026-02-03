@@ -202,22 +202,21 @@
       mustBePositive: { en: "Values must be positive", ar: "يجب أن تكون القيم موجبة" },
       editEntries: { en: "Edit Entries", ar: "تعديل المدخلات" },
       dictionary: { en: "Dictionary", ar: "القاموس" },
-      saveDictionary: { en: "Save Translations", ar: "حفظ الترجمات" }
+      saveDictionary: { en: "Save Translations", ar: "حفظ الترجمات" },
+      finalSettlement: { en: "Final Settlement", ar: "تصفية حساب نهائية" },
+      printAndArchive: { en: "Print Settlement & Archive", ar: "طباعة التصفية والأرشفة" },
+      netPay: { en: "Net Pay", ar: "الصافي للدفع" },
+      daysWorked: { en: "Days Worked", ar: "أيام العمل" }
     };
 
     // --- 3. SERVICES (PDF) ---
     const generateAllPayslips = async (targetMonth, employees, attendance, advances, overtime, loans, transportation, config, sections, bonuses) => {
       const { jsPDF } = window.jspdf;
-      
       const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf';
       const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
-      
       let binary = '';
       const bytes = new Uint8Array(fontBytes);
-      const len = bytes.byteLength;
-      for (let i = 0; i < len; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
       const base64Font = window.btoa(binary);
 
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -230,7 +229,6 @@
       const monthOvertime = overtime.filter(o => o.date.startsWith(targetMonth));
       const monthBonuses = bonuses.filter(b => b.date.startsWith(targetMonth));
       const monthTransport = transportation.filter(t => t.date.startsWith(targetMonth));
-
       const totalPotentialDays = monthAttendance.length || 0;
 
       employees.forEach((emp, index) => {
@@ -283,7 +281,6 @@
         doc.text(`Full Name:`, 20, infoY); doc.text(emp.name, 50, infoY);
         doc.text(`Join Date:`, 85, infoY); doc.text(emp.joinDate, 110, infoY);
         doc.text(`Shift:`, 150, infoY); doc.text((emp.shift || 'day').toUpperCase(), 175, infoY);
-        
         infoY += 8;
         doc.text(`National ID:`, 20, infoY); doc.text(emp.nationalId || 'N/A', 50, infoY);
         doc.text(`Insurance:`, 85, infoY); doc.text(emp.socialInsuranceId || 'N/A', 110, infoY);
@@ -319,6 +316,57 @@
         doc.text(`${Math.round(netSalary).toLocaleString()} SYP`, 180, infoY + 140, { align: 'right' });
       });
       doc.save(`Payslips_${targetMonth}.pdf`);
+    };
+
+    const generateSingleResignationSlip = async (emp, settlementData, config, sections) => {
+        const { jsPDF } = window.jspdf;
+        const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf';
+        const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+        let binary = '';
+        const bytes = new Uint8Array(fontBytes);
+        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+        const base64Font = window.btoa(binary);
+
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        doc.addFileToVFS('Amiri-Regular.ttf', base64Font);
+        doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
+        doc.setFont('Amiri'); 
+
+        const sectionName = sections.find(s => s.id === emp.sectionId)?.name || 'GENERAL';
+
+        doc.setFillColor(220, 38, 38); // Red header for Resignation
+        doc.rect(0, 0, 210, 45, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(16);
+        doc.text(config.logoPlaceholder || 'S|M', 182.5, 26, { align: 'center' });
+        doc.setFontSize(22);
+        doc.text("FINAL SETTLEMENT / RESIGNATION", 20, 25);
+        doc.setFontSize(10);
+        doc.text(`WORKER: ${emp.name.toUpperCase()}`, 20, 34);
+        doc.text(`DATE: ${new Date().toLocaleDateString()}`, 115, 25);
+
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(12);
+        let y = 60;
+        doc.text("Settlement Breakdown:", 20, y);
+        y += 10;
+        doc.text(`Base Wage: ${Math.round(settlementData.basePay).toLocaleString()} SYP`, 30, y); y += 8;
+        doc.text(`Overtime: ${Math.round(settlementData.overtime).toLocaleString()} SYP`, 30, y); y += 8;
+        doc.text(`Transport: ${Math.round(settlementData.transport).toLocaleString()} SYP`, 30, y); y += 8;
+        doc.text(`Bonus: ${Math.round(settlementData.bonus).toLocaleString()} SYP`, 30, y); y += 8;
+        doc.setTextColor(220, 38, 38);
+        doc.text(`Absence Penalty: -${Math.round(settlementData.penalty).toLocaleString()} SYP`, 30, y); y += 8;
+        doc.text(`Advances: -${Math.round(settlementData.advances).toLocaleString()} SYP`, 30, y); y += 8;
+        doc.text(`Loan Deduction: -${Math.round(settlementData.loans).toLocaleString()} SYP`, 30, y); y += 15;
+        
+        doc.setFillColor(30, 30, 30);
+        doc.rect(20, y, 170, 15, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.text("FINAL NET PAYABLE:", 30, y + 10);
+        doc.text(`${Math.round(settlementData.net).toLocaleString()} SYP`, 180, y + 10, { align: 'right' });
+
+        doc.save(`Final_Settlement_${emp.name}.pdf`);
     };
 
     // --- 4. DASHBOARD COMPONENTS ---
@@ -378,6 +426,8 @@
       const [showDeleteModal, setShowDeleteModal] = React.useState(false);
       const [showResignModal, setShowResignModal] = React.useState(false);
       const [employeeTarget, setEmployeeTarget] = React.useState(null);
+      const [settlementData, setSettlementData] = React.useState(null);
+      
       const inputClass = "w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl font-bold bg-white text-black outline-none focus:border-indigo-600 transition-all";
 
       const filteredEmployees = React.useMemo(() => employees.filter(emp => (viewResigned ? emp.isResigned : !emp.isResigned) && emp.name.toLowerCase().includes(searchQuery.toLowerCase())), [employees, searchQuery, viewResigned]);
@@ -391,7 +441,6 @@
       // Calculate recent months for Locking UI (Fixed to include locked months)
       const recentMonths = React.useMemo(() => {
          const dates = attendance.map(a => a.date);
-         // Ensure Owner can see locked months even if empty
          const months = [...new Set([...dates.map(d => d.substring(0, 7)), ...lockedMonths])];
          const now = new Date();
          const curr = now.toISOString().substring(0,7);
@@ -468,8 +517,31 @@
          link.click();
       };
       
-      const handleResign = (emp) => { setEmployeeTarget(emp); setShowResignModal(true); };
-      const confirmResign = () => { resignEmployee(employeeTarget.id); setShowResignModal(false); };
+      const handleResign = (emp) => { 
+         setEmployeeTarget(emp); 
+         // Calculate Settlement on Open
+         const targetMonth = new Date().toISOString().substring(0,7);
+         const monthAttendance = attendance.filter(a => a.date.startsWith(targetMonth));
+         const daysAbsent = monthAttendance.filter(a => a.absentEmployeeIds.includes(emp.id)).length;
+         const basePay = emp.monthlyWage; // Simplified pro-rata logic can be added
+         const penalty = daysAbsent * (emp.monthlyWage / pdfConfig.daysInMonth) * pdfConfig.absentDeductionFactor;
+         const ot = overtime.filter(o => o.date.startsWith(targetMonth) && o.employeeId === emp.id).reduce((s,c) => s+c.hours,0) * (emp.monthlyWage/pdfConfig.daysInMonth/pdfConfig.hoursPerDay) * pdfConfig.otMultiplier;
+         const adv = advances.filter(a => a.date.startsWith(targetMonth) && a.employeeId === emp.id).reduce((s,c) => s+c.amount,0);
+         const trans = (emp.transportationAllowance || 0) + transportation.filter(t => t.date.startsWith(targetMonth) && t.employeeId === emp.id).reduce((s,c) => s+c.amount,0);
+         const bonus = bonuses.filter(b => b.date.startsWith(targetMonth) && b.employeeId === emp.id).reduce((s,c) => s+c.amount,0);
+         const loan = loans.find(l => l.employeeId === emp.id) ? (loans.find(l => l.employeeId === emp.id).totalAmount * (loans.find(l => l.employeeId === emp.id).deductionPercentage/100)) : 0;
+         
+         const net = Math.max(0, (basePay - penalty + ot + trans + bonus) - (adv + loan));
+         
+         setSettlementData({ basePay, penalty, overtime: ot, advances: adv, transport: trans, bonus, loans: loan, net });
+         setShowResignModal(true); 
+      };
+
+      const confirmResign = async () => { 
+         await generateSingleResignationSlip(employeeTarget, settlementData, pdfConfig, sections);
+         resignEmployee(employeeTarget.id); 
+         setShowResignModal(false); 
+      };
 
       return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-20 relative">
@@ -639,12 +711,23 @@
           )}
           {showResignModal && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
-                <h4 className="text-xl font-black mb-2 text-amber-600">{t('resignWorker')}</h4>
-                <p className="text-black text-sm mb-6">Are you sure you want to resign <span className="font-black underline">{employeeTarget?.name}</span>?</p>
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in fade-in zoom-in duration-200">
+                <h4 className="text-2xl font-black mb-4 text-amber-600 uppercase tracking-widest">{t('finalSettlement')}</h4>
+                <p className="text-black text-sm mb-6 uppercase font-bold">{t('managingProfile')} <span className="text-indigo-600">{employeeTarget?.name}</span></p>
+                
+                {settlementData && (
+                  <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-2 text-left">
+                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Base Wage</span><span className="font-black">{Math.round(settlementData.basePay).toLocaleString()}</span></div>
+                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Overtime</span><span className="font-black text-green-600">+{Math.round(settlementData.overtime).toLocaleString()}</span></div>
+                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Transport</span><span className="font-black text-green-600">+{Math.round(settlementData.transport).toLocaleString()}</span></div>
+                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Advances</span><span className="font-black text-red-500">-{Math.round(settlementData.advances).toLocaleString()}</span></div>
+                     <div className="flex justify-between border-t border-gray-200 pt-2 mt-2"><span className="text-sm font-black uppercase">Net Pay</span><span className="font-black text-lg text-indigo-600">{Math.round(settlementData.net).toLocaleString()} SYP</span></div>
+                  </div>
+                )}
+
                 <div className="flex gap-3">
-                  <button onClick={() => setShowResignModal(false)} className="flex-1 py-3 bg-gray-100 text-black font-black rounded-lg uppercase text-xs">{t('cancel')}</button>
-                  <button onClick={confirmResign} className="flex-1 py-3 bg-amber-600 text-white font-black rounded-lg uppercase text-xs">{t('confirm')}</button>
+                  <button onClick={() => setShowResignModal(false)} className="flex-1 py-4 bg-gray-100 text-black font-black rounded-xl uppercase text-xs">{t('cancel')}</button>
+                  <button onClick={confirmResign} className="flex-1 py-4 bg-black text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-gray-800 transition-all">{t('printAndArchive')}</button>
                 </div>
               </div>
             </div>
