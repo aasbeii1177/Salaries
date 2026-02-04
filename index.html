@@ -452,9 +452,9 @@
         doc.text("Settlement Breakdown:", 20, y);
         y += 10;
         doc.text(`Base Wage: ${Math.round(settlementData.basePay).toLocaleString()} SYP`, 30, y); y += 8;
-        doc.text(`Overtime: ${Math.round(settlementData.overtime).toLocaleString()} SYP`, 30, y); y += 8;
-        doc.text(`Transport: ${Math.round(settlementData.transport).toLocaleString()} SYP`, 30, y); y += 8;
-        doc.text(`Bonus: ${Math.round(settlementData.bonus).toLocaleString()} SYP`, 30, y); y += 8;
+        doc.text(`Overtime: +${Math.round(settlementData.overtime).toLocaleString()} SYP`, 30, y); y += 8;
+        doc.text(`Transport: +${Math.round(settlementData.transport).toLocaleString()} SYP`, 30, y); y += 8;
+        doc.text(`Bonus: +${Math.round(settlementData.bonus).toLocaleString()} SYP`, 30, y); y += 8;
         doc.setTextColor(220, 38, 38);
         doc.text(`Absence Penalty: -${Math.round(settlementData.penalty).toLocaleString()} SYP`, 30, y); y += 8;
         doc.text(`Advances: -${Math.round(settlementData.advances).toLocaleString()} SYP`, 30, y); y += 8;
@@ -546,8 +546,10 @@
         return grouped;
       }, [filteredEmployees, sections]);
 
+      // Calculate recent months for Locking UI (Fixed to include locked months)
       const recentMonths = React.useMemo(() => {
          const dates = attendance.map(a => a.date);
+         // Ensure Owner can see locked months even if empty
          const months = [...new Set([...dates.map(d => d.substring(0, 7)), ...lockedMonths])];
          const now = new Date();
          const curr = now.toISOString().substring(0,7);
@@ -789,6 +791,9 @@
                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Overtime</span><span className="font-black text-green-600">+{Math.round(settlementData.overtime).toLocaleString()}</span></div>
                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Transport</span><span className="font-black text-green-600">+{Math.round(settlementData.transport).toLocaleString()}</span></div>
                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Advances</span><span className="font-black text-red-500">-{Math.round(settlementData.advances).toLocaleString()}</span></div>
+                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Loan Deduction</span><span className="font-black text-red-500">-{Math.round(settlementData.loans).toLocaleString()}</span></div>
+                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Bonus</span><span className="font-black text-green-600">+{Math.round(settlementData.bonus).toLocaleString()}</span></div>
+                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Absence Penalty</span><span className="font-black text-red-500">-{Math.round(settlementData.penalty).toLocaleString()}</span></div>
                      <div className="flex justify-between border-t border-gray-200 pt-2 mt-2"><span className="text-sm font-black uppercase">Net Pay</span><span className="font-black text-lg text-indigo-600">{Math.round(settlementData.net).toLocaleString()} SYP</span></div>
                   </div>
                 )}
