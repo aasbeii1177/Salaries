@@ -51,12 +51,7 @@
 
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
-      // ENABLE OFFLINE MODE
-      firebase.firestore().enablePersistence({ synchronizeTabs: true })
-        .catch((err) => {
-           if (err.code == 'failed-precondition') { console.log('Multiple tabs open, persistence disabled'); } 
-           else if (err.code == 'unimplemented') { console.log('Browser does not support persistence'); }
-        });
+      firebase.firestore().enablePersistence({ synchronizeTabs: true }).catch(err=>{});
     }
     const db = firebase.firestore();
 
@@ -217,7 +212,15 @@
       daysWorked: { en: "Days Worked", ar: "أيام العمل" },
       backupData: { en: "Backup Data", ar: "نسخ احتياطي للبيانات" },
       overtimePeriod: { en: "Overtime Period (Total Hrs/Month)", ar: "فترة الإضافي (ساعات/شهر)" },
-      absencePeriod: { en: "Absence Period (Total Days/Month)", ar: "فترة الغياب (أيام/شهر)" }
+      absencePeriod: { en: "Absence Period (Total Days/Month)", ar: "فترة الغياب (أيام/شهر)" },
+      paymentSettings: { en: "Payment Settings", ar: "إعدادات الدفع" },
+      period1Amount: { en: "Period 1 Fixed Amount", ar: "راتب الفترة الأولى (مبلغ ثابت)" },
+      transPeriod: { en: "Transport Pay Period", ar: "فترة دفع المواصلات" },
+      period1: { en: "Period 1 (1st-15th)", ar: "الفترة 1 (1-15)" },
+      period2: { en: "Period 2 (16th-End)", ar: "الفترة 2 (16-النهاية)" },
+      fullMonth: { en: "Full Month", ar: "الشهر كامل" },
+      split: { en: "Split (50/50)", ar: "تقسيم (50/50)" },
+      selectReport: { en: "Select Report Period", ar: "اختر فترة التقرير" }
     };
 
     // --- 3. HELPER COMPONENT FOR VISUAL NUMBERS ---
@@ -243,7 +246,7 @@
     };
 
     // --- 4. SERVICES (PDF & BACKUP) ---
-    const generateAllPayslips = async (targetMonth, employees, attendance, advances, overtime, loans, transportation, config, sections, bonuses) => {
+    const generateAllPayslips = async (targetMonth, targetPeriod, employees, attendance, advances, overtime, loans, transportation, config, sections, bonuses) => {
       const { jsPDF } = window.jspdf;
       const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf';
       const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
@@ -257,15 +260,29 @@
       doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
       doc.setFont('Amiri'); 
 
-      const monthAttendance = attendance.filter(a => a.date.startsWith(targetMonth));
-      const monthAdvances = advances.filter(a => a.date.startsWith(targetMonth));
-      const monthOvertime = overtime.filter(o => o.date.startsWith(targetMonth));
+      // FILTER DATA BY DATE FOR SPLIT PERIODS
+      const isFull = targetPeriod === 'full';
+      const isP1 = targetPeriod === 'p1';
+      
+      const filterByDate = (record) => {
+         if (!record.date.startsWith(targetMonth)) return false;
+         const day = parseInt(record.date.split('-')[2]);
+         if (isFull) return true;
+         if (isP1) return day <= 15;
+         return day > 15; // P2
+      };
+
+      const monthAttendance = attendance.filter(a => a.date.startsWith(targetMonth) && (isFull || (isP1 ? parseInt(a.date.split('-')[2]) <= 15 : parseInt(a.date.split('-')[2]) > 15)));
+      const monthAdvances = advances.filter(filterByDate);
+      const monthOvertime = overtime.filter(filterByDate);
+      
+      // Bonus & Transport have explicit overrides
       const monthBonuses = bonuses.filter(b => b.date.startsWith(targetMonth));
       const monthTransport = transportation.filter(t => t.date.startsWith(targetMonth));
 
       const totalPotentialDays = monthAttendance.length || 0;
 
-      // CALCULATION SETTINGS (NEW LOGIC)
+      // CALCULATION SETTINGS
       const absDivisor = config.absencePeriod || config.daysInMonth;
       const otDivisor = config.overtimePeriod || (config.daysInMonth * config.hoursPerDay);
 
@@ -274,12 +291,39 @@
         const sectionName = sections.find(s => s.id === emp.sectionId)?.name || 'GENERAL';
         const isNightShift = emp.shift === 'night';
         const shiftFactor = isNightShift ? (config.nightShiftMultiplier || 1.0) : 1.0;
+        
+        // --- 1. BASE WAGE SPLIT (FIXED AMOUNT) ---
+        const totalWage = emp.monthlyWage * shiftFactor;
+        const p1Amount = emp.period1Amount || 0;
+        
+        let wageForThisPeriod = totalWage;
+        if (isP1) {
+            // Period 1 gets the fixed amount (capped at total wage)
+            wageForThisPeriod = Math.min(totalWage, p1Amount);
+        } else if (!isFull) {
+            // Period 2 gets the remainder
+            wageForThisPeriod = Math.max(0, totalWage - p1Amount);
+        }
+        
+        const effectiveMonthlyWage = wageForThisPeriod;
+
+        // --- 2. TRANSPORT SPLIT ---
+        const transPref = emp.transportPeriod || '2'; // Default Period 2
+        let includeTransport = false;
+        if (isFull) includeTransport = true;
+        else if (transPref === 'split') includeTransport = true; 
+        else if (transPref === '1' && isP1) includeTransport = true;
+        else if (transPref === '2' && !isP1) includeTransport = true;
+
+        const fixedTransportation = includeTransport ? (emp.transportationAllowance || 0) : 0;
+        // If split pref is active, divide by 2 for period view
+        const finalFixedTransport = (transPref === 'split' && !isFull) ? fixedTransportation / 2 : fixedTransportation;
+
+        // --- 3. DEDUCTIONS & EXTRAS ---
         const absenceRecords = monthAttendance.filter(a => a.absentEmployeeIds.includes(emp.id));
         const daysAbsent = absenceRecords.length;
         const daysPresent = Math.max(0, totalPotentialDays - daysAbsent);
         
-        // NEW FORMULAS
-        const effectiveMonthlyWage = emp.monthlyWage * shiftFactor;
         const baseDailyRateAbsence = emp.monthlyWage / absDivisor; 
         const totalAbsenceDeduction = daysAbsent * baseDailyRateAbsence * config.absentDeductionFactor;
         
@@ -287,12 +331,26 @@
         const empOvertimeHours = monthOvertime.filter(ot => ot.employeeId === emp.id).reduce((sum, curr) => sum + curr.hours, 0);
         const overtimePay = empOvertimeHours * hourlyRateOT * config.otMultiplier;
 
-        const empBonus = monthBonuses.filter(b => b.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
-        const fixedTransportation = emp.transportationAllowance || 0;
+        // Filter Bonuses by Explicit Period Tag if set, else Date
+        const empBonus = monthBonuses.filter(b => {
+           if (b.employeeId !== emp.id) return false;
+           if (isFull) return true;
+           if (b.period) return (isP1 && b.period === '1') || (!isP1 && b.period === '2');
+           return filterByDate(b); // Fallback to date
+        }).reduce((sum, curr) => sum + curr.amount, 0);
+
         const extraTransportation = monthTransport.filter(t => t.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
-        const totalTransportation = fixedTransportation + extraTransportation;
+        const totalTransportation = finalFixedTransport + extraTransportation;
+        
         const loan = loans.find(l => l.employeeId === emp.id);
-        const loanDeduction = loan ? (loan.totalAmount * (loan.deductionPercentage / 100)) : 0;
+        // Loan usually deducted in P2 or Split. Let's default to P2 for single deduction
+        let loanDeduction = 0;
+        if (loan) {
+           const monthlyCut = (loan.totalAmount * (loan.deductionPercentage / 100));
+           if (isFull) loanDeduction = monthlyCut;
+           else if (!isP1) loanDeduction = monthlyCut; // Deduct in P2
+        }
+
         const totalAdvances = monthAdvances.filter(a => a.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
         
         const earnedBasicWages = Math.max(0, effectiveMonthlyWage - totalAbsenceDeduction);
@@ -310,8 +368,9 @@
         doc.setFontSize(22);
         doc.text(config.companyName.toUpperCase(), 20, 25);
         doc.setFontSize(10);
-        doc.text(`VOUCHER: ${emp.shift?.toUpperCase() || 'DAY'} SHIFT • ${sectionName.toUpperCase()}`, 20, 34);
-        doc.text(`PAY PERIOD: ${targetMonth}`, 115, 25);
+        doc.text(`VOUCHER: ${emp.shift?.toUpperCase() || 'DAY'} • ${sectionName.toUpperCase()}`, 20, 34);
+        const pTitle = isFull ? 'FULL MONTH' : (isP1 ? 'PERIOD 1 (1-15)' : 'PERIOD 2 (16-End)');
+        doc.text(`${pTitle} • ${targetMonth}`, 115, 25);
         
         doc.setTextColor(30, 30, 30);
         doc.setFontSize(13);
@@ -332,8 +391,8 @@
         doc.setTextColor(31, 41, 55);
         doc.setFontSize(10);
         doc.text(`Summary: ${daysPresent} Present / ${daysAbsent} Absent`, 30, infoY + 22);
-        doc.text(`Monthly Wage: ${emp.monthlyWage.toLocaleString()} SYP`, 30, infoY + 30);
-        doc.text(`Fixed Transportation: ${fixedTransportation.toLocaleString()} SYP`, 110, infoY + 30);
+        doc.text(`Wage Base (${isFull?'Full':(isP1?'Fixed P1':'Remainder')}): ${effectiveMonthlyWage.toLocaleString()} SYP`, 30, infoY + 30);
+        doc.text(`Fixed Transport: ${finalFixedTransport.toLocaleString()} SYP`, 110, infoY + 30);
 
         doc.setDrawColor(243, 244, 246);
         doc.roundedRect(20, infoY + 50, 170, 95, 3, 3, 'FD');
@@ -343,8 +402,8 @@
 
         doc.setFontSize(10);
         let tableY = infoY + 75;
-        doc.text(`Basic Pay:`, 30, tableY); doc.text(`${Math.round(effectiveMonthlyWage).toLocaleString()}`, 180, tableY, { align: 'right' }); tableY += 8;
-        doc.setTextColor(239, 68, 68); doc.text(`Penalty:`, 30, tableY); doc.text(`- ${Math.round(totalAbsenceDeduction).toLocaleString()}`, 180, tableY, { align: 'right' }); tableY += 8;
+        doc.text(`Allocated Wage:`, 30, tableY); doc.text(`${Math.round(earnedBasicWages + totalAbsenceDeduction).toLocaleString()}`, 180, tableY, { align: 'right' }); tableY += 8;
+        doc.setTextColor(239, 68, 68); doc.text(`Absence Penalty:`, 30, tableY); doc.text(`- ${Math.round(totalAbsenceDeduction).toLocaleString()}`, 180, tableY, { align: 'right' }); tableY += 8;
         doc.setTextColor(30, 30, 30); doc.text(`Overtime:`, 30, tableY); doc.text(`${Math.round(overtimePay).toLocaleString()}`, 180, tableY, { align: 'right' }); tableY += 8;
         doc.text(`Transport:`, 30, tableY); doc.text(`${totalTransportation.toLocaleString()}`, 180, tableY, { align: 'right' }); tableY += 8;
         doc.setTextColor(34, 197, 94); doc.text(`Bonus:`, 30, tableY); doc.text(`+ ${empBonus.toLocaleString()}`, 180, tableY, { align: 'right' }); tableY += 8;
@@ -357,7 +416,7 @@
         doc.text('NET PAY:', 30, infoY + 140);
         doc.text(`${Math.round(netSalary).toLocaleString()} SYP`, 180, infoY + 140, { align: 'right' });
       });
-      doc.save(`Payslips_${targetMonth}.pdf`);
+      doc.save(`Payslips_${targetMonth}_${targetPeriod}.pdf`);
     };
 
     const generateSingleResignationSlip = async (emp, settlementData, config, sections) => {
@@ -474,6 +533,8 @@
       const [showResignModal, setShowResignModal] = React.useState(false);
       const [employeeTarget, setEmployeeTarget] = React.useState(null);
       const [settlementData, setSettlementData] = React.useState(null);
+      const [reportType, setReportType] = React.useState(null); 
+      const [targetReportMonth, setTargetReportMonth] = React.useState(null);
       
       const inputClass = "w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl font-bold bg-white text-black outline-none focus:border-indigo-600 transition-all";
 
@@ -485,10 +546,8 @@
         return grouped;
       }, [filteredEmployees, sections]);
 
-      // Calculate recent months for Locking UI (Fixed to include locked months)
       const recentMonths = React.useMemo(() => {
          const dates = attendance.map(a => a.date);
-         // Ensure Owner can see locked months even if empty
          const months = [...new Set([...dates.map(d => d.substring(0, 7)), ...lockedMonths])];
          const now = new Date();
          const curr = now.toISOString().substring(0,7);
@@ -500,80 +559,15 @@
       const startEditing = (emp) => { setEditingId(emp.id); setEditFormData({ ...emp, wage: emp.monthlyWage, transportAllowance: emp.transportationAllowance }); };
       const handleUpdate = () => { updateEmployee(editingId, { ...editFormData, monthlyWage: parseFloat(editFormData.wage), transportationAllowance: parseFloat(editFormData.transportAllowance) }); setEditingId(null); };
       
-      const handleGeneratePDF = async (targetMonth) => { 
+      const handleGeneratePDF = async (type) => { 
          setIsGenerating(true); 
-         await generateAllPayslips(targetMonth, employees.filter(e=>!e.isResigned), attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses); 
+         await generateAllPayslips(targetReportMonth, type, employees.filter(e=>!e.isResigned), attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses); 
          setIsGenerating(false); 
-      };
-
-      const handleExportCSV = (targetMonth) => {
-         const headers = ['Name', 'Section', 'Wage', 'Shift', 'Days Absent', 'Penalty Deduction', 'Overtime (Hrs)', 'Overtime (Amt)', 'Bonus', 'Transport', 'Advances', 'Loans', 'Net Salary'];
-         // Filter data by target month
-         const monthAttendance = attendance.filter(a => a.date.startsWith(targetMonth));
-         const monthAdvances = advances.filter(a => a.date.startsWith(targetMonth));
-         const monthOvertime = overtime.filter(o => o.date.startsWith(targetMonth));
-         const monthBonuses = bonuses.filter(b => b.date.startsWith(targetMonth));
-         const monthTransport = transportation.filter(t => t.date.startsWith(targetMonth));
-         
-         const rows = employees.filter(e => !e.isResigned).map(emp => {
-            const sectionName = sections.find(s => s.id === emp.sectionId)?.name || 'GENERAL';
-            const isNightShift = emp.shift === 'night';
-            const shiftFactor = isNightShift ? (pdfConfig.nightShiftMultiplier || 1.0) : 1.0;
-            const absenceRecords = monthAttendance.filter(a => a.absentEmployeeIds.includes(emp.id));
-            const daysAbsent = absenceRecords.length;
-            
-            // NEW FORMULAS FOR CSV
-            const absDivisor = pdfConfig.absencePeriod || pdfConfig.daysInMonth;
-            const otDivisor = pdfConfig.overtimePeriod || (pdfConfig.daysInMonth * pdfConfig.hoursPerDay);
-            
-            const baseDailyRateAbsence = emp.monthlyWage / absDivisor;
-            const effectiveMonthlyWage = emp.monthlyWage * shiftFactor;
-            const totalAbsenceDeduction = daysAbsent * baseDailyRateAbsence * pdfConfig.absentDeductionFactor;
-            
-            const hourlyRateOT = emp.monthlyWage / otDivisor;
-            const empOvertimeHours = monthOvertime.filter(ot => ot.employeeId === emp.id).reduce((sum, curr) => sum + curr.hours, 0);
-            const overtimePay = empOvertimeHours * hourlyRateOT * pdfConfig.otMultiplier;
-            
-            const empBonus = monthBonuses.filter(b => b.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
-            const fixedTransportation = emp.transportationAllowance || 0;
-            const extraTransportation = monthTransport.filter(t => t.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
-            const totalTransportation = fixedTransportation + extraTransportation;
-            const loan = loans.find(l => l.employeeId === emp.id);
-            const loanDeduction = loan ? (loan.totalAmount * (loan.deductionPercentage / 100)) : 0;
-            const totalAdvances = monthAdvances.filter(a => a.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
-            const earnedBasicWages = Math.max(0, effectiveMonthlyWage - totalAbsenceDeduction);
-            const totalEarnings = earnedBasicWages + overtimePay + totalTransportation + empBonus;
-            const totalDeductions = totalAdvances + loanDeduction;
-            const netSalary = Math.max(0, totalEarnings - totalDeductions);
-
-            return [
-               emp.name,
-               sectionName,
-               emp.monthlyWage,
-               emp.shift,
-               daysAbsent,
-               Math.round(totalAbsenceDeduction),
-               empOvertimeHours,
-               Math.round(overtimePay),
-               empBonus,
-               totalTransportation,
-               totalAdvances,
-               Math.round(loanDeduction),
-               Math.round(netSalary)
-            ].join(',');
-         });
-
-         const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
-         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-         const link = document.createElement('a');
-         link.href = URL.createObjectURL(blob);
-         link.download = `Payroll_${targetMonth}.csv`;
-         link.click();
+         setReportType(null); 
       };
       
       const handleResign = (emp) => { 
          setEmployeeTarget(emp); 
-         // Calculate Settlement on Open
          const targetMonth = new Date().toISOString().substring(0,7);
          const monthAttendance = attendance.filter(a => a.date.startsWith(targetMonth));
          const daysAbsent = monthAttendance.filter(a => a.absentEmployeeIds.includes(emp.id)).length;
@@ -654,6 +648,15 @@
                                           <div><label className="text-[10px] font-black uppercase block mb-1">{t('name')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.name} onChange={e=>setEditFormData({...editFormData, name:e.target.value})} /> : <p className="font-black">{emp.name}</p>}</div>
                                           <div><label className="text-[10px] font-black uppercase block mb-1">{t('wage')}</label>{editingId === emp.id ? <MoneyInput className={inputClass} value={editFormData.wage} onChange={e=>setEditFormData({...editFormData, wage:e.target.value})} /> : <p className="font-black">{emp.monthlyWage}</p>}</div>
                                           
+                                          {/* Payment Settings */}
+                                          <div className="col-span-full border-t border-gray-200 mt-2 pt-2">
+                                              <p className="text-[10px] font-black uppercase text-indigo-600 mb-2">{t('paymentSettings')}</p>
+                                              <div className="grid grid-cols-2 gap-4">
+                                                 <div><label className="block text-[10px] font-black text-gray-500 uppercase mb-1">{t('period1Amount')}</label><MoneyInput className={inputClass} value={editFormData.period1Amount || ''} onChange={e=>setEditFormData({...editFormData, period1Amount:e.target.value})} placeholder="Fixed Amount (e.g. 200,000)" /></div>
+                                                 <div><label className="block text-[10px] font-black text-gray-500 uppercase mb-1">{t('transPeriod')}</label><select className={inputClass} value={editFormData.transportPeriod || '2'} onChange={e=>setEditFormData({...editFormData, transportPeriod:e.target.value})}><option value="1">{t('period1')}</option><option value="2">{t('period2')}</option><option value="split">{t('split')}</option></select></div>
+                                              </div>
+                                          </div>
+
                                           {/* Missing Fields Added Here for Editing */}
                                           <div><label className="text-[10px] font-black uppercase block mb-1">{t('fatherName')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.fatherName} onChange={e=>setEditFormData({...editFormData, fatherName:e.target.value})} /> : <p className="font-black">{emp.fatherName || '-'}</p>}</div>
                                           <div><label className="text-[10px] font-black uppercase block mb-1">{t('motherName')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.motherName} onChange={e=>setEditFormData({...editFormData, motherName:e.target.value})} /> : <p className="font-black">{emp.motherName || '-'}</p>}</div>
@@ -676,6 +679,24 @@
                 </div>
               </section>
             )}
+            
+            {activeTab === 'sections' && (
+              <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                <h3 className="text-xl font-black text-black uppercase mb-6">{t('sections')}</h3>
+                <div className="flex gap-4 mb-6">
+                  <input type="text" className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl outline-none font-bold text-black" placeholder={t('name')} value={newSectionName} onChange={e => setNewSectionName(e.target.value)} />
+                  <button onClick={() => { if(newSectionName) { addSection(newSectionName); setNewSectionName(''); }}} className="px-8 py-3 bg-indigo-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest">{t('add')}</button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {sections.map(s => (
+                    <div key={s.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center justify-between">
+                      <span className="font-black text-sm text-black">{s.name}</span>
+                      <button onClick={() => deleteSection(s.id)} className="text-red-600 font-black">X</button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* NEW: Periods Tab for HR Locking */}
             {activeTab === 'periods' && (
@@ -692,8 +713,7 @@
                               </div>
                               {isLocked ? (
                                  <div className="flex gap-2">
-                                    <button onClick={()=>handleExportCSV(month)} className="px-4 py-2 bg-green-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-green-700">{t('exportCsv')}</button>
-                                    <button onClick={()=>handleGeneratePDF(month)} disabled={isGenerating} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700">{isGenerating ? '...' : t('generatePdf')}</button>
+                                    <button onClick={() => { setReportType('pdf'); setTargetReportMonth(month); }} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700">{t('generatePdf')}</button>
                                  </div>
                               ) : (
                                  <button onClick={() => lockPeriod(month)} className="px-6 py-3 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-red-700 transition-all">
@@ -729,6 +749,14 @@
                   <MoneyInput required className={inputClass} placeholder={t('wage')} value={formData.wage} onChange={e => setFormData({...formData, wage: e.target.value})} />
                   <MoneyInput required className={inputClass} placeholder={t('transport')} value={formData.transportAllowance} onChange={e => setFormData({...formData, transportAllowance: e.target.value})} />
                 </div>
+                
+                {/* Split Settings on Create */}
+                <div className="grid grid-cols-2 gap-3 bg-gray-50 p-2 rounded-xl">
+                   <p className="col-span-2 text-[10px] font-black uppercase text-gray-400">{t('paymentSettings')}</p>
+                   <div><label className="block text-[9px] font-bold mb-1">{t('period1Amount')}</label><MoneyInput className={inputClass} placeholder="Amount" value={formData.period1Amount || ''} onChange={e => setFormData({...formData, period1Amount: e.target.value})} /></div>
+                   <div><label className="block text-[9px] font-bold mb-1">{t('transPeriod')}</label><select className={inputClass} value={formData.transportPeriod || '2'} onChange={e => setFormData({...formData, transportPeriod: e.target.value})}><option value="1">{t('period1')}</option><option value="2">{t('period2')}</option><option value="split">{t('split')}</option></select></div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                    <select className={inputClass} value={formData.shift} onChange={e => setFormData({...formData, shift: e.target.value})}><option value="day">{t('day')}</option><option value="night">{t('night')}</option></select>
                    <select className={inputClass} value={formData.sectionId} onChange={e => setFormData({...formData, sectionId: e.target.value})}><option value="">{t('unassigned')}</option>{sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
@@ -770,6 +798,19 @@
                   <button onClick={confirmResign} className="flex-1 py-4 bg-black text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-gray-800 transition-all">{t('printAndArchive')}</button>
                 </div>
               </div>
+            </div>
+          )}
+          {reportType && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50">
+               <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 text-center animate-in fade-in zoom-in duration-200">
+                  <h4 className="text-xl font-black mb-6 text-black uppercase">{t('selectReport')}</h4>
+                  <div className="space-y-3">
+                     <button onClick={() => handleGeneratePDF('p1')} className="w-full py-3 bg-indigo-50 text-indigo-600 font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-indigo-100">{t('period1')}</button>
+                     <button onClick={() => handleGeneratePDF('p2')} className="w-full py-3 bg-indigo-50 text-indigo-600 font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-indigo-100">{t('period2')}</button>
+                     <button onClick={() => handleGeneratePDF('full')} className="w-full py-3 bg-black text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-gray-800">{t('fullMonth')}</button>
+                  </div>
+                  <button onClick={() => setReportType(null)} className="mt-6 text-gray-400 font-bold text-xs uppercase">{t('cancel')}</button>
+               </div>
             </div>
           )}
         </div>
@@ -1339,7 +1380,7 @@
             deleteBonus={(id) => db.collection('bonuses').doc(id).delete()}
             toggleMonthLock={(m)=>{ const l = lockedMonths.includes(m)?lockedMonths.filter(x=>x!==m):[...lockedMonths,m]; db.collection('meta').doc('locks').set({months:l}); }} 
          />;
-         if (currentUser.role === 'hr') return <HRDashboard {...props} lockPeriod={(m)=>{ if(!lockedMonths.includes(m)) db.collection('meta').doc('locks').set({months:[...lockedMonths, m]}); }} setPdfConfig={(c)=>db.collection('meta').doc('config').set(c)} addEmployee={(d)=>db.collection('employees').add(d)} updateEmployee={(id,d)=>db.collection('employees').doc(id).update(d)} deleteEmployee={(id)=>db.collection('employees').doc(id).delete()} addSection={(n)=>db.collection('sections').add({name:n})} deleteSection={(id)=>db.collection('sections').doc(id).delete()} />;
+         if (currentUser.role === 'hr') return <HRDashboard {...props} lockPeriod={(m)=>{ if(!lockedMonths.includes(m)) db.collection('meta').doc('locks').set({months:[...lockedMonths, m]}); }} setPdfConfig={(c)=>db.collection('meta').doc('config').set(c)} addEmployee={(d)=>db.collection('employees').add(d)} updateEmployee={(id,d)=>db.collection('employees').doc(id).update(d)} deleteEmployee={(id)=>db.collection('employees').doc(id).delete()} addSection={(n)=>db.collection('sections').add({name:n})} deleteSection={(id)=>db.collection('sections').doc(id).delete()} resignEmployee={(id)=>db.collection('employees').doc(id).update({isResigned:true})} />;
          // MANAGER ROUTING: Pass canEdit based on sub-role
          if (currentUser.role === 'manager' || currentUser.role === 'data_entry') {
             return <ManagerDashboard {...props} 
