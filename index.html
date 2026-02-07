@@ -220,7 +220,8 @@
       period2: { en: "Period 2 (16th-End)", ar: "الفترة 2 (16-النهاية)" },
       fullMonth: { en: "Full Month", ar: "الشهر كامل" },
       split: { en: "Split (50/50)", ar: "تقسيم (50/50)" },
-      selectReport: { en: "Select Report Period", ar: "اختر فترة التقرير" }
+      selectReport: { en: "Select Report Period", ar: "اختر فترة التقرير" },
+      arabicSlip: { en: "Arabic Payslip (DL)", ar: "قسيمة راتب (عربي DL)" }
     };
 
     // --- 3. HELPER COMPONENT FOR VISUAL NUMBERS ---
@@ -255,12 +256,12 @@
       for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
       const base64Font = window.btoa(binary);
 
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      // DL Size: 110mm x 220mm (Portrait)
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [110, 220] });
       doc.addFileToVFS('Amiri-Regular.ttf', base64Font);
       doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
       doc.setFont('Amiri'); 
 
-      // FILTER DATA BY DATE FOR SPLIT PERIODS
       const isFull = targetPeriod === 'full';
       const isP1 = targetPeriod === 'p1';
       
@@ -275,11 +276,8 @@
       const monthAttendance = attendance.filter(a => a.date.startsWith(targetMonth) && (isFull || (isP1 ? parseInt(a.date.split('-')[2]) <= 15 : parseInt(a.date.split('-')[2]) > 15)));
       const monthAdvances = advances.filter(filterByDate);
       const monthOvertime = overtime.filter(filterByDate);
-      
-      // Bonus & Transport have explicit overrides
       const monthBonuses = bonuses.filter(b => b.date.startsWith(targetMonth));
       const monthTransport = transportation.filter(t => t.date.startsWith(targetMonth));
-
       const totalPotentialDays = monthAttendance.length || 0;
 
       // CALCULATION SETTINGS
@@ -288,138 +286,143 @@
 
       employees.forEach((emp, index) => {
         if (index !== 0) doc.addPage();
-        const sectionName = sections.find(s => s.id === emp.sectionId)?.name || 'GENERAL';
-        const isNightShift = emp.shift === 'night';
-        const shiftFactor = isNightShift ? (config.nightShiftMultiplier || 1.0) : 1.0;
         
-        // --- 1. BASE WAGE SPLIT (FIXED AMOUNT) ---
-        const totalWage = emp.monthlyWage * shiftFactor;
-        const p1Amount = emp.period1Amount || 0;
-        
-        let wageForThisPeriod = totalWage;
-        if (isP1) {
-            // Period 1 gets the fixed amount (capped at total wage)
-            wageForThisPeriod = Math.min(totalWage, p1Amount);
-        } else if (!isFull) {
-            // Period 2 gets the remainder
-            wageForThisPeriod = Math.max(0, totalWage - p1Amount);
-        }
-        
-        const effectiveMonthlyWage = wageForThisPeriod;
+        // --- DATA PREP ---
+        const sectionName = sections.find(s => s.id === emp.sectionId)?.name || 'القسم العام';
+        const shiftName = emp.shift === 'night' ? 'مسائي' : 'صباحي';
+        const isNight = emp.shift === 'night';
+        const shiftFactor = isNight ? (config.nightShiftMultiplier || 1.0) : 1.0;
 
-        // --- 2. TRANSPORT SPLIT ---
-        const transPref = emp.transportPeriod || '2'; // Default Period 2
+        // Base Wage Logic (Split)
+        const totalWage = emp.monthlyWage; 
+        const nightDiff = isNight ? (totalWage * (shiftFactor - 1)) : 0;
+        const basePlusNight = totalWage * shiftFactor;
+
+        // Period Splitting Logic for Display
+        const p1Amount = emp.period1Amount || 0;
+        let wageForPeriod = basePlusNight;
+        if (isP1) wageForPeriod = Math.min(basePlusNight, p1Amount);
+        else if (!isFull) wageForPeriod = Math.max(0, basePlusNight - p1Amount);
+
+        // Transport
+        const transPref = emp.transportPeriod || '2'; 
         let includeTransport = false;
-        if (isFull) includeTransport = true;
-        else if (transPref === 'split') includeTransport = true; 
+        if (isFull || transPref === 'split') includeTransport = true;
         else if (transPref === '1' && isP1) includeTransport = true;
         else if (transPref === '2' && !isP1) includeTransport = true;
+        let fixedTransport = includeTransport ? (emp.transportationAllowance || 0) : 0;
+        if (transPref === 'split' && !isFull) fixedTransport /= 2;
 
-        const fixedTransportation = includeTransport ? (emp.transportationAllowance || 0) : 0;
-        // If split pref is active, divide by 2 for period view
-        const finalFixedTransport = (transPref === 'split' && !isFull) ? fixedTransportation / 2 : fixedTransportation;
-
-        // --- 3. DEDUCTIONS & EXTRAS ---
+        // Absence
         const absenceRecords = monthAttendance.filter(a => a.absentEmployeeIds.includes(emp.id));
         const daysAbsent = absenceRecords.length;
         const daysPresent = Math.max(0, totalPotentialDays - daysAbsent);
-        
-        const baseDailyRateAbsence = emp.monthlyWage / absDivisor; 
-        const totalAbsenceDeduction = daysAbsent * baseDailyRateAbsence * config.absentDeductionFactor;
-        
+        const dailyRateAbsence = emp.monthlyWage / absDivisor; 
+        const penaltyRate = dailyRateAbsence * config.absentDeductionFactor;
+        const totalAbsenceDeduction = daysAbsent * penaltyRate;
+
+        // Overtime
         const hourlyRateOT = emp.monthlyWage / otDivisor;
         const empOvertimeHours = monthOvertime.filter(ot => ot.employeeId === emp.id).reduce((sum, curr) => sum + curr.hours, 0);
         const overtimePay = empOvertimeHours * hourlyRateOT * config.otMultiplier;
 
-        // Filter Bonuses by Explicit Period Tag if set, else Date
+        // Bonus & Extras
         const empBonus = monthBonuses.filter(b => {
            if (b.employeeId !== emp.id) return false;
            if (isFull) return true;
            if (b.period) return (isP1 && b.period === '1') || (!isP1 && b.period === '2');
-           return filterByDate(b); // Fallback to date
+           return filterByDate(b); 
         }).reduce((sum, curr) => sum + curr.amount, 0);
 
-        const extraTransportation = monthTransport.filter(t => t.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
-        const totalTransportation = finalFixedTransport + extraTransportation;
-        
+        const extraTransport = monthTransport.filter(t => t.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
+        const totalTransport = fixedTransportation + extraTransport;
+
+        // Loan & Advances
         const loan = loans.find(l => l.employeeId === emp.id);
-        // Loan usually deducted in P2 or Split. Let's default to P2 for single deduction
         let loanDeduction = 0;
+        let loanBalance = 0;
+        let loanRemaining = 0;
         if (loan) {
+           loanBalance = loan.totalAmount;
            const monthlyCut = (loan.totalAmount * (loan.deductionPercentage / 100));
            if (isFull) loanDeduction = monthlyCut;
            else if (!isP1) loanDeduction = monthlyCut; // Deduct in P2
+           loanRemaining = loanBalance - loanDeduction;
         }
-
         const totalAdvances = monthAdvances.filter(a => a.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
-        
-        const earnedBasicWages = Math.max(0, effectiveMonthlyWage - totalAbsenceDeduction);
-        const totalEarnings = earnedBasicWages + overtimePay + totalTransportation + empBonus;
-        const totalDeductions = totalAdvances + loanDeduction;
+
+        // Final Net
+        const totalEarnings = wageForPeriod + overtimePay + totalTransport + empBonus;
+        const totalDeductions = totalAdvances + loanDeduction + totalAbsenceDeduction;
         const netSalary = Math.max(0, totalEarnings - totalDeductions);
 
-        doc.setFillColor(isNightShift ? 15 : 79, isNightShift ? 23 : 70, isNightShift ? 42 : 229);
-        doc.rect(0, 0, 210, 45, 'F');
-        doc.setFillColor(255, 255, 255, 0.2);
-        doc.roundedRect(170, 10, 25, 25, 5, 5, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(16);
-        doc.text(config.logoPlaceholder || 'S|M', 182.5, 26, { align: 'center' });
-        doc.setFontSize(22);
-        doc.text(config.companyName.toUpperCase(), 20, 25);
-        doc.setFontSize(10);
-        doc.text(`VOUCHER: ${emp.shift?.toUpperCase() || 'DAY'} • ${sectionName.toUpperCase()}`, 20, 34);
-        const pTitle = isFull ? 'FULL MONTH' : (isP1 ? 'PERIOD 1 (1-15)' : 'PERIOD 2 (16-End)');
-        doc.text(`${pTitle} • ${targetMonth}`, 115, 25);
+        // --- DRAWING THE ARABIC TABLE (DL ENVELOPE) ---
         
-        doc.setTextColor(30, 30, 30);
-        doc.setFontSize(13);
-        doc.text('WORKER INFORMATION', 20, 58);
-        doc.line(20, 60, 210-20, 60);
-
-        doc.setFontSize(10);
-        let infoY = 68;
-        doc.text(`Full Name:`, 20, infoY); doc.text(emp.name, 50, infoY);
-        doc.text(`Join Date:`, 85, infoY); doc.text(emp.joinDate, 110, infoY);
-        doc.text(`Shift:`, 150, infoY); doc.text((emp.shift || 'day').toUpperCase(), 175, infoY);
-        infoY += 8;
-        doc.text(`National ID:`, 20, infoY); doc.text(emp.nationalId || 'N/A', 50, infoY);
-        doc.text(`Insurance:`, 85, infoY); doc.text(emp.socialInsuranceId || 'N/A', 110, infoY);
-
-        doc.setFillColor(249, 250, 251);
-        doc.roundedRect(20, infoY + 10, 170, 30, 2, 2, 'F');
-        doc.setTextColor(31, 41, 55);
-        doc.setFontSize(10);
-        doc.text(`Summary: ${daysPresent} Present / ${daysAbsent} Absent`, 30, infoY + 22);
-        doc.text(`Wage Base (${isFull?'Full':(isP1?'Fixed P1':'Remainder')}): ${effectiveMonthlyWage.toLocaleString()} SYP`, 30, infoY + 30);
-        doc.text(`Fixed Transport: ${finalFixedTransport.toLocaleString()} SYP`, 110, infoY + 30);
-
-        doc.setDrawColor(243, 244, 246);
-        doc.roundedRect(20, infoY + 50, 170, 95, 3, 3, 'FD');
-        doc.setTextColor(30, 30, 30);
-        doc.setFontSize(12);
-        doc.text('EARNINGS & DEDUCTIONS', 30, infoY + 63);
-
-        doc.setFontSize(10);
-        let tableY = infoY + 75;
-        doc.text(`Allocated Wage:`, 30, tableY); doc.text(`${Math.round(earnedBasicWages + totalAbsenceDeduction).toLocaleString()}`, 180, tableY, { align: 'right' }); tableY += 8;
-        doc.setTextColor(239, 68, 68); doc.text(`Absence Penalty:`, 30, tableY); doc.text(`- ${Math.round(totalAbsenceDeduction).toLocaleString()}`, 180, tableY, { align: 'right' }); tableY += 8;
-        doc.setTextColor(30, 30, 30); doc.text(`Overtime:`, 30, tableY); doc.text(`${Math.round(overtimePay).toLocaleString()}`, 180, tableY, { align: 'right' }); tableY += 8;
-        doc.text(`Transport:`, 30, tableY); doc.text(`${totalTransportation.toLocaleString()}`, 180, tableY, { align: 'right' }); tableY += 8;
-        doc.setTextColor(34, 197, 94); doc.text(`Bonus:`, 30, tableY); doc.text(`+ ${empBonus.toLocaleString()}`, 180, tableY, { align: 'right' }); tableY += 8;
-        doc.setTextColor(239, 68, 68); doc.text(`Deductions:`, 30, tableY); doc.text(`- ${totalDeductions.toLocaleString()}`, 180, tableY, { align: 'right' });
-
-        doc.setFillColor(isNightShift ? 15 : 79, isNightShift ? 23 : 70, isNightShift ? 42 : 229);
-        doc.rect(20, infoY + 130, 170, 15, 'F');
-        doc.setTextColor(255, 255, 255);
+        // 1. Header
+        doc.setFillColor(240, 240, 240);
+        doc.rect(0, 0, 110, 25, 'F');
         doc.setFontSize(14);
-        doc.text('NET PAY:', 30, infoY + 140);
-        doc.text(`${Math.round(netSalary).toLocaleString()} SYP`, 180, infoY + 140, { align: 'right' });
+        doc.setTextColor(0, 0, 0);
+        doc.text(sectionName, 105, 10, { align: 'right' }); // Top Right: Section
+        doc.setFontSize(10);
+        doc.text(targetMonth, 10, 10, { align: 'left' }); // Top Left: Date
+
+        // 2. Table Structure (Label Right, Value Left)
+        let y = 35;
+        const rowHeight = 7;
+        const colSplit = 55; // Split point for labels/values
+
+        const drawRow = (label, value, bold = false) => {
+           doc.setFontSize(10);
+           if (bold) doc.setFont('Amiri', 'bold'); else doc.setFont('Amiri', 'normal');
+           doc.text(label, 105, y, { align: 'right' }); // Label (Right)
+           doc.text(value, 5, y, { align: 'left' });   // Value (Left)
+           doc.setDrawColor(200);
+           doc.line(5, y + 2, 105, y + 2); // Underline
+           y += rowHeight;
+        };
+
+        drawRow("اسم العامل", emp.name, true);
+        drawRow("الوردية", shiftName);
+        drawRow("الوظيفة", "عامل"); // Placeholder
+        drawRow("الراتب المقطوع", Math.round(totalWage).toLocaleString());
+        drawRow("فرق الليل", Math.round(nightDiff).toLocaleString());
+        drawRow("عدد أيام الدوام", daysPresent.toString());
+        drawRow("أجر اليوم الواحد", Math.round(dailyRateAbsence).toLocaleString());
+        drawRow("عدد أيام الغياب", daysAbsent.toString());
+        drawRow("خصم يوم الغياب", Math.round(penaltyRate).toLocaleString());
+        drawRow("خصم الغياب", Math.round(totalAbsenceDeduction).toLocaleString());
+        drawRow("اضافي / دوام", empOvertimeHours.toString()); // Hours
+        drawRow("قيمة اضافي / دوام", Math.round(overtimePay).toLocaleString());
+        drawRow("اضافات أخرى / مكافآت", Math.round(empBonus + extraTransport).toLocaleString());
+        drawRow("المواصلات الثابتة", Math.round(fixedTransportation).toLocaleString());
+        drawRow("السلفة الشهرية", Math.round(totalAdvances).toLocaleString());
+        
+        // Loan Section
+        if (loan) {
+           drawRow("مدور القرض", Math.round(loanBalance).toLocaleString());
+           drawRow("خصم القرض", Math.round(loanDeduction).toLocaleString());
+           drawRow("رصيد القرض", Math.round(loanRemaining).toLocaleString());
+        }
+
+        // Net Pay Box
+        y += 5;
+        doc.setFillColor(0, 0, 0);
+        doc.rect(5, y - 5, 100, 12, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(12);
+        doc.text("الصافي للدفع", 100, y + 2, { align: 'right' });
+        doc.text(`${Math.round(netSalary).toLocaleString()} ل.س`, 10, y + 2, { align: 'left' });
+
+        doc.setTextColor(0); // Reset
       });
-      doc.save(`Payslips_${targetMonth}_${targetPeriod}.pdf`);
+      
+      doc.save(`Payslips_DL_${targetMonth}.pdf`);
     };
 
     const generateSingleResignationSlip = async (emp, settlementData, config, sections) => {
+        // ... (Resignation PDF Logic - Keeping simplified for now or matching style if needed)
+        // Re-using the same font setup
         const { jsPDF } = window.jspdf;
         const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf';
         const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
@@ -428,49 +431,50 @@
         for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
         const base64Font = window.btoa(binary);
 
-        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [110, 220] });
         doc.addFileToVFS('Amiri-Regular.ttf', base64Font);
         doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
         doc.setFont('Amiri'); 
-
-        const sectionName = sections.find(s => s.id === emp.sectionId)?.name || 'GENERAL';
-
-        doc.setFillColor(220, 38, 38); // Red header for Resignation
-        doc.rect(0, 0, 210, 45, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(16);
-        doc.text(config.logoPlaceholder || 'S|M', 182.5, 26, { align: 'center' });
-        doc.setFontSize(22);
-        doc.text("FINAL SETTLEMENT / RESIGNATION", 20, 25);
-        doc.setFontSize(10);
-        doc.text(`WORKER: ${emp.name.toUpperCase()}`, 20, 34);
-        doc.text(`DATE: ${new Date().toLocaleDateString()}`, 115, 25);
-
-        doc.setTextColor(30, 30, 30);
-        doc.setFontSize(12);
-        let y = 60;
-        doc.text("Settlement Breakdown:", 20, y);
-        y += 10;
-        doc.text(`Base Wage: ${Math.round(settlementData.basePay).toLocaleString()} SYP`, 30, y); y += 8;
-        doc.text(`Overtime: +${Math.round(settlementData.overtime).toLocaleString()} SYP`, 30, y); y += 8;
-        doc.text(`Transport: +${Math.round(settlementData.transport).toLocaleString()} SYP`, 30, y); y += 8;
-        doc.text(`Bonus: +${Math.round(settlementData.bonus).toLocaleString()} SYP`, 30, y); y += 8;
-        doc.setTextColor(220, 38, 38);
-        doc.text(`Absence Penalty: -${Math.round(settlementData.penalty).toLocaleString()} SYP`, 30, y); y += 8;
-        doc.text(`Advances: -${Math.round(settlementData.advances).toLocaleString()} SYP`, 30, y); y += 8;
-        doc.text(`Loan Deduction: -${Math.round(settlementData.loans).toLocaleString()} SYP`, 30, y); y += 15;
         
-        doc.setFillColor(30, 30, 30);
-        doc.rect(20, y, 170, 15, 'F');
+        // Header
+        doc.setFillColor(220, 38, 38);
+        doc.rect(0, 0, 110, 25, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(14);
-        doc.text("FINAL NET PAYABLE:", 30, y + 10);
-        doc.text(`${Math.round(settlementData.net).toLocaleString()} SYP`, 180, y + 10, { align: 'right' });
+        doc.text("تصفية حساب نهائية", 105, 10, { align: 'right' });
+        doc.setFontSize(10);
+        doc.text(new Date().toLocaleDateString(), 10, 10, { align: 'left' });
 
-        doc.save(`Final_Settlement_${emp.name}.pdf`);
+        doc.setTextColor(0);
+        let y = 40;
+        const rowHeight = 8;
+        const drawRow = (label, value) => {
+           doc.text(label, 105, y, { align: 'right' });
+           doc.text(value, 5, y, { align: 'left' });
+           doc.line(5, y+2, 105, y+2);
+           y += rowHeight;
+        };
+
+        drawRow("اسم العامل", emp.name);
+        drawRow("الراتب الأساسي", Math.round(settlementData.basePay).toLocaleString());
+        drawRow("الإضافي", Math.round(settlementData.overtime).toLocaleString());
+        drawRow("المواصلات", Math.round(settlementData.transport).toLocaleString());
+        drawRow("المكافآت", Math.round(settlementData.bonus).toLocaleString());
+        drawRow("السلف", Math.round(settlementData.advances).toLocaleString());
+        drawRow("خصم القروض", Math.round(settlementData.loans).toLocaleString());
+        drawRow("غرامة الغياب", Math.round(settlementData.penalty).toLocaleString());
+
+        y += 10;
+        doc.setFillColor(0);
+        doc.rect(5, y-6, 100, 12, 'F');
+        doc.setTextColor(255);
+        doc.text("الصافي المستحق", 100, y, { align: 'right' });
+        doc.text(`${Math.round(settlementData.net).toLocaleString()} ل.س`, 10, y, { align: 'left' });
+
+        doc.save(`Resignation_${emp.name}.pdf`);
     };
 
-    // --- 5. DASHBOARD COMPONENTS ---
+    // --- 4. DASHBOARD COMPONENTS ---
 
     const Login = ({ onLogin, users, lang, t, toggleLanguage }) => {
       const [username, setUsername] = React.useState('');
@@ -570,6 +574,7 @@
       
       const handleResign = (emp) => { 
          setEmployeeTarget(emp); 
+         // Calculate Settlement on Open
          const targetMonth = new Date().toISOString().substring(0,7);
          const monthAttendance = attendance.filter(a => a.date.startsWith(targetMonth));
          const daysAbsent = monthAttendance.filter(a => a.absentEmployeeIds.includes(emp.id)).length;
@@ -681,24 +686,6 @@
                 </div>
               </section>
             )}
-            
-            {activeTab === 'sections' && (
-              <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <h3 className="text-xl font-black text-black uppercase mb-6">{t('sections')}</h3>
-                <div className="flex gap-4 mb-6">
-                  <input type="text" className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl outline-none font-bold text-black" placeholder={t('name')} value={newSectionName} onChange={e => setNewSectionName(e.target.value)} />
-                  <button onClick={() => { if(newSectionName) { addSection(newSectionName); setNewSectionName(''); }}} className="px-8 py-3 bg-indigo-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest">{t('add')}</button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {sections.map(s => (
-                    <div key={s.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center justify-between">
-                      <span className="font-black text-sm text-black">{s.name}</span>
-                      <button onClick={() => deleteSection(s.id)} className="text-red-600 font-black">X</button>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
 
             {/* NEW: Periods Tab for HR Locking */}
             {activeTab === 'periods' && (
@@ -790,9 +777,9 @@
                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Base Wage</span><span className="font-black">{Math.round(settlementData.basePay).toLocaleString()}</span></div>
                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Overtime</span><span className="font-black text-green-600">+{Math.round(settlementData.overtime).toLocaleString()}</span></div>
                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Transport</span><span className="font-black text-green-600">+{Math.round(settlementData.transport).toLocaleString()}</span></div>
+                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Bonus</span><span className="font-black text-green-600">+{Math.round(settlementData.bonus).toLocaleString()}</span></div>
                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Advances</span><span className="font-black text-red-500">-{Math.round(settlementData.advances).toLocaleString()}</span></div>
                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Loan Deduction</span><span className="font-black text-red-500">-{Math.round(settlementData.loans).toLocaleString()}</span></div>
-                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Bonus</span><span className="font-black text-green-600">+{Math.round(settlementData.bonus).toLocaleString()}</span></div>
                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Absence Penalty</span><span className="font-black text-red-500">-{Math.round(settlementData.penalty).toLocaleString()}</span></div>
                      <div className="flex justify-between border-t border-gray-200 pt-2 mt-2"><span className="text-sm font-black uppercase">Net Pay</span><span className="font-black text-lg text-indigo-600">{Math.round(settlementData.net).toLocaleString()} SYP</span></div>
                   </div>
