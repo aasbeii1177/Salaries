@@ -52,7 +52,7 @@
 
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
-      firebase.firestore().enablePersistence({ synchronizeTabs: true }).catch(err=>{});
+      firebase.firestore().enablePersistence({ synchronizeTabs: true }).catch(err=>{ console.log("Persistence Error:", err); });
     }
     const db = firebase.firestore();
 
@@ -86,7 +86,7 @@
       save: { en: "Save", ar: "حفظ" },
       edit: { en: "Edit", ar: "تعديل" },
       delete: { en: "Delete", ar: "حذف" },
-      add: { en: "Add / Import", ar: "إضافة / استيراد" },
+      add: { en: "Add", ar: "إضافة" },
       cancel: { en: "Cancel", ar: "إلغاء" },
       search: { en: "Search...", ar: "بحث..." },
       total: { en: "Total", ar: "الإجمالي" },
@@ -261,6 +261,7 @@
         for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
         const base64Font = window.btoa(binary);
 
+        // DL Size: 110mm x 220mm (Portrait)
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [110, 220] });
         doc.addFileToVFS('Amiri-Regular.ttf', base64Font);
         doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
@@ -520,7 +521,6 @@
       const [searchQuery, setSearchQuery] = React.useState('');
       const [viewResigned, setViewResigned] = React.useState(false);
       
-      // Changed Default Tab to prevent scrolling issues on Mobile
       const [activeTab, setActiveTab] = React.useState('workers');
       
       const [newSectionName, setNewSectionName] = React.useState('');
@@ -569,12 +569,18 @@
          setReportType(null); 
       };
 
-      // --- EXCEL IMPORT LOGIC ---
+      // --- BILINGUAL EXCEL IMPORT LOGIC ---
       const downloadTemplate = () => {
-         const ws_data = [
-           ['Name', 'Wage', 'Transport', 'Shift', 'Period 1 Amount', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name'],
-           ['John Doe', '500000', '50000', 'day', '250000', '2', '010101010', '123456', 'Robert', 'Mary']
-         ];
+         const isAr = lang === 'ar';
+         const headers = isAr ? 
+            ['الاسم', 'الراتب', 'المواصلات', 'الوردية', 'مبلغ الفترة الأولى', 'فترة المواصلات', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] :
+            ['Name', 'Wage', 'Transport', 'Shift', 'Period 1 Amount', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name'];
+            
+         const sample = isAr ? 
+            ['أحمد', '500000', '50000', 'صباحي', '250000', '2', '010101010', '123456', 'محمود', 'فاطمة'] :
+            ['John Doe', '500000', '50000', 'day', '250000', '2', '010101010', '123456', 'Robert', 'Mary'];
+
+         const ws_data = [headers, sample];
          const ws = XLSX.utils.aoa_to_sheet(ws_data);
          const wb = XLSX.utils.book_new();
          XLSX.utils.book_append_sheet(wb, ws, "Template");
@@ -595,24 +601,31 @@
 
           let count = 0;
           data.forEach(row => {
-            if (!row.Name || !row.Wage) return; 
+            // Support both Arabic and English headers
+            const name = row['Name'] || row['الاسم'];
+            const wage = row['Wage'] || row['الراتب'];
             
-            const shiftVal = (row.Shift && row.Shift.toString().toLowerCase().includes('night')) ? 'night' : 'day';
-            const tPeriod = row['Transport Period'] ? row['Transport Period'].toString().toLowerCase() : '2';
+            if (!name || !wage) return; 
+            
+            const rawShift = (row['Shift'] || row['الوردية'] || '').toString().toLowerCase();
+            const shiftVal = (rawShift.includes('night') || rawShift.includes('مساء') || rawShift.includes('ليل')) ? 'night' : 'day';
+            
+            const rawTPeriod = (row['Transport Period'] || row['فترة المواصلات'] || '2').toString().toLowerCase();
+            const tPeriod = rawTPeriod.includes('1') ? '1' : (rawTPeriod.includes('split') || rawTPeriod.includes('تقسيم') ? 'split' : '2');
             
             const newEmp = {
-              name: row.Name.toString(),
-              monthlyWage: parseFloat(row.Wage) || 0,
-              transportationAllowance: parseFloat(row.Transport) || 0,
+              name: name.toString(),
+              monthlyWage: parseFloat(wage) || 0,
+              transportationAllowance: parseFloat(row['Transport'] || row['المواصلات']) || 0,
               shift: shiftVal,
               joinDate: new Date().toISOString().split('T')[0],
-              nationalId: row['National ID'] ? row['National ID'].toString() : '',
-              socialInsuranceId: row['Insurance ID'] ? row['Insurance ID'].toString() : '',
-              fatherName: row['Father Name'] ? row['Father Name'].toString() : '',
-              motherName: row['Mother Name'] ? row['Mother Name'].toString() : '',
+              nationalId: (row['National ID'] || row['الرقم الوطني'] || '').toString(),
+              socialInsuranceId: (row['Insurance ID'] || row['رقم التأمين'] || '').toString(),
+              fatherName: (row['Father Name'] || row['اسم الأب'] || '').toString(),
+              motherName: (row['Mother Name'] || row['اسم الأم'] || '').toString(),
               sectionId: '', 
-              period1Amount: parseFloat(row['Period 1 Amount']) || 0,
-              transportPeriod: tPeriod === '1' ? '1' : (tPeriod === 'split' ? 'split' : '2'),
+              period1Amount: parseFloat(row['Period 1 Amount'] || row['مبلغ الفترة الأولى']) || 0,
+              transportPeriod: tPeriod,
               isResigned: false
             };
             
