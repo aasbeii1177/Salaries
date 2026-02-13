@@ -225,7 +225,12 @@
       arabicSlip: { en: "Arabic Payslip (DL)", ar: "قسيمة راتب (عربي DL)" },
       bulkImport: { en: "Bulk Import", ar: "استيراد جماعي" },
       downloadTemplate: { en: "Download Template", ar: "تحميل قالب الإكسل" },
-      importExcel: { en: "Import Excel", ar: "رفع ملف إكسل" }
+      importExcel: { en: "Import Excel", ar: "رفع ملف إكسل" },
+      resetData: { en: "Reset Data", ar: "تصفير البيانات" },
+      dangerZone: { en: "Danger Zone", ar: "منطقة الخطر" },
+      wipeAllWorkers: { en: "Wipe All Workers", ar: "حذف جميع العمال" },
+      wipeAllAttendance: { en: "Wipe All Attendance", ar: "حذف جميع سجلات الحضور" },
+      wipeConfirm: { en: "This action is irreversible. Type 'DELETE' to confirm.", ar: "هذا الإجراء لا رجعة فيه. اكتب 'DELETE' للتأكيد." }
     };
 
     // --- 3. HELPER COMPONENT FOR VISUAL NUMBERS ---
@@ -261,7 +266,6 @@
         for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
         const base64Font = window.btoa(binary);
 
-        // DL Size: 110mm x 220mm (Portrait)
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [110, 220] });
         doc.addFileToVFS('Amiri-Regular.ttf', base64Font);
         doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
@@ -366,7 +370,7 @@
              doc.setFontSize(10);
              if (bold) doc.setFont('Amiri', 'bold'); else doc.setFont('Amiri', 'normal');
              doc.text(label, 105, y, { align: 'right' }); 
-             doc.text(value, 5, y, { align: 'left' });   
+             doc.text(value, 5, y, { align: 'left' });    
              doc.setDrawColor(200);
              doc.line(5, y + 2, 105, y + 2); 
              y += rowHeight;
@@ -515,7 +519,7 @@
       );
     };
 
-    const HRDashboard = ({ employees, sections, addEmployee, updateEmployee, resignEmployee, deleteEmployee, addSection, updateSection, deleteSection, attendance, advances, overtime, transportation, loans, pdfConfig, setPdfConfig, bonuses, lockedMonths, lockPeriod, lang, t }) => {
+    const HRDashboard = ({ employees, sections, addEmployee, updateEmployee, resignEmployee, deleteEmployee, addSection, updateSection, deleteSection, attendance, advances, overtime, transportation, loans, pdfConfig, setPdfConfig, bonuses, lockedMonths, toggleMonthLock, lang, t }) => {
       const [formData, setFormData] = React.useState({ name: '', wage: '', transportAllowance: '0', shift: 'day', joinDate: new Date().toISOString().split('T')[0], nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '', dateOfBirth: '', sectionId: '' });
       const [isGenerating, setIsGenerating] = React.useState(false);
       const [searchQuery, setSearchQuery] = React.useState('');
@@ -546,7 +550,9 @@
 
       const recentMonths = React.useMemo(() => {
          const dates = attendance.map(a => a.date);
-         const months = [...new Set([...dates.map(d => d.substring(0, 7)), ...lockedMonths])];
+         // Strip out any '-p1' or '-p2' markers to just get unique 'YYYY-MM' base strings
+         const rawMonths = [...dates.map(d => d.substring(0, 7)), ...lockedMonths.map(l => l.substring(0,7))];
+         const months = [...new Set(rawMonths)];
          const now = new Date();
          const curr = now.toISOString().substring(0,7);
          if(!months.includes(curr)) months.push(curr);
@@ -575,7 +581,7 @@
          const headers = isAr ? 
             ['الاسم', 'الراتب', 'المواصلات', 'الوردية', 'مبلغ الفترة الأولى', 'فترة المواصلات', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] :
             ['Name', 'Wage', 'Transport', 'Shift', 'Period 1 Amount', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name'];
-            
+           
          const sample = isAr ? 
             ['أحمد', '500000', '50000', 'صباحي', '250000', '2', '010101010', '123456', 'محمود', 'فاطمة'] :
             ['John Doe', '500000', '50000', 'day', '250000', '2', '010101010', '123456', 'Robert', 'Mary'];
@@ -601,7 +607,6 @@
 
           let count = 0;
           data.forEach(row => {
-            // Support both Arabic and English headers
             const name = row['Name'] || row['الاسم'];
             const wage = row['Wage'] || row['الراتب'];
             
@@ -668,6 +673,29 @@
          setShowResignModal(false); 
       };
 
+      // DANGER ZONE HANDLER
+      const handleWipeData = async (type) => {
+         const confirmMsg = type === 'employees' ? t('wipeAllWorkers') : t('wipeAllAttendance');
+         if (!confirm(`${t('dangerZone')}: ${confirmMsg}\n\n${t('wipeConfirm')}`)) return;
+         
+         const userInput = prompt("Type 'DELETE' to confirm:");
+         if (userInput !== 'DELETE') return alert("Cancelled.");
+         
+         const collection = type === 'employees' ? 'employees' : 'attendance';
+         const snapshot = await db.collection(collection).get();
+         
+         if (snapshot.empty) return alert("No data to delete.");
+         
+         let count = 0;
+         // Batching not strictly used here to keep file simple, direct loop delete
+         snapshot.docs.forEach(doc => {
+            db.collection(collection).doc(doc.id).delete();
+            count++;
+         });
+         
+         alert(`Deleted ${count} records from ${collection}.`);
+      };
+
       return (
         <div className="max-w-6xl mx-auto space-y-6 pb-20 relative">
           
@@ -677,6 +705,7 @@
             <button onClick={() => setActiveTab('add')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'add' ? 'bg-indigo-600 text-white shadow-lg' : 'text-black hover:text-indigo-600'}`}>{t('add')} / EXCEL</button>
             <button onClick={() => setActiveTab('sections')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'sections' ? 'bg-indigo-600 text-white shadow-lg' : 'text-black hover:text-indigo-600'}`}>{t('sections')}</button>
             <button onClick={() => setActiveTab('periods')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'periods' ? 'bg-indigo-600 text-white shadow-lg' : 'text-black hover:text-indigo-600'}`}>{t('periods')}</button>
+            <button onClick={() => setActiveTab('danger')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'danger' ? 'bg-red-600 text-white shadow-lg' : 'text-red-600 hover:bg-red-50'}`}>⚠️ {t('resetData')}</button>
           </div>
             
           {/* TAB 1: WORKERS LIST */}
@@ -707,9 +736,9 @@
                                     <td className="px-6 py-4 text-center font-black text-black">{emp.monthlyWage.toLocaleString()} {t('syp')}</td>
                                     <td className="px-6 py-4 text-center font-black text-black">
                                       {emp.transportationAllowance > 0 ? (
-                                          <span className="text-green-600">{emp.transportationAllowance.toLocaleString()}</span>
+                                        <span className="text-green-600">{emp.transportationAllowance.toLocaleString()}</span>
                                       ) : (
-                                          <span className="text-red-500 bg-red-50 px-2 py-1 rounded text-[10px] uppercase">{t('missing')}</span>
+                                        <span className="text-red-500 bg-red-50 px-2 py-1 rounded text-[10px] uppercase">{t('missing')}</span>
                                       )}
                                     </td>
                                     <td className="px-6 py-4 text-right flex gap-1 justify-end">
@@ -835,31 +864,57 @@
             </section>
           )}
 
-          {/* TAB 4: PERIODS */}
+          {/* TAB 4: PERIODS WITH DUAL LOCKING */}
           {activeTab === 'periods' && (
              <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 animate-in fade-in">
                 <h3 className="text-xl font-black text-black uppercase mb-6">{t('payrollPeriods')}</h3>
-                <div className="space-y-4">
+                <div className="space-y-6">
                    {recentMonths.map(month => {
-                      const isLocked = lockedMonths.includes(month);
+                      const isP1Locked = lockedMonths.includes(`${month}-p1`) || lockedMonths.includes(month); // fallback for old global locks
+                      const isP2Locked = lockedMonths.includes(`${month}-p2`) || lockedMonths.includes(month);
+
                       return (
-                         <div key={month} className={`flex items-center justify-between p-5 rounded-2xl border-2 ${isLocked ? 'border-indigo-100 bg-indigo-50' : 'border-gray-100 bg-gray-50'}`}>
-                            <div>
-                               <p className="text-lg font-black text-black">{month}</p>
-                               <p className={`text-[10px] font-black uppercase tracking-widest ${isLocked ? 'text-indigo-600' : 'text-gray-500'}`}>{isLocked ? t('closedLocked') : t('openForEdits')}</p>
-                            </div>
-                            {isLocked ? (
-                               <div className="flex gap-2">
-                                  <button onClick={() => { setReportType('pdf'); setTargetReportMonth(month); }} className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow hover:bg-indigo-700 transition-all">{t('generatePdf')}</button>
+                         <div key={month} className="p-5 rounded-2xl border-2 border-gray-100 bg-gray-50 mb-4 space-y-4 shadow-sm hover:shadow-md transition-all">
+                            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                               <p className="text-2xl font-black text-black tracking-tight">{month}</p>
+                               <div className="flex gap-2 flex-wrap justify-center">
+                                  <button onClick={()=>handleExportCSV(month)} className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-green-200 transition-all">{t('exportCsv')}</button>
+                                  <button onClick={() => { setReportType('pdf'); setTargetReportMonth(month); }} className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-200 transition-all">{t('generatePdf')}</button>
                                </div>
-                            ) : (
-                               <button onClick={() => lockPeriod(month)} className="px-6 py-3 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-red-700 transition-all">
-                                  {t('finalizeLock')}
+                            </div>
+                            
+                            {/* DUAL LOCK BUTTONS */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-200 pt-4">
+                               <button onClick={() => toggleMonthLock(`${month}-p1`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP1Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>
+                                  {isP1Locked ? 'P1 Locked 🔒 (Tap to Unlock)' : 'Lock P1 (Days 1-15)'}
                                </button>
-                            )}
+                               <button onClick={() => toggleMonthLock(`${month}-p2`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP2Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>
+                                  {isP2Locked ? 'P2 Locked 🔒 (Tap to Unlock)' : 'Lock P2 (Days 16-31)'}
+                               </button>
+                            </div>
                          </div>
                       );
                    })}
+                </div>
+             </section>
+          )}
+
+          {/* TAB 5: DANGER ZONE (RESET DATA) */}
+          {activeTab === 'danger' && (
+             <section className="bg-red-50 rounded-xl shadow-lg border-2 border-red-200 p-8 animate-in fade-in text-center">
+                <div className="w-16 h-16 bg-red-200 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">⚠️</div>
+                <h3 className="text-2xl font-black text-red-700 uppercase mb-2">{t('dangerZone')}</h3>
+                <p className="text-red-900 font-bold text-sm mb-8">{t('wipeConfirm')}</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
+                        <h4 className="font-black text-black uppercase mb-4">{t('wipeAllWorkers')}</h4>
+                        <button onClick={() => handleWipeData('employees')} className="w-full py-4 bg-red-600 text-white font-black rounded-xl uppercase text-xs tracking-widest hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all">DELETE EMPLOYEES</button>
+                    </div>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
+                        <h4 className="font-black text-black uppercase mb-4">{t('wipeAllAttendance')}</h4>
+                        <button onClick={() => handleWipeData('attendance')} className="w-full py-4 bg-red-600 text-white font-black rounded-xl uppercase text-xs tracking-widest hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all">DELETE ATTENDANCE</button>
+                    </div>
                 </div>
              </section>
           )}
@@ -886,14 +941,14 @@
                 
                 {settlementData && (
                   <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-2 text-left">
-                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Base Wage</span><span className="font-black">{Math.round(settlementData.basePay).toLocaleString()}</span></div>
-                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Overtime</span><span className="font-black text-green-600">+{Math.round(settlementData.overtime).toLocaleString()}</span></div>
-                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Transport</span><span className="font-black text-green-600">+{Math.round(settlementData.transport).toLocaleString()}</span></div>
-                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Bonus</span><span className="font-black text-green-600">+{Math.round(settlementData.bonus).toLocaleString()}</span></div>
-                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Advances</span><span className="font-black text-red-500">-{Math.round(settlementData.advances).toLocaleString()}</span></div>
-                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Loan Deduction</span><span className="font-black text-red-500">-{Math.round(settlementData.loans).toLocaleString()}</span></div>
-                     <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Absence Penalty</span><span className="font-black text-red-500">-{Math.round(settlementData.penalty).toLocaleString()}</span></div>
-                     <div className="flex justify-between border-t border-gray-200 pt-2 mt-2"><span className="text-sm font-black uppercase">Net Pay</span><span className="font-black text-lg text-indigo-600">{Math.round(settlementData.net).toLocaleString()} SYP</span></div>
+                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Base Wage</span><span className="font-black">{Math.round(settlementData.basePay).toLocaleString()}</span></div>
+                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Overtime</span><span className="font-black text-green-600">+{Math.round(settlementData.overtime).toLocaleString()}</span></div>
+                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Transport</span><span className="font-black text-green-600">+{Math.round(settlementData.transport).toLocaleString()}</span></div>
+                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Bonus</span><span className="font-black text-green-600">+{Math.round(settlementData.bonus).toLocaleString()}</span></div>
+                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Advances</span><span className="font-black text-red-500">-{Math.round(settlementData.advances).toLocaleString()}</span></div>
+                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Loan Deduction</span><span className="font-black text-red-500">-{Math.round(settlementData.loans).toLocaleString()}</span></div>
+                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Absence Penalty</span><span className="font-black text-red-500">-{Math.round(settlementData.penalty).toLocaleString()}</span></div>
+                      <div className="flex justify-between border-t border-gray-200 pt-2 mt-2"><span className="text-sm font-black uppercase">Net Pay</span><span className="font-black text-lg text-indigo-600">{Math.round(settlementData.net).toLocaleString()} SYP</span></div>
                   </div>
                 )}
 
@@ -910,9 +965,9 @@
                <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center animate-in fade-in zoom-in duration-200">
                   <h4 className="text-xl font-black mb-6 text-black uppercase tracking-widest">{t('selectReport')}</h4>
                   <div className="space-y-4">
-                     <button onClick={() => handleGeneratePDF('p1')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period1')}</button>
-                     <button onClick={() => handleGeneratePDF('p2')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period2')}</button>
-                     <button onClick={() => handleGeneratePDF('full')} className="w-full py-4 bg-black text-white font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-gray-800 transition-all">{t('fullMonth')}</button>
+                      <button onClick={() => handleGeneratePDF('p1')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period1')}</button>
+                      <button onClick={() => handleGeneratePDF('p2')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period2')}</button>
+                      <button onClick={() => handleGeneratePDF('full')} className="w-full py-4 bg-black text-white font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-gray-800 transition-all">{t('fullMonth')}</button>
                   </div>
                   <button onClick={() => setReportType(null)} className="mt-8 text-gray-400 font-bold text-xs uppercase hover:text-black transition-colors">{t('cancel')}</button>
                </div>
@@ -932,7 +987,12 @@
       const [expandedSections, setExpandedSections] = React.useState({});
       const [editingEntries, setEditingEntries] = React.useState(null);
       
-      const isLocked = lockedMonths.includes(selectedDate.substring(0, 7));
+      // CHECK IF CURRENT SELECTED DATE FALLS IN A LOCKED PERIOD
+      const monthStr = selectedDate.substring(0, 7);
+      const dayNum = parseInt(selectedDate.split('-')[2]);
+      const pStr = dayNum <= 15 ? 'p1' : 'p2';
+      const isLocked = lockedMonths.includes(monthStr) || lockedMonths.includes(`${monthStr}-${pStr}`);
+
       const dailyRecord = attendance.find(a => a.date === selectedDate) || { date: selectedDate, absentEmployeeIds: [] };
       
       const dailyAdvances = advances.filter(a => a.date === selectedDate);
@@ -984,7 +1044,7 @@
       };
 
       const openEditModal = (empId, type) => {
-         if(!canEdit) return;
+         if(!canEdit || isLocked) return;
          setEditingEntries({ empId, type });
       };
 
@@ -1075,34 +1135,34 @@
            </div>
 
            {!isLocked && (activeTab === 'advances' || activeTab === 'overtime') && (
-              <div className="fixed bottom-6 right-6 z-50 animate-bounce-in">
-                 <button onClick={activeTab === 'advances' ? saveAllAdvances : saveAllOvertime} className="bg-black text-white px-8 py-4 rounded-full shadow-2xl font-black uppercase text-xs tracking-widest hover:scale-105 transition-transform flex items-center gap-3">
-                    <span>{t('saveAll')} {activeTab === 'advances' ? t('advances') : t('overtime')}</span>
-                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                 </button>
-              </div>
+             <div className="fixed bottom-6 right-6 z-50 animate-bounce-in">
+                <button onClick={activeTab === 'advances' ? saveAllAdvances : saveAllOvertime} className="bg-black text-white px-8 py-4 rounded-full shadow-2xl font-black uppercase text-xs tracking-widest hover:scale-105 transition-transform flex items-center gap-3">
+                   <span>{t('saveAll')} {activeTab === 'advances' ? t('advances') : t('overtime')}</span>
+                   <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                </button>
+             </div>
            )}
 
            {editingEntries && (
-              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                 <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md p-8 animate-in fade-in zoom-in duration-200">
-                    <div className="flex justify-between items-center mb-6">
-                       <h3 className="text-xl font-black uppercase">{t('editEntries')}</h3>
-                       <button onClick={()=>setEditingEntries(null)} className="text-gray-400 hover:text-black">✕</button>
-                    </div>
-                    <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                       {(editingEntries.type === 'advances' ? dailyAdvances : dailyOvertime)
-                          .filter(x => x.employeeId === editingEntries.empId)
-                          .map(record => (
-                             <div key={record.id} className="flex gap-2 items-center">
-                                <input className="flex-1 p-3 border-2 rounded-xl font-bold bg-gray-50" type="number" min="0" defaultValue={editingEntries.type === 'advances' ? record.amount : record.hours} onBlur={(e) => handleEditSave(record.id, e.target.value)} />
-                                <button onClick={() => handleEditDelete(record.id)} className="bg-red-100 text-red-600 p-3 rounded-xl font-bold">🗑</button>
-                             </div>
-                          ))}
-                    </div>
-                    <button onClick={()=>setEditingEntries(null)} className="w-full mt-6 bg-black text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest">{t('confirm')}</button>
-                 </div>
-              </div>
+             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md p-8 animate-in fade-in zoom-in duration-200">
+                   <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-xl font-black uppercase">{t('editEntries')}</h3>
+                      <button onClick={()=>setEditingEntries(null)} className="text-gray-400 hover:text-black">✕</button>
+                   </div>
+                   <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                      {(editingEntries.type === 'advances' ? dailyAdvances : dailyOvertime)
+                         .filter(x => x.employeeId === editingEntries.empId)
+                         .map(record => (
+                            <div key={record.id} className="flex gap-2 items-center">
+                               <input className="flex-1 p-3 border-2 rounded-xl font-bold bg-gray-50" type="number" min="0" defaultValue={editingEntries.type === 'advances' ? record.amount : record.hours} onBlur={(e) => handleEditSave(record.id, e.target.value)} />
+                               <button onClick={() => handleEditDelete(record.id)} className="bg-red-100 text-red-600 p-3 rounded-xl font-bold">🗑</button>
+                            </div>
+                         ))}
+                   </div>
+                   <button onClick={()=>setEditingEntries(null)} className="w-full mt-6 bg-black text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest">{t('confirm')}</button>
+                </div>
+             </div>
            )}
         </div>
       );
@@ -1246,8 +1306,8 @@
       // Calculate Months for Period List (Ensure locked months appear)
       const periodList = React.useMemo(() => {
          const dates = attendance.map(a => a.date);
-         // Combine attendance months AND explicitly locked months
-         const allMonths = [...new Set([...dates.map(d => d.substring(0, 7)), ...lockedMonths])];
+         const rawMonths = [...dates.map(d => d.substring(0, 7)), ...lockedMonths.map(l => l.substring(0,7))];
+         const allMonths = [...new Set(rawMonths)];
          const now = new Date();
          const curr = now.toISOString().substring(0,7);
          if(!allMonths.includes(curr)) allMonths.push(curr);
@@ -1282,16 +1342,38 @@
               </div>
            )}
 
+           {/* OWNER DASHBOARD: PERIODS TAB (DUAL LOCKS) */}
            {activeOwnerTab === 'periods' && (
               <div className="bg-white rounded-[2rem] shadow-xl border border-gray-50 p-8">
                  <h3 className="text-xl font-black uppercase mb-6">{t('payrollPeriods')}</h3>
-                 <div className="space-y-3">
-                    {periodList.map(m => (
-                       <div key={m} className={`p-4 rounded-2xl border-2 flex items-center justify-between ${lockedMonths.includes(m)?'bg-red-50 border-red-600':'bg-green-50 border-green-600'}`}>
-                          <span className="font-black text-black">{m}</span>
-                          <button onClick={()=>toggleMonthLock(m)} className="w-10 h-10 rounded-xl bg-white border-2 border-black flex items-center justify-center font-bold">{lockedMonths.includes(m)?'L':'U'}</button>
-                       </div>
-                    ))}
+                 <div className="space-y-6">
+                   {periodList.map(month => {
+                      const isP1Locked = lockedMonths.includes(`${month}-p1`) || lockedMonths.includes(month); 
+                      const isP2Locked = lockedMonths.includes(`${month}-p2`) || lockedMonths.includes(month);
+
+                      return (
+                         <div key={month} className="p-5 rounded-2xl border-2 border-gray-100 bg-gray-50 mb-4 space-y-4 shadow-sm hover:shadow-md transition-all">
+                            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                               <p className="text-2xl font-black text-black tracking-tight">{month}</p>
+                               {/* PRINTING REMAINS OPEN TO ALL */}
+                               <div className="flex gap-2 flex-wrap justify-center">
+                                  <button onClick={()=>handleExportCSV(month)} className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-green-200 transition-all">{t('exportCsv')}</button>
+                                  <button onClick={() => { setReportType('pdf'); setTargetReportMonth(month); }} className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-200 transition-all">{t('generatePdf')}</button>
+                               </div>
+                            </div>
+                            
+                            {/* DUAL LOCK BUTTONS FOR OWNER */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-200 pt-4">
+                               <button onClick={() => toggleMonthLock(`${month}-p1`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP1Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>
+                                  {isP1Locked ? 'P1 Locked 🔒 (Tap to Unlock)' : 'Lock P1 (Days 1-15)'}
+                               </button>
+                               <button onClick={() => toggleMonthLock(`${month}-p2`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP2Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>
+                                  {isP2Locked ? 'P2 Locked 🔒 (Tap to Unlock)' : 'Lock P2 (Days 16-31)'}
+                               </button>
+                            </div>
+                         </div>
+                      );
+                   })}
                  </div>
               </div>
            )}
@@ -1301,44 +1383,44 @@
                  <div className="bg-white rounded-[2rem] shadow-xl p-8">
                     <h3 className="text-xl font-black uppercase mb-6">{t('bonusEngine')}</h3>
                     <form onSubmit={handleDistributeBonus} className="space-y-4">
-                        {/* Target Selection */}
-                        <div>
-                           <label className="block text-[10px] font-black uppercase mb-2">{t('target')}</label>
-                           <div className="flex bg-gray-100 p-1 rounded-xl">
-                              <button type="button" onClick={()=>setBonusTarget('individual')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusTarget==='individual'?'bg-white shadow text-black':'text-gray-400'}`}>{t('individual')}</button>
-                              <button type="button" onClick={()=>setBonusTarget('all')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusTarget==='all'?'bg-white shadow text-indigo-600':'text-gray-400'}`}>{t('allActive')}</button>
-                           </div>
-                        </div>
+                       {/* Target Selection */}
+                       <div>
+                          <label className="block text-[10px] font-black uppercase mb-2">{t('target')}</label>
+                          <div className="flex bg-gray-100 p-1 rounded-xl">
+                             <button type="button" onClick={()=>setBonusTarget('individual')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusTarget==='individual'?'bg-white shadow text-black':'text-gray-400'}`}>{t('individual')}</button>
+                             <button type="button" onClick={()=>setBonusTarget('all')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusTarget==='all'?'bg-white shadow text-indigo-600':'text-gray-400'}`}>{t('allActive')}</button>
+                          </div>
+                       </div>
 
-                        {/* Distribution Type */}
-                        <div>
-                           <label className="block text-[10px] font-black uppercase mb-2">{t('distType')}</label>
-                           <div className="flex bg-gray-100 p-1 rounded-xl">
-                              <button type="button" onClick={()=>setBonusType('fixed')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='fixed'?'bg-white shadow text-black':'text-gray-400'}`}>{t('fixedAmount')}</button>
-                              <button type="button" onClick={()=>setBonusType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='percent'?'bg-white shadow text-indigo-600':'text-gray-400'}`}>{t('percentWage')}</button>
-                           </div>
-                        </div>
-                        
-                        {/* Bonus Period Selector */}
-                        <div>
-                           <label className="block text-[10px] font-black uppercase mb-2">Pay Period</label>
-                           <select className={inputClass} value={bonusPeriod} onChange={e=>setBonusPeriod(e.target.value)}>
-                              <option value="1">Period 1 (1st-15th)</option>
-                              <option value="2">Period 2 (16th-End)</option>
-                           </select>
-                        </div>
+                       {/* Distribution Type */}
+                       <div>
+                          <label className="block text-[10px] font-black uppercase mb-2">{t('distType')}</label>
+                          <div className="flex bg-gray-100 p-1 rounded-xl">
+                             <button type="button" onClick={()=>setBonusType('fixed')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='fixed'?'bg-white shadow text-black':'text-gray-400'}`}>{t('fixedAmount')}</button>
+                             <button type="button" onClick={()=>setBonusType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='percent'?'bg-white shadow text-indigo-600':'text-gray-400'}`}>{t('percentWage')}</button>
+                          </div>
+                       </div>
+                       
+                       {/* Bonus Period Selector */}
+                       <div>
+                          <label className="block text-[10px] font-black uppercase mb-2">Pay Period</label>
+                          <select className={inputClass} value={bonusPeriod} onChange={e=>setBonusPeriod(e.target.value)}>
+                             <option value="1">Period 1 (1st-15th)</option>
+                             <option value="2">Period 2 (16th-End)</option>
+                          </select>
+                       </div>
 
-                        {bonusTarget === 'individual' && (
-                           <select className={inputClass} value={selectedBonusEmp} onChange={e=>setSelectedBonusEmp(e.target.value)} required={bonusTarget==='individual'}>
-                              <option value="">Select Employee</option>
-                              {employees.filter(e=>!e.isResigned).map(e=><option key={e.id} value={e.id}>{e.name}</option>)}
-                           </select>
-                        )}
+                       {bonusTarget === 'individual' && (
+                          <select className={inputClass} value={selectedBonusEmp} onChange={e=>setSelectedBonusEmp(e.target.value)} required={bonusTarget==='individual'}>
+                             <option value="">Select Employee</option>
+                             {employees.filter(e=>!e.isResigned).map(e=><option key={e.id} value={e.id}>{e.name}</option>)}
+                          </select>
+                       )}
 
-                        <input className={inputClass} type="number" placeholder={bonusType === 'fixed' ? 'Amount (SYP)' : 'Percentage (%)'} value={bonusValue} onChange={e=>setBonusValue(e.target.value)} required />
-                        <input className={inputClass} placeholder="Reason / Description" value={bonusDesc} onChange={e=>setBonusDesc(e.target.value)} required />
-                        
-                        <button className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-indigo-700 transition-all">{t('distributeCapital')}</button>
+                       <input className={inputClass} type="number" placeholder={bonusType === 'fixed' ? 'Amount (SYP)' : 'Percentage (%)'} value={bonusValue} onChange={e=>setBonusValue(e.target.value)} required />
+                       <input className={inputClass} placeholder="Reason / Description" value={bonusDesc} onChange={e=>setBonusDesc(e.target.value)} required />
+                       
+                       <button className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-indigo-700 transition-all">{t('distributeCapital')}</button>
                     </form>
                  </div>
                  <div className="bg-white rounded-[2rem] shadow-xl p-8 max-h-[500px] overflow-y-auto">
@@ -1405,6 +1487,21 @@
                  </div>
               </div>
            )}
+           
+           {/* MODALS */}
+           {reportType && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+               <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center animate-in fade-in zoom-in duration-200">
+                  <h4 className="text-xl font-black mb-6 text-black uppercase tracking-widest">{t('selectReport')}</h4>
+                  <div className="space-y-4">
+                      <button onClick={() => { setReportType(null); /* logic to trigger gen */ }} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period1')}</button>
+                      <button onClick={() => { setReportType(null); }} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period2')}</button>
+                      <button onClick={() => { setReportType(null); }} className="w-full py-4 bg-black text-white font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-gray-800 transition-all">{t('fullMonth')}</button>
+                  </div>
+                  <button onClick={() => setReportType(null)} className="mt-8 text-gray-400 font-bold text-xs uppercase hover:text-black transition-colors">{t('cancel')}</button>
+               </div>
+            </div>
+          )}
         </div>
       );
     };
@@ -1479,12 +1576,20 @@
 
       if (!currentUser) return <Login onLogin={setCurrentUser} users={users} lang={lang} t={t} toggleLanguage={toggleLanguage} />;
 
+      // LOCKING FUNCTION SHARED ACROSS DASHBOARDS
+      const handleToggleMonthLock = (lockKey) => {
+         const newLocks = lockedMonths.includes(lockKey) 
+             ? lockedMonths.filter(x => x !== lockKey) 
+             : [...lockedMonths, lockKey];
+         db.collection('meta').doc('locks').set({months: newLocks}); 
+      };
+
       const renderDashboard = () => {
-         // FIX: Pass config as BOTH 'pdfConfig' (for HR) and 'config' (for Owner/Manager) to prevent crashes
          const props = { 
             employees, sections, attendance, advances, bonuses, overtime, transportation, loans, 
             pdfConfig, config: pdfConfig, 
-            lockedMonths, lang, t 
+            lockedMonths, lang, t,
+            toggleMonthLock: handleToggleMonthLock // Passed strictly down
          };
          
          if (currentUser.role === 'owner') return <OwnerDashboard {...props} currentUser={currentUser} users={users} 
@@ -1494,9 +1599,8 @@
             deleteUser={(id)=>db.collection('users').doc(id).delete()} 
             addBonus={(eid, amt, date, desc, period) => db.collection('bonuses').add({employeeId: eid, amount: amt, date, description: desc, period: period})} 
             deleteBonus={(id) => db.collection('bonuses').doc(id).delete()}
-            toggleMonthLock={(m)=>{ const l = lockedMonths.includes(m)?lockedMonths.filter(x=>x!==m):[...lockedMonths,m]; db.collection('meta').doc('locks').set({months:l}); }} 
          />;
-         if (currentUser.role === 'hr') return <HRDashboard {...props} lockPeriod={(m)=>{ if(!lockedMonths.includes(m)) db.collection('meta').doc('locks').set({months:[...lockedMonths, m]}); }} setPdfConfig={(c)=>db.collection('meta').doc('config').set(c)} addEmployee={(d)=>db.collection('employees').add(d)} updateEmployee={(id,d)=>db.collection('employees').doc(id).update(d)} deleteEmployee={(id)=>db.collection('employees').doc(id).delete()} addSection={(n)=>db.collection('sections').add({name:n})} deleteSection={(id)=>db.collection('sections').doc(id).delete()} resignEmployee={(id)=>db.collection('employees').doc(id).update({isResigned:true})} />;
+         if (currentUser.role === 'hr') return <HRDashboard {...props} lockPeriod={handleToggleMonthLock} setPdfConfig={(c)=>db.collection('meta').doc('config').set(c)} addEmployee={(d)=>db.collection('employees').add(d)} updateEmployee={(id,d)=>db.collection('employees').doc(id).update(d)} deleteEmployee={(id)=>db.collection('employees').doc(id).delete()} addSection={(n)=>db.collection('sections').add({name:n})} deleteSection={(id)=>db.collection('sections').doc(id).delete()} resignEmployee={(id)=>db.collection('employees').doc(id).update({isResigned:true})} />;
          // MANAGER ROUTING: Pass canEdit based on sub-role
          if (currentUser.role === 'manager' || currentUser.role === 'data_entry') {
             return <ManagerDashboard {...props} 
