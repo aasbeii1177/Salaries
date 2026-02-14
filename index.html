@@ -579,12 +579,12 @@
       const downloadTemplate = () => {
          const isAr = lang === 'ar';
          const headers = isAr ? 
-            ['الاسم', 'الراتب', 'المواصلات', 'الوردية', 'مبلغ الفترة الأولى', 'فترة المواصلات', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] :
-            ['Name', 'Wage', 'Transport', 'Shift', 'Period 1 Amount', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name'];
-           
+             ['الاسم', 'الراتب', 'المواصلات', 'الوردية', 'مبلغ الفترة الأولى', 'فترة المواصلات', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] :
+             ['Name', 'Wage', 'Transport', 'Shift', 'Period 1 Amount', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name'];
+            
          const sample = isAr ? 
-            ['أحمد', '500000', '50000', 'صباحي', '250000', '2', '010101010', '123456', 'محمود', 'فاطمة'] :
-            ['John Doe', '500000', '50000', 'day', '250000', '2', '010101010', '123456', 'Robert', 'Mary'];
+             ['أحمد', '500000', '50000', 'صباحي', '250000', '2', '010101010', '123456', 'محمود', 'فاطمة'] :
+             ['John Doe', '500000', '50000', 'day', '250000', '2', '010101010', '123456', 'Robert', 'Mary'];
 
          const ws_data = [headers, sample];
          const ws = XLSX.utils.aoa_to_sheet(ws_data);
@@ -1216,295 +1216,337 @@
     };
 
     const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, attendance, employees, bonuses, addBonus, deleteBonus, users, addUser, updateUser, deleteUser, currentUser, lang, t }) => {
-      const [activeOwnerTab, setActiveOwnerTab] = React.useState('logic');
-      const [tempConfig, setTempConfig] = React.useState(config);
-      const [newUserFormData, setNewUserFormData] = React.useState({ username: '', password: '', role: 'hr' });
-      const [editingUserId, setEditingUserId] = React.useState(null);
-      
-      // Bonus Engine State
-      const [bonusType, setBonusType] = React.useState('fixed'); // 'fixed' | 'percent'
-      const [bonusTarget, setBonusTarget] = React.useState('individual'); // 'individual' | 'all'
-      const [selectedBonusEmp, setSelectedBonusEmp] = React.useState('');
-      const [bonusValue, setBonusValue] = React.useState(''); // Amount or Percentage
-      const [bonusDesc, setBonusDesc] = React.useState('');
-      const [bonusPeriod, setBonusPeriod] = React.useState('1'); 
-      
-      // Dictionary State
-      const [dictionarySearch, setDictionarySearch] = React.useState('');
-      const [localDict, setLocalDict] = React.useState({});
-      
-      const inputClass = "w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl font-bold text-black outline-none focus:border-indigo-600 transition-all";
-      const handleSave = () => { setConfig(tempConfig); alert(t('logicSync')); };
-      
-      const handleUserSubmit = (e) => { 
-        e.preventDefault(); 
-        if (editingUserId) {
-          updateUser(editingUserId, newUserFormData);
-          setEditingUserId(null);
-        } else {
-          addUser(newUserFormData); 
+    const [activeOwnerTab, setActiveOwnerTab] = React.useState('logic');
+    const [tempConfig, setTempConfig] = React.useState(config);
+    const [newUserFormData, setNewUserFormData] = React.useState({ username: '', password: '', role: 'hr' });
+    const [editingUserId, setEditingUserId] = React.useState(null);
+    
+    // --- FIX: THESE WERE MISSING AND CAUSED THE WHITE SCREEN ---
+    const [reportType, setReportType] = React.useState(null);
+    const [targetReportMonth, setTargetReportMonth] = React.useState(null);
+    const [isGenerating, setIsGenerating] = React.useState(false);
+    
+    // Bonus Engine State
+    const [bonusType, setBonusType] = React.useState('fixed'); 
+    const [bonusTarget, setBonusTarget] = React.useState('individual'); 
+    const [selectedBonusEmp, setSelectedBonusEmp] = React.useState('');
+    const [bonusValue, setBonusValue] = React.useState(''); 
+    const [bonusDesc, setBonusDesc] = React.useState('');
+    const [bonusPeriod, setBonusPeriod] = React.useState('1'); 
+    
+    // Dictionary State
+    const [dictionarySearch, setDictionarySearch] = React.useState('');
+    const [localDict, setLocalDict] = React.useState({});
+    
+    const inputClass = "w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl font-bold text-black outline-none focus:border-indigo-600 transition-all";
+    
+    const handleSave = () => { setConfig(tempConfig); alert(t('logicSync')); };
+    
+    // --- NEW: SAFE FACTORY RESET FUNCTION ---
+    const handleFactoryReset = async () => {
+        if (!confirm("⚠️ FACTORY RESET WARNING ⚠️\n\nThis will DELETE all:\n- Employees\n- Attendance Logs\n- Advances\n- Loans\n- Overtime\n- Bonuses\n\nSystem Users and Logic Settings will be KEPT.\n\nAre you sure?")) return;
+        
+        const code = prompt("Type 'RESET' to confirm:");
+        if (code !== 'RESET') return alert("Cancelled.");
+
+        // Helper to delete all docs in a collection
+        const deleteCollection = async (col) => {
+            const snap = await db.collection(col).get();
+            const batch = db.batch();
+            snap.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+        };
+
+        try {
+            await deleteCollection('employees');
+            await deleteCollection('attendance');
+            await deleteCollection('advances');
+            await deleteCollection('loans');
+            await deleteCollection('overtime');
+            await deleteCollection('bonuses');
+            await deleteCollection('transportation');
+            alert("✅ Factory Reset Complete. System cleaned.");
+        } catch (err) {
+            alert("Error during reset: " + err.message);
         }
-        setNewUserFormData({ username: '', password: '', role: 'hr' }); 
-      };
+    };
 
-      const startEditUser = (user) => {
-        setEditingUserId(user.id);
-        setNewUserFormData({ username: user.username, password: user.password, role: user.role });
-      };
+    // Placeholder CSV Export
+    const handleExportCSV = (month) => {
+        alert("CSV feature coming soon.");
+    };
 
-      const cancelEditUser = () => {
-        setEditingUserId(null);
-        setNewUserFormData({ username: '', password: '', role: 'hr' });
-      };
-      
-      const handleDistributeBonus = (e) => {
-        e.preventDefault();
-        const date = new Date().toISOString().split('T')[0];
-        const val = parseFloat(bonusValue);
-        if (!val || !bonusDesc) return;
-
-        if (bonusTarget === 'all') {
-          const activeEmps = employees.filter(e => !e.isResigned);
-          activeEmps.forEach(emp => {
-             const amount = bonusType === 'percent' ? (emp.monthlyWage * val / 100) : val;
-             addBonus(emp.id, amount, date, bonusDesc, bonusPeriod); 
-          });
-          alert(`Distributed bonus to ${activeEmps.length} employees.`);
-        } else {
-           if(!selectedBonusEmp) return;
-           const emp = employees.find(e => e.id === selectedBonusEmp);
-           if(emp) {
-              const amount = bonusType === 'percent' ? (emp.monthlyWage * val / 100) : val;
-              addBonus(emp.id, amount, date, bonusDesc, bonusPeriod); 
-           }
-        }
-        setBonusValue('');
-        setBonusDesc('');
-      };
-      
-      // New: Save Dictionary
-      const saveDictionary = () => {
-         db.collection('meta').doc('translations').set(localDict, { merge: true });
-         alert(t('logicSync'));
-      };
-
-      // Backup Data Function
-      const handleBackup = async () => {
-         const collections = ['users', 'employees', 'sections', 'attendance', 'advances', 'bonuses', 'overtime', 'transportation', 'loans', 'meta'];
-         const backup = {};
-         for (const col of collections) {
-             const snap = await db.collection(col).get();
-             backup[col] = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+    // PDF Generation Handler (Requires the global generateAllPayslips function)
+    const handleGeneratePDF = async (type) => { 
+         setIsGenerating(true); 
+         try {
+            await generateAllPayslips(targetReportMonth, type, employees.filter(e=>!e.isResigned), attendance, advances, overtime, loans, transportation, config, sections, bonuses); 
+         } catch(e) {
+             console.log("PDF Error", e);
          }
-         const blob = new Blob([JSON.stringify(backup, null, 2)], {type : 'application/json'});
-         const link = document.createElement('a');
-         link.href = URL.createObjectURL(blob);
-         link.download = `UNISALARIES_BACKUP_${new Date().toISOString().split('T')[0]}.json`;
-         link.click();
-      };
+         setIsGenerating(false); 
+         setReportType(null); 
+    };
+    
+    const handleUserSubmit = (e) => { 
+      e.preventDefault(); 
+      if (editingUserId) {
+        updateUser(editingUserId, newUserFormData);
+        setEditingUserId(null);
+      } else {
+        addUser(newUserFormData); 
+      }
+      setNewUserFormData({ username: '', password: '', role: 'hr' }); 
+    };
 
-      // Calculate Months for Period List (Ensure locked months appear)
-      const periodList = React.useMemo(() => {
-         const dates = attendance.map(a => a.date);
-         const rawMonths = [...dates.map(d => d.substring(0, 7)), ...lockedMonths.map(l => l.substring(0,7))];
-         const allMonths = [...new Set(rawMonths)];
-         const now = new Date();
-         const curr = now.toISOString().substring(0,7);
-         if(!allMonths.includes(curr)) allMonths.push(curr);
-         return allMonths.sort().reverse();
-      }, [attendance, lockedMonths]);
+    const startEditUser = (user) => {
+      setEditingUserId(user.id);
+      setNewUserFormData({ username: user.username, password: user.password, role: user.role });
+    };
 
-      return (
-        <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
-           <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <h2 className="text-4xl font-black text-black uppercase">{t('strategicControl')}</h2>
-              <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-gray-100 flex-wrap items-center gap-2">
-                 <button onClick={handleBackup} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors border border-orange-200">{t('backupData')}</button>
-                 {['logic','periods','bonuses','users', 'dictionary'].map(tab => <button key={tab} onClick={() => setActiveOwnerTab(tab)} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeOwnerTab === tab ? 'bg-indigo-600 text-white shadow-lg' : 'text-black'}`}>{t(tab === 'logic' ? 'systemLogic' : tab === 'users' ? 'userAccess' : tab === 'bonuses' ? 'bonusCenter' : tab)}</button>)}
-              </div>
-           </header>
-           
-           {activeOwnerTab === 'logic' && (
-              <div className="bg-white rounded-[2rem] shadow-xl border border-gray-50 p-8 space-y-6">
-                 <h3 className="text-xl font-black text-black uppercase tracking-tight">{t('systemVariables')}</h3>
-                 <div className="grid grid-cols-2 gap-4">
-                    <div><label className="block text-[10px] font-black uppercase mb-2">{t('daysPerMonth')}</label><input type="number" className={inputClass} value={tempConfig.daysInMonth} onChange={e => setTempConfig({...tempConfig, daysInMonth: +e.target.value})} /></div>
-                    <div><label className="block text-[10px] font-black uppercase mb-2">{t('hoursPerDay')}</label><input type="number" className={inputClass} value={tempConfig.hoursPerDay} onChange={e => setTempConfig({...tempConfig, hoursPerDay: +e.target.value})} /></div>
-                    <div><label className="block text-[10px] font-black uppercase mb-2">{t('otFactor')}</label><input type="number" step="0.1" className={inputClass} value={tempConfig.otMultiplier} onChange={e => setTempConfig({...tempConfig, otMultiplier: +e.target.value})} /></div>
-                    <div><label className="block text-[10px] font-black uppercase mb-2">{t('nightMultiplier')}</label><input type="number" step="0.1" className={inputClass} value={tempConfig.nightShiftMultiplier} onChange={e => setTempConfig({...tempConfig, nightShiftMultiplier: +e.target.value})} /></div>
-                    <div><label className="block text-[10px] font-black uppercase mb-2 text-red-600">{t('absencePenalty')}</label><input type="number" step="0.1" className={inputClass} value={tempConfig.absentDeductionFactor} onChange={e => setTempConfig({...tempConfig, absentDeductionFactor: +e.target.value})} /></div>
-                    
-                    {/* NEW INPUTS FOR PERIOD CALCULATIONS */}
-                    <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-600">{t('overtimePeriod')}</label><input type="number" className={inputClass} value={tempConfig.overtimePeriod || 208} onChange={e => setTempConfig({...tempConfig, overtimePeriod: +e.target.value})} /></div>
-                    <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-600">{t('absencePeriod')}</label><input type="number" className={inputClass} value={tempConfig.absencePeriod || 26} onChange={e => setTempConfig({...tempConfig, absencePeriod: +e.target.value})} /></div>
-                 </div>
-                 <button onClick={handleSave} className="w-full bg-black text-white font-black py-4 rounded-2xl shadow-xl uppercase text-[10px] tracking-widest">{t('commitLogic')}</button>
-              </div>
-           )}
+    const cancelEditUser = () => {
+      setEditingUserId(null);
+      setNewUserFormData({ username: '', password: '', role: 'hr' });
+    };
+    
+    const handleDistributeBonus = (e) => {
+      e.preventDefault();
+      const date = new Date().toISOString().split('T')[0];
+      const val = parseFloat(bonusValue);
+      if (!val || !bonusDesc) return;
 
-           {/* OWNER DASHBOARD: PERIODS TAB (DUAL LOCKS) */}
-           {activeOwnerTab === 'periods' && (
-              <div className="bg-white rounded-[2rem] shadow-xl border border-gray-50 p-8">
-                 <h3 className="text-xl font-black uppercase mb-6">{t('payrollPeriods')}</h3>
-                 <div className="space-y-6">
-                   {periodList.map(month => {
-                      const isP1Locked = lockedMonths.includes(`${month}-p1`) || lockedMonths.includes(month); 
-                      const isP2Locked = lockedMonths.includes(`${month}-p2`) || lockedMonths.includes(month);
+      if (bonusTarget === 'all') {
+        const activeEmps = employees.filter(e => !e.isResigned);
+        activeEmps.forEach(emp => {
+            const amount = bonusType === 'percent' ? (emp.monthlyWage * val / 100) : val;
+            addBonus(emp.id, amount, date, bonusDesc, bonusPeriod); 
+        });
+        alert(`Distributed bonus to ${activeEmps.length} employees.`);
+      } else {
+          if(!selectedBonusEmp) return;
+          const emp = employees.find(e => e.id === selectedBonusEmp);
+          if(emp) {
+            const amount = bonusType === 'percent' ? (emp.monthlyWage * val / 100) : val;
+            addBonus(emp.id, amount, date, bonusDesc, bonusPeriod); 
+          }
+      }
+      setBonusValue('');
+      setBonusDesc('');
+    };
+    
+    const saveDictionary = () => {
+        db.collection('meta').doc('translations').set(localDict, { merge: true });
+        alert(t('logicSync'));
+    };
 
-                      return (
-                         <div key={month} className="p-5 rounded-2xl border-2 border-gray-100 bg-gray-50 mb-4 space-y-4 shadow-sm hover:shadow-md transition-all">
-                            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                               <p className="text-2xl font-black text-black tracking-tight">{month}</p>
-                               {/* PRINTING REMAINS OPEN TO ALL */}
-                               <div className="flex gap-2 flex-wrap justify-center">
-                                  <button onClick={()=>handleExportCSV(month)} className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-green-200 transition-all">{t('exportCsv')}</button>
-                                  <button onClick={() => { setReportType('pdf'); setTargetReportMonth(month); }} className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-200 transition-all">{t('generatePdf')}</button>
-                               </div>
-                            </div>
-                            
-                            {/* DUAL LOCK BUTTONS FOR OWNER */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-200 pt-4">
-                               <button onClick={() => toggleMonthLock(`${month}-p1`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP1Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>
-                                  {isP1Locked ? 'P1 Locked 🔒 (Tap to Unlock)' : 'Lock P1 (Days 1-15)'}
-                               </button>
-                               <button onClick={() => toggleMonthLock(`${month}-p2`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP2Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>
-                                  {isP2Locked ? 'P2 Locked 🔒 (Tap to Unlock)' : 'Lock P2 (Days 16-31)'}
-                               </button>
-                            </div>
-                         </div>
-                      );
-                   })}
-                 </div>
-              </div>
-           )}
+    const handleBackup = async () => {
+        const collections = ['users', 'employees', 'sections', 'attendance', 'advances', 'bonuses', 'overtime', 'transportation', 'loans', 'meta'];
+        const backup = {};
+        for (const col of collections) {
+            const snap = await db.collection(col).get();
+            backup[col] = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+        }
+        const blob = new Blob([JSON.stringify(backup, null, 2)], {type : 'application/json'});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `UNISALARIES_BACKUP_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+    };
 
-           {activeOwnerTab === 'bonuses' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                 <div className="bg-white rounded-[2rem] shadow-xl p-8">
-                    <h3 className="text-xl font-black uppercase mb-6">{t('bonusEngine')}</h3>
-                    <form onSubmit={handleDistributeBonus} className="space-y-4">
-                       {/* Target Selection */}
-                       <div>
-                          <label className="block text-[10px] font-black uppercase mb-2">{t('target')}</label>
-                          <div className="flex bg-gray-100 p-1 rounded-xl">
-                             <button type="button" onClick={()=>setBonusTarget('individual')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusTarget==='individual'?'bg-white shadow text-black':'text-gray-400'}`}>{t('individual')}</button>
-                             <button type="button" onClick={()=>setBonusTarget('all')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusTarget==='all'?'bg-white shadow text-indigo-600':'text-gray-400'}`}>{t('allActive')}</button>
+    const periodList = React.useMemo(() => {
+        const dates = attendance.map(a => a.date);
+        const rawMonths = [...dates.map(d => d.substring(0, 7)), ...lockedMonths.map(l => l.substring(0,7))];
+        const allMonths = [...new Set(rawMonths)];
+        const now = new Date();
+        const curr = now.toISOString().substring(0,7);
+        if(!allMonths.includes(curr)) allMonths.push(curr);
+        return allMonths.sort().reverse();
+    }, [attendance, lockedMonths]);
+
+    return (
+      <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
+         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <h2 className="text-4xl font-black text-black uppercase">{t('strategicControl')}</h2>
+            <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-gray-100 flex-wrap items-center gap-2">
+               <button onClick={handleFactoryReset} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-600 text-white hover:bg-red-700 transition-colors shadow-lg shadow-red-500/30">⚠️ FACTORY RESET</button>
+               <button onClick={handleBackup} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors border border-orange-200">{t('backupData')}</button>
+               {['logic','periods','bonuses','users', 'dictionary'].map(tab => <button key={tab} onClick={() => setActiveOwnerTab(tab)} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeOwnerTab === tab ? 'bg-indigo-600 text-white shadow-lg' : 'text-black'}`}>{t(tab === 'logic' ? 'systemLogic' : tab === 'users' ? 'userAccess' : tab === 'bonuses' ? 'bonusCenter' : tab)}</button>)}
+            </div>
+         </header>
+         
+         {activeOwnerTab === 'logic' && (
+            <div className="bg-white rounded-[2rem] shadow-xl border border-gray-50 p-8 space-y-6">
+               <h3 className="text-xl font-black text-black uppercase tracking-tight">{t('systemVariables')}</h3>
+               <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-[10px] font-black uppercase mb-2">{t('daysPerMonth')}</label><input type="number" className={inputClass} value={tempConfig.daysInMonth} onChange={e => setTempConfig({...tempConfig, daysInMonth: +e.target.value})} /></div>
+                  <div><label className="block text-[10px] font-black uppercase mb-2">{t('hoursPerDay')}</label><input type="number" className={inputClass} value={tempConfig.hoursPerDay} onChange={e => setTempConfig({...tempConfig, hoursPerDay: +e.target.value})} /></div>
+                  <div><label className="block text-[10px] font-black uppercase mb-2">{t('otFactor')}</label><input type="number" step="0.1" className={inputClass} value={tempConfig.otMultiplier} onChange={e => setTempConfig({...tempConfig, otMultiplier: +e.target.value})} /></div>
+                  <div><label className="block text-[10px] font-black uppercase mb-2">{t('nightMultiplier')}</label><input type="number" step="0.1" className={inputClass} value={tempConfig.nightShiftMultiplier} onChange={e => setTempConfig({...tempConfig, nightShiftMultiplier: +e.target.value})} /></div>
+                  <div><label className="block text-[10px] font-black uppercase mb-2 text-red-600">{t('absencePenalty')}</label><input type="number" step="0.1" className={inputClass} value={tempConfig.absentDeductionFactor} onChange={e => setTempConfig({...tempConfig, absentDeductionFactor: +e.target.value})} /></div>
+                  
+                  <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-600">{t('overtimePeriod')}</label><input type="number" className={inputClass} value={tempConfig.overtimePeriod || 208} onChange={e => setTempConfig({...tempConfig, overtimePeriod: +e.target.value})} /></div>
+                  <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-600">{t('absencePeriod')}</label><input type="number" className={inputClass} value={tempConfig.absencePeriod || 26} onChange={e => setTempConfig({...tempConfig, absencePeriod: +e.target.value})} /></div>
+               </div>
+               <button onClick={handleSave} className="w-full bg-black text-white font-black py-4 rounded-2xl shadow-xl uppercase text-[10px] tracking-widest">{t('commitLogic')}</button>
+            </div>
+         )}
+
+         {activeOwnerTab === 'periods' && (
+            <div className="bg-white rounded-[2rem] shadow-xl border border-gray-50 p-8">
+               <h3 className="text-xl font-black uppercase mb-6">{t('payrollPeriods')}</h3>
+               <div className="space-y-6">
+                 {periodList.map(month => {
+                    const isP1Locked = lockedMonths.includes(`${month}-p1`) || lockedMonths.includes(month); 
+                    const isP2Locked = lockedMonths.includes(`${month}-p2`) || lockedMonths.includes(month);
+
+                    return (
+                       <div key={month} className="p-5 rounded-2xl border-2 border-gray-100 bg-gray-50 mb-4 space-y-4 shadow-sm hover:shadow-md transition-all">
+                          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                             <p className="text-2xl font-black text-black tracking-tight">{month}</p>
+                             <div className="flex gap-2 flex-wrap justify-center">
+                                <button onClick={()=>handleExportCSV(month)} className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-green-200 transition-all">{t('exportCsv')}</button>
+                                <button onClick={() => { setReportType('pdf'); setTargetReportMonth(month); }} className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-200 transition-all">{t('generatePdf')}</button>
+                             </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-200 pt-4">
+                             <button onClick={() => toggleMonthLock(`${month}-p1`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP1Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>
+                                {isP1Locked ? 'P1 Locked 🔒 (Tap to Unlock)' : 'Lock P1 (Days 1-15)'}
+                             </button>
+                             <button onClick={() => toggleMonthLock(`${month}-p2`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP2Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>
+                                {isP2Locked ? 'P2 Locked 🔒 (Tap to Unlock)' : 'Lock P2 (Days 16-31)'}
+                             </button>
                           </div>
                        </div>
-
-                       {/* Distribution Type */}
-                       <div>
-                          <label className="block text-[10px] font-black uppercase mb-2">{t('distType')}</label>
-                          <div className="flex bg-gray-100 p-1 rounded-xl">
-                             <button type="button" onClick={()=>setBonusType('fixed')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='fixed'?'bg-white shadow text-black':'text-gray-400'}`}>{t('fixedAmount')}</button>
-                             <button type="button" onClick={()=>setBonusType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='percent'?'bg-white shadow text-indigo-600':'text-gray-400'}`}>{t('percentWage')}</button>
-                          </div>
-                       </div>
-                       
-                       {/* Bonus Period Selector */}
-                       <div>
-                          <label className="block text-[10px] font-black uppercase mb-2">Pay Period</label>
-                          <select className={inputClass} value={bonusPeriod} onChange={e=>setBonusPeriod(e.target.value)}>
-                             <option value="1">Period 1 (1st-15th)</option>
-                             <option value="2">Period 2 (16th-End)</option>
-                          </select>
-                       </div>
-
-                       {bonusTarget === 'individual' && (
-                          <select className={inputClass} value={selectedBonusEmp} onChange={e=>setSelectedBonusEmp(e.target.value)} required={bonusTarget==='individual'}>
-                             <option value="">Select Employee</option>
-                             {employees.filter(e=>!e.isResigned).map(e=><option key={e.id} value={e.id}>{e.name}</option>)}
-                          </select>
-                       )}
-
-                       <input className={inputClass} type="number" placeholder={bonusType === 'fixed' ? 'Amount (SYP)' : 'Percentage (%)'} value={bonusValue} onChange={e=>setBonusValue(e.target.value)} required />
-                       <input className={inputClass} placeholder="Reason / Description" value={bonusDesc} onChange={e=>setBonusDesc(e.target.value)} required />
-                       
-                       <button className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-indigo-700 transition-all">{t('distributeCapital')}</button>
-                    </form>
-                 </div>
-                 <div className="bg-white rounded-[2rem] shadow-xl p-8 max-h-[500px] overflow-y-auto">
-                    <h3 className="text-xl font-black uppercase mb-6">{t('distributionLogs')}</h3>
-                    {bonuses.length === 0 && <p className="text-center text-gray-400 font-bold text-xs py-10">No records found.</p>}
-                    {bonuses.map(b => (
-                       <div key={b.id} className="flex justify-between items-center p-3 border-b hover:bg-gray-50 transition-colors">
-                          <div><p className="font-black">{employees.find(e=>e.id===b.employeeId)?.name || 'Unknown'}</p><p className="text-[10px] font-bold text-gray-400 uppercase">{b.description} • {b.amount.toLocaleString()} SYP (P{b.period||'?'})</p></div>
-                          <button onClick={()=>deleteBonus(b.id)} className="text-red-500 font-black text-[10px] uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button>
-                       </div>
-                    ))}
-                 </div>
-              </div>
-           )}
-
-           {activeOwnerTab === 'users' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                 <div className="bg-white rounded-[2rem] shadow-xl p-8">
-                    <h3 className="text-xl font-black uppercase mb-6">{t('credentialManagement')}</h3>
-                    {users.map(u => (
-                       <div key={u.id} className="flex justify-between items-center p-4 border-b">
-                          <span className="font-black">{u.username} <span className="bg-indigo-100 px-2 rounded text-xs uppercase text-indigo-600">{u.role}</span></span>
-                          <div className="flex gap-2">
-                             <button onClick={()=>startEditUser(u)} className="text-indigo-600 font-black text-xs uppercase hover:bg-indigo-50 px-2 py-1 rounded">{t('edit')}</button>
-                             {u.id !== currentUser.id && <button onClick={()=>deleteUser(u.id)} className="text-red-600 font-black text-xs uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button>}
-                          </div>
-                       </div>
-                    ))}
-                 </div>
-                 <div className="bg-white rounded-[2rem] shadow-xl p-8 h-fit">
-                    <h3 className="text-xl font-black uppercase mb-6">{editingUserId ? t('updateIdentity') : t('createAccess')}</h3>
-                    <form onSubmit={handleUserSubmit} className="space-y-4">
-                       <input className={inputClass} placeholder={t('username')} value={newUserFormData.username} onChange={e=>setNewUserFormData({...newUserFormData, username:e.target.value})} required />
-                       <input className={inputClass} placeholder={t('secretKey')} value={newUserFormData.password} onChange={e=>setNewUserFormData({...newUserFormData, password:e.target.value})} required />
-                       <select className={inputClass} value={newUserFormData.role} onChange={e=>setNewUserFormData({...newUserFormData, role:e.target.value})}><option value="hr">HR</option><option value="manager">Manager</option><option value="finance">Finance</option><option value="data_entry">Data Entry</option><option value="owner">Owner</option></select>
-                       
-                       <div className="flex gap-2">
-                          {editingUserId && <button type="button" onClick={cancelEditUser} className="flex-1 bg-gray-200 text-black p-4 rounded-xl font-black uppercase text-xs tracking-widest">{t('cancel')}</button>}
-                          <button className="flex-1 bg-black text-white p-4 rounded-xl font-black uppercase text-xs tracking-widest">{editingUserId ? t('commit') : t('authorizeIdentity')}</button>
-                       </div>
-                    </form>
-                 </div>
-              </div>
-           )}
-           
-           {activeOwnerTab === 'dictionary' && (
-              <div className="bg-white rounded-[2rem] shadow-xl p-8">
-                 <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-black uppercase">{t('dictionary')}</h3>
-                    <button onClick={saveDictionary} className="px-6 py-2 bg-black text-white rounded-lg font-black uppercase text-xs tracking-widest">{t('saveDictionary')}</button>
-                 </div>
-                 <input className="w-full mb-6 px-4 py-3 border-2 border-gray-300 rounded-xl font-bold text-black outline-none" placeholder={t('search')} value={dictionarySearch} onChange={e=>setDictionarySearch(e.target.value)} />
-                 <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                    {Object.keys(translations).filter(k => k.toLowerCase().includes(dictionarySearch.toLowerCase()) || translations[k]?.en?.toLowerCase()?.includes(dictionarySearch.toLowerCase())).map(key => {
-                       const currentVal = localDict[key] || translations[key];
-                       return (
-                          <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-xl bg-gray-50">
-                             <div className="flex items-center"><span className="font-mono text-xs font-bold text-gray-500">{key}</span></div>
-                             <input className="px-3 py-2 rounded-lg border font-bold text-sm" value={currentVal.en} onChange={e=>setLocalDict({...localDict, [key]: {...currentVal, en: e.target.value}})} placeholder="English" />
-                             <input className="px-3 py-2 rounded-lg border font-bold text-sm text-right" value={currentVal.ar} onChange={e=>setLocalDict({...localDict, [key]: {...currentVal, ar: e.target.value}})} placeholder="Arabic" />
-                          </div>
-                       );
-                    })}
-                 </div>
-              </div>
-           )}
-           
-           {/* MODALS */}
-           {reportType && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-               <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center animate-in fade-in zoom-in duration-200">
-                  <h4 className="text-xl font-black mb-6 text-black uppercase tracking-widest">{t('selectReport')}</h4>
-                  <div className="space-y-4">
-                      <button onClick={() => { setReportType(null); /* logic to trigger gen */ }} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period1')}</button>
-                      <button onClick={() => { setReportType(null); }} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period2')}</button>
-                      <button onClick={() => { setReportType(null); }} className="w-full py-4 bg-black text-white font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-gray-800 transition-all">{t('fullMonth')}</button>
-                  </div>
-                  <button onClick={() => setReportType(null)} className="mt-8 text-gray-400 font-bold text-xs uppercase hover:text-black transition-colors">{t('cancel')}</button>
+                    );
+                 })}
                </div>
             </div>
-          )}
-        </div>
-      );
-    };
+         )}
+
+         {activeOwnerTab === 'bonuses' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+               <div className="bg-white rounded-[2rem] shadow-xl p-8">
+                  <h3 className="text-xl font-black uppercase mb-6">{t('bonusEngine')}</h3>
+                  <form onSubmit={handleDistributeBonus} className="space-y-4">
+                     <div>
+                        <label className="block text-[10px] font-black uppercase mb-2">{t('target')}</label>
+                        <div className="flex bg-gray-100 p-1 rounded-xl">
+                           <button type="button" onClick={()=>setBonusTarget('individual')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusTarget==='individual'?'bg-white shadow text-black':'text-gray-400'}`}>{t('individual')}</button>
+                           <button type="button" onClick={()=>setBonusTarget('all')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusTarget==='all'?'bg-white shadow text-indigo-600':'text-gray-400'}`}>{t('allActive')}</button>
+                        </div>
+                     </div>
+
+                     <div>
+                        <label className="block text-[10px] font-black uppercase mb-2">{t('distType')}</label>
+                        <div className="flex bg-gray-100 p-1 rounded-xl">
+                           <button type="button" onClick={()=>setBonusType('fixed')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='fixed'?'bg-white shadow text-black':'text-gray-400'}`}>{t('fixedAmount')}</button>
+                           <button type="button" onClick={()=>setBonusType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='percent'?'bg-white shadow text-indigo-600':'text-gray-400'}`}>{t('percentWage')}</button>
+                        </div>
+                     </div>
+                     
+                     <div>
+                        <label className="block text-[10px] font-black uppercase mb-2">Pay Period</label>
+                        <select className={inputClass} value={bonusPeriod} onChange={e=>setBonusPeriod(e.target.value)}>
+                           <option value="1">Period 1 (1st-15th)</option>
+                           <option value="2">Period 2 (16th-End)</option>
+                        </select>
+                     </div>
+
+                     {bonusTarget === 'individual' && (
+                        <select className={inputClass} value={selectedBonusEmp} onChange={e=>setSelectedBonusEmp(e.target.value)} required={bonusTarget==='individual'}>
+                           <option value="">Select Employee</option>
+                           {employees.filter(e=>!e.isResigned).map(e=><option key={e.id} value={e.id}>{e.name}</option>)}
+                        </select>
+                     )}
+
+                     <input className={inputClass} type="number" placeholder={bonusType === 'fixed' ? 'Amount (SYP)' : 'Percentage (%)'} value={bonusValue} onChange={e=>setBonusValue(e.target.value)} required />
+                     <input className={inputClass} placeholder="Reason / Description" value={bonusDesc} onChange={e=>setBonusDesc(e.target.value)} required />
+                     
+                     <button className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-indigo-700 transition-all">{t('distributeCapital')}</button>
+                  </form>
+               </div>
+               <div className="bg-white rounded-[2rem] shadow-xl p-8 max-h-[500px] overflow-y-auto">
+                  <h3 className="text-xl font-black uppercase mb-6">{t('distributionLogs')}</h3>
+                  {bonuses.length === 0 && <p className="text-center text-gray-400 font-bold text-xs py-10">No records found.</p>}
+                  {bonuses.map(b => (
+                     <div key={b.id} className="flex justify-between items-center p-3 border-b hover:bg-gray-50 transition-colors">
+                        <div><p className="font-black">{employees.find(e=>e.id===b.employeeId)?.name || 'Unknown'}</p><p className="text-[10px] font-bold text-gray-400 uppercase">{b.description} • {b.amount.toLocaleString()} SYP (P{b.period||'?'})</p></div>
+                        <button onClick={()=>deleteBonus(b.id)} className="text-red-500 font-black text-[10px] uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button>
+                     </div>
+                  ))}
+               </div>
+            </div>
+         )}
+
+         {activeOwnerTab === 'users' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+               <div className="bg-white rounded-[2rem] shadow-xl p-8">
+                  <h3 className="text-xl font-black uppercase mb-6">{t('credentialManagement')}</h3>
+                  {users.map(u => (
+                     <div key={u.id} className="flex justify-between items-center p-4 border-b">
+                        <span className="font-black">{u.username} <span className="bg-indigo-100 px-2 rounded text-xs uppercase text-indigo-600">{u.role}</span></span>
+                        <div className="flex gap-2">
+                           <button onClick={()=>startEditUser(u)} className="text-indigo-600 font-black text-xs uppercase hover:bg-indigo-50 px-2 py-1 rounded">{t('edit')}</button>
+                           {u.id !== currentUser.id && <button onClick={()=>deleteUser(u.id)} className="text-red-600 font-black text-xs uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button>}
+                        </div>
+                     </div>
+                  ))}
+               </div>
+               <div className="bg-white rounded-[2rem] shadow-xl p-8 h-fit">
+                  <h3 className="text-xl font-black uppercase mb-6">{editingUserId ? t('updateIdentity') : t('createAccess')}</h3>
+                  <form onSubmit={handleUserSubmit} className="space-y-4">
+                     <input className={inputClass} placeholder={t('username')} value={newUserFormData.username} onChange={e=>setNewUserFormData({...newUserFormData, username:e.target.value})} required />
+                     <input className={inputClass} placeholder={t('secretKey')} value={newUserFormData.password} onChange={e=>setNewUserFormData({...newUserFormData, password:e.target.value})} required />
+                     <select className={inputClass} value={newUserFormData.role} onChange={e=>setNewUserFormData({...newUserFormData, role:e.target.value})}><option value="hr">HR</option><option value="manager">Manager</option><option value="finance">Finance</option><option value="data_entry">Data Entry</option><option value="owner">Owner</option></select>
+                     
+                     <div className="flex gap-2">
+                        {editingUserId && <button type="button" onClick={cancelEditUser} className="flex-1 bg-gray-200 text-black p-4 rounded-xl font-black uppercase text-xs tracking-widest">{t('cancel')}</button>}
+                        <button className="flex-1 bg-black text-white p-4 rounded-xl font-black uppercase text-xs tracking-widest">{editingUserId ? t('commit') : t('authorizeIdentity')}</button>
+                     </div>
+                  </form>
+               </div>
+            </div>
+         )}
+         
+         {activeOwnerTab === 'dictionary' && (
+            <div className="bg-white rounded-[2rem] shadow-xl p-8">
+               <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-black uppercase">{t('dictionary')}</h3>
+                  <button onClick={saveDictionary} className="px-6 py-2 bg-black text-white rounded-lg font-black uppercase text-xs tracking-widest">{t('saveDictionary')}</button>
+               </div>
+               <input className="w-full mb-6 px-4 py-3 border-2 border-gray-300 rounded-xl font-bold text-black outline-none" placeholder={t('search')} value={dictionarySearch} onChange={e=>setDictionarySearch(e.target.value)} />
+               <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                  {Object.keys(translations).filter(k => k.toLowerCase().includes(dictionarySearch.toLowerCase()) || translations[k]?.en?.toLowerCase()?.includes(dictionarySearch.toLowerCase())).map(key => {
+                     const currentVal = localDict[key] || translations[key];
+                     return (
+                        <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-xl bg-gray-50">
+                           <div className="flex items-center"><span className="font-mono text-xs font-bold text-gray-500">{key}</span></div>
+                           <input className="px-3 py-2 rounded-lg border font-bold text-sm" value={currentVal.en} onChange={e=>setLocalDict({...localDict, [key]: {...currentVal, en: e.target.value}})} placeholder="English" />
+                           <input className="px-3 py-2 rounded-lg border font-bold text-sm text-right" value={currentVal.ar} onChange={e=>setLocalDict({...localDict, [key]: {...currentVal, ar: e.target.value}})} placeholder="Arabic" />
+                        </div>
+                     );
+                  })}
+               </div>
+            </div>
+         )}
+         
+         {reportType && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+             <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center animate-in fade-in zoom-in duration-200">
+                <h4 className="text-xl font-black mb-6 text-black uppercase tracking-widest">{t('selectReport')}</h4>
+                <div className="space-y-4">
+                    <button onClick={() => handleGeneratePDF('p1')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period1')}</button>
+                    <button onClick={() => handleGeneratePDF('p2')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period2')}</button>
+                    <button onClick={() => handleGeneratePDF('full')} className="w-full py-4 bg-black text-white font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-gray-800 transition-all">{t('fullMonth')}</button>
+                </div>
+                <button onClick={() => setReportType(null)} className="mt-8 text-gray-400 font-bold text-xs uppercase hover:text-black transition-colors">{t('cancel')}</button>
+             </div>
+          </div>
+        )}
+      </div>
+    );
+};
 
     // --- 5. MAIN APP (FIREBASE INTEGRATION) ---
     const App = () => {
@@ -1525,8 +1567,8 @@
 
       // Dynamic Translation Function
       const t = (key) => {
-         const entry = customTranslations[key] || translations[key];
-         return entry?.[lang] || key;
+          const entry = customTranslations[key] || translations[key];
+          return entry?.[lang] || key;
       };
       
       const toggleLanguage = () => { const l = lang === 'en' ? 'ar' : 'en'; setLang(l); localStorage.setItem('sa_lang', l); };
@@ -1553,84 +1595,84 @@
 
       // Auto-Sync Current User if Updated Remotely (e.g. self-edit)
       React.useEffect(() => {
-         // Auto-Login on Load
-         const savedUser = sessionStorage.getItem('sa_user');
-         if (savedUser && !currentUser) {
+          // Auto-Login on Load
+          const savedUser = sessionStorage.getItem('sa_user');
+          if (savedUser && !currentUser) {
             setCurrentUser(JSON.parse(savedUser));
-         }
+          }
 
-         if (currentUser) {
+          if (currentUser) {
             const freshUser = users.find(u => u.id === currentUser.id);
             if (freshUser && JSON.stringify(freshUser) !== JSON.stringify(currentUser)) {
                setCurrentUser(freshUser);
                sessionStorage.setItem('sa_user', JSON.stringify(freshUser));
             }
-         }
+          }
       }, [users, currentUser]);
 
       // Logout Function
       const handleLogout = () => {
-         setCurrentUser(null);
-         sessionStorage.removeItem('sa_user');
+          setCurrentUser(null);
+          sessionStorage.removeItem('sa_user');
       };
 
       if (!currentUser) return <Login onLogin={setCurrentUser} users={users} lang={lang} t={t} toggleLanguage={toggleLanguage} />;
 
       // LOCKING FUNCTION SHARED ACROSS DASHBOARDS
       const handleToggleMonthLock = (lockKey) => {
-         const newLocks = lockedMonths.includes(lockKey) 
-             ? lockedMonths.filter(x => x !== lockKey) 
-             : [...lockedMonths, lockKey];
-         db.collection('meta').doc('locks').set({months: newLocks}); 
+          const newLocks = lockedMonths.includes(lockKey) 
+              ? lockedMonths.filter(x => x !== lockKey) 
+              : [...lockedMonths, lockKey];
+          db.collection('meta').doc('locks').set({months: newLocks}); 
       };
 
       const renderDashboard = () => {
-         const props = { 
+          const props = { 
             employees, sections, attendance, advances, bonuses, overtime, transportation, loans, 
             pdfConfig, config: pdfConfig, 
             lockedMonths, lang, t,
             toggleMonthLock: handleToggleMonthLock // Passed strictly down
-         };
-         
-         if (currentUser.role === 'owner') return <OwnerDashboard {...props} currentUser={currentUser} users={users} 
+          };
+          
+          if (currentUser.role === 'owner') return <OwnerDashboard {...props} currentUser={currentUser} users={users} 
             setConfig={(c)=>db.collection('meta').doc('config').set(c)} 
             addUser={(u)=>db.collection('users').add(u)} 
             updateUser={(id, u)=>db.collection('users').doc(id).update(u)}
             deleteUser={(id)=>db.collection('users').doc(id).delete()} 
             addBonus={(eid, amt, date, desc, period) => db.collection('bonuses').add({employeeId: eid, amount: amt, date, description: desc, period: period})} 
             deleteBonus={(id) => db.collection('bonuses').doc(id).delete()}
-         />;
-         if (currentUser.role === 'hr') return <HRDashboard {...props} lockPeriod={handleToggleMonthLock} setPdfConfig={(c)=>db.collection('meta').doc('config').set(c)} addEmployee={(d)=>db.collection('employees').add(d)} updateEmployee={(id,d)=>db.collection('employees').doc(id).update(d)} deleteEmployee={(id)=>db.collection('employees').doc(id).delete()} addSection={(n)=>db.collection('sections').add({name:n})} deleteSection={(id)=>db.collection('sections').doc(id).delete()} resignEmployee={(id)=>db.collection('employees').doc(id).update({isResigned:true})} />;
-         // MANAGER ROUTING: Pass canEdit based on sub-role
-         if (currentUser.role === 'manager' || currentUser.role === 'data_entry') {
-            return <ManagerDashboard {...props} 
-               canEdit={currentUser.role === 'manager'}
-               updateAttendance={(d, ids) => { const r = attendance.find(a=>a.date===d); if(r) db.collection('attendance').doc(r.id).update({absentEmployeeIds:ids}); else db.collection('attendance').add({date:d, absentEmployeeIds:ids}); }} 
-               addAdvance={(eid, amt, d)=>db.collection('advances').add({employeeId:eid, amount:amt, date:d})} 
-               addOvertime={(eid, hrs, d)=>db.collection('overtime').add({employeeId:eid, hours:hrs, date:d})} 
-               updateAdvance={(id, val)=>db.collection('advances').doc(id).update({amount:val})}
-               updateOvertime={(id, val)=>db.collection('overtime').doc(id).update({hours:val})}
-               deleteAdvance={(id)=>db.collection('advances').doc(id).delete()}
-               deleteOvertime={(id)=>db.collection('overtime').doc(id).delete()}
-            />;
-         }
-         if (currentUser.role === 'finance') return <FinanceDashboard {...props} updateLoan={(eid, tot, pct) => { const l = loans.find(x=>x.employeeId===eid); if(tot<=0 && l) db.collection('loans').doc(l.id).delete(); else if(l) db.collection('loans').doc(l.id).update({totalAmount:tot, deductionPercentage:pct}); else db.collection('loans').add({employeeId:eid, totalAmount:tot, deductionPercentage:pct}); }} />;
-         return <div className="text-center p-10 font-black">{t('unauthorized')}</div>;
+          />;
+          if (currentUser.role === 'hr') return <HRDashboard {...props} lockPeriod={handleToggleMonthLock} setPdfConfig={(c)=>db.collection('meta').doc('config').set(c)} addEmployee={(d)=>db.collection('employees').add(d)} updateEmployee={(id,d)=>db.collection('employees').doc(id).update(d)} deleteEmployee={(id)=>db.collection('employees').doc(id).delete()} addSection={(n)=>db.collection('sections').add({name:n})} deleteSection={(id)=>db.collection('sections').doc(id).delete()} resignEmployee={(id)=>db.collection('employees').doc(id).update({isResigned:true})} />;
+          // MANAGER ROUTING: Pass canEdit based on sub-role
+          if (currentUser.role === 'manager' || currentUser.role === 'data_entry') {
+             return <ManagerDashboard {...props} 
+                canEdit={currentUser.role === 'manager'}
+                updateAttendance={(d, ids) => { const r = attendance.find(a=>a.date===d); if(r) db.collection('attendance').doc(r.id).update({absentEmployeeIds:ids}); else db.collection('attendance').add({date:d, absentEmployeeIds:ids}); }} 
+                addAdvance={(eid, amt, d)=>db.collection('advances').add({employeeId:eid, amount:amt, date:d})} 
+                addOvertime={(eid, hrs, d)=>db.collection('overtime').add({employeeId:eid, hours:hrs, date:d})} 
+                updateAdvance={(id, val)=>db.collection('advances').doc(id).update({amount:val})}
+                updateOvertime={(id, val)=>db.collection('overtime').doc(id).update({hours:val})}
+                deleteAdvance={(id)=>db.collection('advances').doc(id).delete()}
+                deleteOvertime={(id)=>db.collection('overtime').doc(id).delete()}
+             />;
+          }
+          if (currentUser.role === 'finance') return <FinanceDashboard {...props} updateLoan={(eid, tot, pct) => { const l = loans.find(x=>x.employeeId===eid); if(tot<=0 && l) db.collection('loans').doc(l.id).delete(); else if(l) db.collection('loans').doc(l.id).update({totalAmount:tot, deductionPercentage:pct}); else db.collection('loans').add({employeeId:eid, totalAmount:tot, deductionPercentage:pct}); }} />;
+          return <div className="text-center p-10 font-black">{t('unauthorized')}</div>;
       };
 
       return (
-         <div className={`min-h-screen flex flex-col ${lang === 'ar' ? 'font-arabic' : ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-            <header className="bg-white/80 backdrop-blur-md shadow-sm px-6 py-4 flex justify-between items-center border-b border-slate-100 sticky top-0 z-50">
-               <div><h1 className="text-2xl font-black text-indigo-600 tracking-tight">{t('appTitle')}</h1><p className="text-[10px] text-black font-black uppercase tracking-widest opacity-40">{t('subTitle')}</p></div>
-               <div className="flex items-center gap-4">
-                  <button onClick={toggleLanguage} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-black border border-indigo-100 uppercase tracking-widest hover:bg-indigo-100 transition-colors">{lang === 'en' ? 'العربية' : 'English'}</button>
-                  <div className="text-right hidden sm:block"><p className="text-sm font-black text-gray-800">{currentUser.username}</p><p className="text-[10px] uppercase font-black text-indigo-400 tracking-widest">{t(currentUser.role).toUpperCase()}</p></div>
-                  <button onClick={handleLogout} className="px-5 py-2.5 bg-gray-50 hover:bg-red-50 hover:text-red-600 text-gray-500 rounded-2xl text-xs font-black transition-all border border-gray-100 uppercase tracking-widest">{t('signOut')}</button>
-               </div>
-            </header>
-            <main className="flex-1 p-6 max-w-7xl mx-auto w-full animate-in fade-in duration-700">{renderDashboard()}</main>
-            <footer className="bg-white border-t p-6 text-center text-black text-[10px] font-black uppercase tracking-[0.2em]"><p className="mb-1">&copy; {new Date().getFullYear()} {pdfConfig.companyName}</p><p className="opacity-30">Industrial Operations Protocol v3.1</p></footer>
-         </div>
+          <div className={`min-h-screen flex flex-col ${lang === 'ar' ? 'font-arabic' : ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+             <header className="bg-white/80 backdrop-blur-md shadow-sm px-6 py-4 flex justify-between items-center border-b border-slate-100 sticky top-0 z-50">
+                <div><h1 className="text-2xl font-black text-indigo-600 tracking-tight">{t('appTitle')}</h1><p className="text-[10px] text-black font-black uppercase tracking-widest opacity-40">{t('subTitle')}</p></div>
+                <div className="flex items-center gap-4">
+                   <button onClick={toggleLanguage} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-black border border-indigo-100 uppercase tracking-widest hover:bg-indigo-100 transition-colors">{lang === 'en' ? 'العربية' : 'English'}</button>
+                   <div className="text-right hidden sm:block"><p className="text-sm font-black text-gray-800">{currentUser.username}</p><p className="text-[10px] uppercase font-black text-indigo-400 tracking-widest">{t(currentUser.role).toUpperCase()}</p></div>
+                   <button onClick={handleLogout} className="px-5 py-2.5 bg-gray-50 hover:bg-red-50 hover:text-red-600 text-gray-500 rounded-2xl text-xs font-black transition-all border border-gray-100 uppercase tracking-widest">{t('signOut')}</button>
+                </div>
+             </header>
+             <main className="flex-1 p-6 max-w-7xl mx-auto w-full animate-in fade-in duration-700">{renderDashboard()}</main>
+             <footer className="bg-white border-t p-6 text-center text-black text-[10px] font-black uppercase tracking-[0.2em]"><p className="mb-1">&copy; {new Date().getFullYear()} {pdfConfig.companyName}</p><p className="opacity-30">Industrial Operations Protocol v3.1</p></footer>
+          </div>
       );
     };
 
