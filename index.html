@@ -232,7 +232,11 @@
       wipeAllAttendance: { en: "Wipe All Attendance", ar: "حذف جميع سجلات الحضور" },
       wipeConfirm: { en: "This action is irreversible. Type 'DELETE' to confirm.", ar: "هذا الإجراء لا رجعة فيه. اكتب 'DELETE' للتأكيد." },
       viewTotals: { en: "View Totals", ar: "عرض المجاميع" },
-      estimatedPayout: { en: "Estimated Payout", ar: "الرواتب المقدرة" }
+      estimatedPayout: { en: "Estimated Payout", ar: "الرواتب المقدرة" },
+      deductionTiming: { en: "Deduction Timing", ar: "توقيت الخصم" },
+      otPayoutRule: { en: "Overtime Payout Rule", ar: "قاعدة دفع الإضافي" },
+      payAsEarned: { en: "Pay As Earned (By Date)", ar: "الدفع حسب التاريخ (كما استحق)" },
+      payAllP2: { en: "Accumulate & Pay in Period 2", ar: "تجميع ودفع في الفترة الثانية" }
     };
 
     // --- 3. HELPER COMPONENT ---
@@ -259,7 +263,7 @@
 
     // --- 4. SERVICES (PDF & EXCEL & CALCULATIONS) ---
     
-    // NEW: Shared Calculation Logic for Preview & PDF
+    // SHARED CALCULATION LOGIC (Preview + PDF)
     const calculateTotalPayout = (targetMonth, targetPeriod, employees, attendance, advances, overtime, loans, transportation, config, sections, bonuses) => {
         let grandTotal = 0;
         let count = 0;
@@ -277,7 +281,22 @@
 
         const monthAttendance = attendance.filter(a => a.date.startsWith(targetMonth) && (isFull || (isP1 ? parseInt(a.date.split('-')[2]) <= 15 : parseInt(a.date.split('-')[2]) > 15)));
         const monthAdvances = advances.filter(filterByDate);
-        const monthOvertime = overtime.filter(filterByDate);
+        
+        // OVERTIME LOGIC: Global Configuration Check
+        const otRule = config.otPayoutRule || 'earned'; // 'earned' or 'p2_all'
+        let monthOvertime = [];
+        const rawMonthOvertime = overtime.filter(o => o.date.startsWith(targetMonth)); // Get ALL OT for month first
+
+        if (isFull) {
+            monthOvertime = rawMonthOvertime;
+        } else if (otRule === 'p2_all') {
+            if (isP1) monthOvertime = []; // Zero OT in P1 if rule is P2_ALL
+            else monthOvertime = rawMonthOvertime; // All OT in P2
+        } else {
+            // Default 'earned': Filter by date (1-15 or 16-End)
+            monthOvertime = rawMonthOvertime.filter(filterByDate);
+        }
+
         const monthBonuses = bonuses.filter(b => b.date.startsWith(targetMonth));
         const monthTransport = transportation.filter(t => t.date.startsWith(targetMonth));
         
@@ -323,13 +342,24 @@
             const extraTransport = monthTransport.filter(t => t.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
             const totalTransport = fixedTransport + extraTransport;
 
+            // LOAN LOGIC: Per-Loan Configuration Check
             const loan = loans.find(l => l.employeeId === emp.id);
             let loanDeduction = 0;
             if (loan) {
-                const monthlyCut = (loan.totalAmount * (loan.deductionPercentage / 100));
-                if (isFull) loanDeduction = monthlyCut;
-                else if (!isP1) loanDeduction = monthlyCut; 
+                const totalDed = loan.totalAmount * (loan.deductionPercentage / 100);
+                const periodPref = loan.deductionPeriod || '2'; // Default to P2 if not set
+
+                if (isFull) {
+                    loanDeduction = totalDed;
+                } else if (periodPref === 'split') {
+                    loanDeduction = totalDed / 2;
+                } else if (isP1 && periodPref === '1') {
+                    loanDeduction = totalDed;
+                } else if (!isP1 && periodPref === '2') {
+                    loanDeduction = totalDed;
+                }
             }
+            
             const totalAdvances = monthAdvances.filter(a => a.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
 
             const totalEarnings = wageForPeriod + overtimePay + totalTransport + empBonus;
@@ -371,11 +401,24 @@
 
         const monthAttendance = attendance.filter(a => a.date.startsWith(targetMonth) && (isFull || (isP1 ? parseInt(a.date.split('-')[2]) <= 15 : parseInt(a.date.split('-')[2]) > 15)));
         const monthAdvances = advances.filter(filterByDate);
-        const monthOvertime = overtime.filter(filterByDate);
+        
+        // --- OVERTIME LOGIC (Matched with Calculation Engine) ---
+        const otRule = config.otPayoutRule || 'earned'; 
+        let monthOvertime = [];
+        const rawMonthOvertime = overtime.filter(o => o.date.startsWith(targetMonth));
+
+        if (isFull) {
+            monthOvertime = rawMonthOvertime;
+        } else if (otRule === 'p2_all') {
+            if (isP1) monthOvertime = [];
+            else monthOvertime = rawMonthOvertime;
+        } else {
+            monthOvertime = rawMonthOvertime.filter(filterByDate);
+        }
+
         const monthBonuses = bonuses.filter(b => b.date.startsWith(targetMonth));
         const monthTransport = transportation.filter(t => t.date.startsWith(targetMonth));
-        const totalPotentialDays = monthAttendance.length || 0;
-
+        
         const absDivisor = config.absencePeriod || config.daysInMonth;
         const otDivisor = config.overtimePeriod || (config.daysInMonth * config.hoursPerDay);
 
@@ -406,7 +449,7 @@
 
           const absenceRecords = monthAttendance.filter(a => a.absentEmployeeIds.includes(emp.id));
           const daysAbsent = absenceRecords.length;
-          const daysPresent = Math.max(0, totalPotentialDays - daysAbsent);
+          const daysPresent = Math.max(0, 30 - daysAbsent); // Using standard 30 for view
           const dailyRateAbsence = totalWage / absDivisor; 
           const penaltyRate = dailyRateAbsence * config.absentDeductionFactor;
           const totalAbsenceDeduction = daysAbsent * penaltyRate;
@@ -425,42 +468,59 @@
           const extraTransport = monthTransport.filter(t => t.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
           const totalTransport = fixedTransport + extraTransport;
 
+          // --- LOAN LOGIC (Matched with Calculation Engine) ---
           const loan = loans.find(l => l.employeeId === emp.id);
           let loanDeduction = 0;
           let loanBalance = 0;
           let loanRemaining = 0;
           if (loan) {
              loanBalance = loan.totalAmount;
-             const monthlyCut = (loan.totalAmount * (loan.deductionPercentage / 100));
-             if (isFull) loanDeduction = monthlyCut;
-             else if (!isP1) loanDeduction = monthlyCut; 
+             const totalDed = loan.totalAmount * (loan.deductionPercentage / 100);
+             const periodPref = loan.deductionPeriod || '2'; 
+
+             if (isFull) {
+                 loanDeduction = totalDed;
+             } else if (periodPref === 'split') {
+                 loanDeduction = totalDed / 2;
+             } else if (isP1 && periodPref === '1') {
+                 loanDeduction = totalDed;
+             } else if (!isP1 && periodPref === '2') {
+                 loanDeduction = totalDed;
+             }
              loanRemaining = loanBalance - loanDeduction;
           }
+          
           const totalAdvances = monthAdvances.filter(a => a.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
 
           const totalEarnings = wageForPeriod + overtimePay + totalTransport + empBonus;
           const totalDeductions = totalAdvances + loanDeduction + totalAbsenceDeduction;
           const netSalary = Math.max(0, totalEarnings - totalDeductions);
 
+          // --- DRAWING SETTINGS ---
+          const leftMargin = 10;
+          const rightMargin = 100;
+          
           doc.setFillColor(240, 240, 240);
           doc.rect(0, 0, 110, 25, 'F');
+          
           doc.setFontSize(14);
           doc.setTextColor(0, 0, 0);
           doc.setFont('Amiri', 'normal'); 
-          doc.text(sectionName, 105, 10, { align: 'right' }); 
+          doc.text(sectionName, rightMargin, 10, { align: 'right' }); 
+          
           doc.setFontSize(10);
-          doc.text(targetMonth, 10, 10, { align: 'left' }); 
+          doc.text(targetMonth, leftMargin, 10, { align: 'left' }); 
 
           let y = 35;
-          const rowHeight = 7;
+          const rowHeight = 6; 
 
           const drawRow = (label, value, bold = false) => {
-             doc.setFontSize(10);
+             doc.setFontSize(9); 
              doc.setFont('Amiri', 'normal'); 
-             doc.text(label, 105, y, { align: 'right' }); 
-             doc.text(value, 5, y, { align: 'left' });    
+             doc.text(label, rightMargin, y, { align: 'right' }); 
+             doc.text(value, leftMargin, y, { align: 'left' });    
              doc.setDrawColor(200);
-             doc.line(5, y + 2, 105, y + 2); 
+             doc.line(leftMargin, y + 2, rightMargin, y + 2); 
              y += rowHeight;
           };
 
@@ -469,7 +529,7 @@
           drawRow("الوظيفة", "عامل"); 
           drawRow("الراتب المقطوع", Math.round(totalWage).toLocaleString());
           drawRow("فرق الليل", Math.round(nightDiff).toLocaleString());
-          drawRow("عدد أيام الدوام", daysPresent.toString());
+          // drawRow("عدد أيام الدوام", daysPresent.toString()); // Hidden to save space if needed
           drawRow("أجر اليوم الواحد", Math.round(dailyRateAbsence).toLocaleString());
           drawRow("عدد أيام الغياب", daysAbsent.toString());
           drawRow("خصم يوم الغياب", Math.round(penaltyRate).toLocaleString());
@@ -488,12 +548,12 @@
 
           y += 5;
           doc.setFillColor(0, 0, 0);
-          doc.rect(5, y - 5, 100, 12, 'F');
+          doc.rect(leftMargin, y - 5, (rightMargin - leftMargin), 12, 'F');
           doc.setTextColor(255, 255, 255);
           doc.setFontSize(12);
           doc.setFont('Amiri', 'normal'); 
-          doc.text("الصافي للدفع", 100, y + 2, { align: 'right' });
-          doc.text(`${Math.round(netSalary).toLocaleString()} ل.س`, 10, y + 2, { align: 'left' });
+          doc.text("الصافي للدفع", rightMargin - 2, y + 2, { align: 'right' });
+          doc.text(`${Math.round(netSalary).toLocaleString()} ل.س`, leftMargin + 2, y + 2, { align: 'left' });
 
           doc.setTextColor(0); 
         });
@@ -965,7 +1025,7 @@
                             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                                <p className="text-2xl font-black text-black tracking-tight">{month}</p>
                                <div className="flex gap-2 flex-wrap justify-center">
-                                  {/* NEW: VIEW TOTALS BUTTON */}
+                                  {/* VIEW TOTALS BUTTON */}
                                   <button onClick={()=>handleViewTotals(month)} className="px-4 py-2 bg-amber-100 text-amber-800 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-200 transition-all flex items-center gap-1">💰 {t('viewTotals')}</button>
                                   
                                   <button onClick={()=>handleExportCSV(month)} className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-green-200 transition-all">{t('exportCsv')}</button>
@@ -1318,8 +1378,11 @@
       const [loanTarget, setLoanTarget] = React.useState(null);
       const [loanAmount, setLoanAmount] = React.useState('');
       const [loanPercent, setLoanPercent] = React.useState('10');
+      const [loanPeriod, setLoanPeriod] = React.useState('2'); // NEW STATE
+
       const activeEmployees = employees.filter(emp => !emp.isResigned && emp.name.toLowerCase().includes(searchQuery.toLowerCase()));
-      const handleSaveLoan = () => { if (loanTarget) { updateLoan(loanTarget.id, parseFloat(loanAmount), parseFloat(loanPercent)); setLoanTarget(null); }};
+      // UPDATED: Now saves deductionPeriod
+      const handleSaveLoan = () => { if (loanTarget) { updateLoan(loanTarget.id, parseFloat(loanAmount), parseFloat(loanPercent), loanPeriod); setLoanTarget(null); }};
 
       return (
          <div className="space-y-8 max-w-7xl mx-auto pb-12">
@@ -1337,7 +1400,7 @@
                            <tr key={emp.id} className="hover:bg-indigo-50/30">
                               <td className="px-8 py-6 font-black text-black">{emp.name}</td>
                               <td className="px-8 py-6 text-center">{loan ? `${loan.totalAmount.toLocaleString()} SYP` : '-'}</td>
-                              <td className="px-8 py-6 text-right"><button onClick={() => { setLoanTarget(emp); setLoanAmount(loan?.totalAmount||''); setLoanPercent(loan?.deductionPercentage||'10'); }} className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest ${loan ? 'bg-white text-black border-2 border-black' : 'bg-indigo-600 text-white'}`}>{loan ? t('editContract') : t('issueLoan')}</button></td>
+                              <td className="px-8 py-6 text-right"><button onClick={() => { setLoanTarget(emp); setLoanAmount(loan?.totalAmount||''); setLoanPercent(loan?.deductionPercentage||'10'); setLoanPeriod(loan?.deductionPeriod||'2'); }} className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest ${loan ? 'bg-white text-black border-2 border-black' : 'bg-indigo-600 text-white'}`}>{loan ? t('editContract') : t('issueLoan')}</button></td>
                            </tr>
                         );
                      })}
@@ -1351,6 +1414,17 @@
                      <p className="font-black uppercase text-xs">{t('managingProfile')} <span className="text-indigo-600 underline">{loanTarget.name}</span></p>
                      <div><label className="block text-[10px] font-black uppercase mb-2">{t('total')} ({t('syp')})</label><input type="number" className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-black text-xl text-black" value={loanAmount} onChange={e=>setLoanAmount(e.target.value)} /></div>
                      <div><label className="block text-[10px] font-black uppercase mb-2">{t('recoveryVelocity')} (%)</label><input type="number" className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-black text-xl text-black" value={loanPercent} onChange={e=>setLoanPercent(e.target.value)} /></div>
+                     
+                     {/* NEW LOAN PERIOD SELECTOR */}
+                     <div>
+                        <label className="block text-[10px] font-black uppercase mb-2">{t('deductionTiming')}</label>
+                        <select className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-black text-xl text-black" value={loanPeriod} onChange={e=>setLoanPeriod(e.target.value)}>
+                            <option value="1">{t('period1')}</option>
+                            <option value="2">{t('period2')}</option>
+                            <option value="split">{t('split')}</option>
+                        </select>
+                     </div>
+
                      <div className="flex gap-4"><button onClick={()=>setLoanTarget(null)} className="flex-1 px-4 py-4 bg-gray-100 text-black font-black rounded-2xl uppercase text-[10px]">{t('discard')}</button><button onClick={handleSaveLoan} className="flex-1 px-4 py-4 bg-black text-white font-black rounded-2xl uppercase text-[10px]">{t('saveContract')}</button></div>
                   </div>
                </div>
@@ -1402,9 +1476,9 @@
       
       const handleViewTotals = (month) => {
           const activeEmps = employees.filter(e => !e.isResigned);
-          const p1 = calculateTotalPayout(month, 'p1', activeEmps, attendance, advances, overtime, loans, transportation, config, sections, bonuses);
-          const p2 = calculateTotalPayout(month, 'p2', activeEmps, attendance, advances, overtime, loans, transportation, config, sections, bonuses);
-          const full = calculateTotalPayout(month, 'full', activeEmps, attendance, advances, overtime, loans, transportation, config, sections, bonuses);
+          const p1 = calculateTotalPayout(month, 'p1', activeEmps, attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses);
+          const p2 = calculateTotalPayout(month, 'p2', activeEmps, attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses);
+          const full = calculateTotalPayout(month, 'full', activeEmps, attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses);
           setTotalsData({ month, p1, p2, full });
       };
 
@@ -1562,6 +1636,15 @@
                     <div><label className="block text-[10px] font-black uppercase mb-2 text-red-600">{t('absencePenalty')}</label><input type="number" step="0.1" className={inputClass} value={tempConfig.absentDeductionFactor} onChange={e => setTempConfig({...tempConfig, absentDeductionFactor: +e.target.value})} /></div>
                     <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-600">{t('overtimePeriod')}</label><input type="number" className={inputClass} value={tempConfig.overtimePeriod || 208} onChange={e => setTempConfig({...tempConfig, overtimePeriod: +e.target.value})} /></div>
                     <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-600">{t('absencePeriod')}</label><input type="number" className={inputClass} value={tempConfig.absencePeriod || 26} onChange={e => setTempConfig({...tempConfig, absencePeriod: +e.target.value})} /></div>
+                    
+                    {/* NEW: OVERTIME STRATEGY */}
+                    <div className="col-span-2 border-t pt-4 mt-2">
+                        <label className="block text-[10px] font-black uppercase mb-2 text-indigo-600">{t('otPayoutRule')}</label>
+                        <select className={inputClass} value={tempConfig.otPayoutRule || 'earned'} onChange={e => setTempConfig({...tempConfig, otPayoutRule: e.target.value})}>
+                            <option value="earned">{t('payAsEarned')}</option>
+                            <option value="p2_all">{t('payAllP2')}</option>
+                        </select>
+                    </div>
                  </div>
                  <button onClick={handleSave} className="w-full bg-black text-white font-black py-4 rounded-2xl shadow-xl uppercase text-[10px] tracking-widest">{t('commitLogic')}</button>
               </div>
@@ -1579,12 +1662,12 @@
                             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                                <p className="text-2xl font-black text-black tracking-tight">{month}</p>
                                <div className="flex gap-2 flex-wrap justify-center">
-                                  {/* NEW: VIEW TOTALS BUTTON */}
+                                  {/* VIEW TOTALS BUTTON */}
                                   <button onClick={()=>handleViewTotals(month)} className="px-4 py-2 bg-amber-100 text-amber-800 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-200 transition-all flex items-center gap-1">💰 {t('viewTotals')}</button>
                                   
                                   <button onClick={()=>handleExportCSV(month)} className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-green-200 transition-all">{t('exportCsv')}</button>
                                   <button onClick={() => { setReportType('pdf'); setTargetReportMonth(month); }} className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-200 transition-all">{t('generatePdf')}</button>
-                               </div>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-200 pt-4">
                                <button onClick={() => toggleMonthLock(`${month}-p1`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP1Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>{isP1Locked ? 'P1 Locked 🔒 (Tap to Unlock)' : 'Lock P1 (Days 1-15)'}</button>
@@ -1816,7 +1899,7 @@
                 deleteOvertime={(id)=>db.collection('overtime').doc(id).delete()}
              />;
           }
-          if (currentUser.role === 'finance') return <FinanceDashboard {...props} updateLoan={(eid, tot, pct) => { const l = loans.find(x=>x.employeeId===eid); if(tot<=0 && l) db.collection('loans').doc(l.id).delete(); else if(l) db.collection('loans').doc(l.id).update({totalAmount:tot, deductionPercentage:pct}); else db.collection('loans').add({employeeId:eid, totalAmount:tot, deductionPercentage:pct}); }} />;
+          if (currentUser.role === 'finance') return <FinanceDashboard {...props} updateLoan={(eid, tot, pct, period) => { const l = loans.find(x=>x.employeeId===eid); if(tot<=0 && l) db.collection('loans').doc(l.id).delete(); else if(l) db.collection('loans').doc(l.id).update({totalAmount:tot, deductionPercentage:pct, deductionPeriod: period}); else db.collection('loans').add({employeeId:eid, totalAmount:tot, deductionPercentage:pct, deductionPeriod: period}); }} />;
           return <div className="text-center p-10 font-black">{t('unauthorized')}</div>;
       };
 
