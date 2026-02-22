@@ -29,7 +29,6 @@
     input, select, textarea { color: #000 !important; font-weight: 700 !important; }
     input:focus, select:focus { border-color: #4f46e5 !important; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1) !important; background-color: #fff !important; }
     ::placeholder { color: #6b7280 !important; font-weight: 400 !important; }
-    /* Custom Scrollbar */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -40,7 +39,6 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    // --- 1. FIREBASE INIT ---
     const firebaseConfig = {
       apiKey: "AIzaSyAcnI1SduIdCVNKOZWcdSB2FFrGAkAXf8o",
       authDomain: "unisalaries.firebaseapp.com",
@@ -52,11 +50,10 @@
 
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
-      firebase.firestore().enablePersistence({ synchronizeTabs: true }).catch(err=>{ console.log("Persistence Error:", err); });
+      firebase.firestore().enablePersistence({ synchronizeTabs: true }).catch(err=>console.log(err));
     }
     const db = firebase.firestore();
 
-    // --- 2. TRANSLATIONS ---
     const translations = {
       appTitle: { en: "SalaryMaster", ar: "ماستر الرواتب" },
       subTitle: { en: "Enterprise Workforce Operations", ar: "عمليات القوى العاملة للمؤسسات" },
@@ -73,16 +70,9 @@
       workers: { en: "Worker Ledger", ar: "سجل العمال" },
       sections: { en: "Manage Sections", ar: "إدارة الأقسام" },
       attendance: { en: "Attendance", ar: "التحضير" },
-      attendanceLogs: { en: "Attendance Logs", ar: "سجلات الحضور" },
-      dailyLogs: { en: "Daily Logs", ar: "السجلات اليومية" },
-      payroll: { en: "Payroll", ar: "الرواتب" },
-      userAccess: { en: "User Access", ar: "صلاحيات المستخدمين" },
-      name: { en: "Full Name", ar: "الاسم الكامل" },
-      wage: { en: "Monthly Wage", ar: "الراتب الشهري" },
-      shift: { en: "Shift", ar: "الوردية" },
-      day: { en: "Day", ar: "صباحي" },
-      night: { en: "Night", ar: "مسائي" },
-      joinDate: { en: "Join Date", ar: "تاريخ الانضمام" },
+      periods: { en: "Periods", ar: "الفترات" },
+      resetData: { en: "Reset Data", ar: "تصفير البيانات" },
+      systemVariables: { en: "System Variables", ar: "متغيرات النظام" },
       save: { en: "Save", ar: "حفظ" },
       edit: { en: "Edit", ar: "تعديل" },
       delete: { en: "Delete", ar: "حذف" },
@@ -106,29 +96,14 @@
       exportCsv: { en: "Export Report (Excel)", ar: "تصدير تقرير (إكسل)" },
       strategicControl: { en: "Strategic Control", ar: "التحكم الاستراتيجي" },
       systemLogic: { en: "System Logic", ar: "منطق النظام" },
-      periods: { en: "Periods", ar: "الفترات" },
       bonusCenter: { en: "Bonus Center", ar: "مركز المكافآت" },
       credentialManagement: { en: "Credential Management", ar: "إدارة البيانات" },
       liabilityOversight: { en: "Liability Oversight", ar: "الرقابة المالية" },
       recoveryVelocity: { en: "Recovery Velocity", ar: "سرعة التحصيل" },
-      netEstimate: { en: "Net Estimate", ar: "صافي التقدير" },
       workerDetails: { en: "Worker Information", ar: "بيانات العامل" },
-      section: { en: "Section", ar: "القسم" },
-      nationalId: { en: "National ID", ar: "الرقم الوطني" },
-      insuranceId: { en: "Insurance No.", ar: "رقم التأمين" },
-      fatherName: { en: "Father's Name", ar: "اسم الأب" },
-      motherName: { en: "Mother's Name", ar: "اسم الأم" },
-      dob: { en: "Date of Birth", ar: "تاريخ الميلاد" },
-      syp: { en: "SYP", ar: "ل.س" },
       unassigned: { en: "Unassigned Workers", ar: "عمال غير مصنفين" },
-      noWorkersInSection: { en: "No workers in this section.", ar: "لا يوجد عمال في هذا القسم." },
-      resignWorker: { en: "Resign Worker", ar: "استقالة عامل" },
-      archiveConfirm: { en: "Archive profile for", ar: "أرشفة ملف" },
-      eraseConfirm: { en: "Erase all records for", ar: "مسح جميع سجلات" },
       opsHub: { en: "Daily Operations Hub", ar: "مركز العمليات اليومي" },
       recordingFor: { en: "Recording for", ar: "تسجيل لـ" },
-      opsDate: { en: "Operation Date", ar: "تاريخ العملية" },
-      resetList: { en: "Reset List", ar: "إعادة تعيين القائمة" },
       verified: { en: "Attendance Verified for this Day", ar: "تم التحقق من الحضور لهذا اليوم" },
       notLogged: { en: "Attendance Not Yet Logged", ar: "الحضور لم يسجل بعد" },
       verifiedSub: { en: "Record stored: workers were absent.", ar: "تم الحفظ: العمال كانوا غائبين." },
@@ -137,81 +112,17 @@
       updateLog: { en: "Update Daily Log", ar: "تحديث السجل اليومي" },
       activitySummary: { en: "Activity Summary", ar: "ملخص النشاط" },
       historyProtected: { en: "Payroll History Protected", ar: "سجل الرواتب محمي" },
-      noActivity: { en: "No activity for this date.", ar: "لا يوجد نشاط لهذا التاريخ." },
-      debtLedger: { en: "Workforce Debt Ledger", ar: "سجل ديون العمال" },
-      remainingDebt: { en: "Remaining Debt", ar: "الدين المتبقي" },
-      periodExtras: { en: "Period Extras", ar: "إضافات الفترة" },
       actions: { en: "Actions", ar: "إجراءات" },
-      contractId: { en: "Contract ID", ar: "رقم العقد" },
-      debtFree: { en: "Debt-Free", ar: "بدون ديون" },
       issueLoan: { en: "Issue Loan", ar: "إصدار قرض" },
       editContract: { en: "Edit Contract", ar: "تعديل العقد" },
       logicSync: { en: "Global logic variables successfully synchronized.", ar: "تمت مزامنة متغيرات المنطق العالمية بنجاح." },
-      bonusEngine: { en: "Bonus Distribution Engine", ar: "محرك توزيع المكافآت" },
-      fixedAmount: { en: "Fixed Amount", ar: "مبلغ ثابت" },
-      percentWage: { en: "% of Wage", ar: "نسبة من الراتب" },
-      beneficiaries: { en: "Beneficiaries", ar: "المستفيدين" },
-      distributeCapital: { en: "Distribute Bonus Capital", ar: "توزيع رأس مال المكافآت" },
       unauthorized: { en: "Unauthorized Access Role", ar: "دور وصول غير مصرح به" },
-      logHours: { en: "Log Hours", ar: "تسجيل الساعات" },
-      hrs: { en: "Hrs", ar: "ساعة" },
       daysPerMonth: { en: "Days / Month", ar: "أيام العمل / شهر" },
       hoursPerDay: { en: "Hours / Day", ar: "ساعات العمل / يوم" },
       otFactor: { en: "Overtime Factor (x)", ar: "عامل الإضافي (x)" },
       absencePenalty: { en: "Absence Penalty (x)", ar: "عامل الغياب (x)" },
       nightMultiplier: { en: "Night Shift Multiplier (Premium)", ar: "مضاعف الوردية الليلية" },
-      nightExplainer: { en: "Factor 1.2 = Night workers take 20% extra pay.", ar: "عامل 1.2 يعني زيادة 20% لعمال الليل." },
       commitLogic: { en: "Commit Logic Updates", ar: "تثبيت تحديثات المنطق" },
-      realTimeLogic: { en: "Real-Time Logic Preview", ar: "معاينة المنطق المباشرة" },
-      dayRate: { en: "Day Rate", ar: "أجرة اليوم" },
-      nightRate: { en: "Night Rate", ar: "أجرة الليل" },
-      absenceCut: { en: "Absence Cut", ar: "خصم الغياب" },
-      otPerHour: { en: "OT / Hour", ar: "الإضافي بالساعة" },
-      payrollPeriods: { en: "Payroll Periods", ar: "فترات الرواتب" },
-      lockFinalized: { en: "Lock finalized months to prevent edits", ar: "إغلاق الأشهر المنتهية لمنع التعديل" },
-      closedLocked: { en: "Closed & Locked", ar: "مغلق ومحمي" },
-      openForEdits: { en: "Open for Edits", ar: "مفتوح للتعديل" },
-      quarterlyIncentive: { en: "Quarterly Incentive", ar: "حافز ربع سنوي" },
-      distributionLogs: { en: "Distribution Logs", ar: "سجلات التوزيع" },
-      former: { en: "Former", ar: "سابق" },
-      createAccess: { en: "Create Access", ar: "إنشاء وصول" },
-      updateIdentity: { en: "Update Identity", ar: "تحديث الهوية" },
-      cancelEdit: { en: "Cancel Edit", ar: "إلغاء التعديل" },
-      authorizeIdentity: { en: "Authorize Identity", ar: "تخويل الهوية" },
-      commit: { en: "Commit", ar: "تثبيت" },
-      operationalRole: { en: "Operational Role", ar: "الدور العملياتي" },
-      secretKey: { en: "Secret Key", ar: "كلمة السر" },
-      liabilityContract: { en: "Liability Contract", ar: "عقد التزام" },
-      managingProfile: { en: "Managing profile for", ar: "إدارة ملف" },
-      impactPerCycle: { en: "Impact Per Cycle", ar: "التأثير لكل دورة" },
-      discard: { en: "Discard", ar: "تجاهل" },
-      saveContract: { en: "Save Contract", ar: "حفظ العقد" },
-      outstandingPortfolio: { en: "Outstanding Portfolio Value", ar: "إجمالي قيمة القروض" },
-      activeDebtors: { en: "Active Debtors", ar: "المدينون النشطون" },
-      monthlyRecovery: { en: "Monthly Recovery Projection", ar: "توقع التحصيل الشهري" },
-      debtLedgerTitle: { en: "Workforce Debt Ledger", ar: "سجل ديون القوى العاملة" },
-      employeeInfo: { en: "Employee Info", ar: "معلومات الموظف" },
-      systemVariables: { en: "System Variables", ar: "متغيرات النظام" },
-      allActive: { en: "All Active Employees", ar: "جميع الموظفين النشطين" },
-      individual: { en: "Individual", ar: "فردي" },
-      target: { en: "Target", ar: "الهدف" },
-      distType: { en: "Distribution Type", ar: "نوع التوزيع" },
-      saveAll: { en: "Save All", ar: "حفظ الكل" },
-      logged: { en: "Logged", ar: "مسجل" },
-      finalizeLock: { en: "Finalize & Lock", ar: "إغلاق وتثبيت" },
-      lockedByOwner: { en: "Locked by Owner", ar: "مغلق من المالك" },
-      actionsLocked: { en: "Actions Locked", ar: "الإجراءات مقفلة" },
-      unlockToPrint: { en: "Lock period to print", ar: "أغلق الفترة للطباعة" },
-      missing: { en: "Missing", ar: "مفقود" },
-      mustBePositive: { en: "Values must be positive", ar: "يجب أن تكون القيم موجبة" },
-      editEntries: { en: "Edit Entries", ar: "تعديل المدخلات" },
-      dictionary: { en: "Dictionary", ar: "القاموس" },
-      saveDictionary: { en: "Save Translations", ar: "حفظ الترجمات" },
-      finalSettlement: { en: "Final Settlement", ar: "تصفية حساب نهائية" },
-      printAndArchive: { en: "Print Settlement & Archive", ar: "طباعة التصفية والأرشفة" },
-      netPay: { en: "Net Pay", ar: "الصافي للدفع" },
-      daysWorked: { en: "Days Worked", ar: "أيام العمل" },
-      backupData: { en: "Backup Data", ar: "نسخ احتياطي للبيانات" },
       overtimePeriod: { en: "Overtime Period (Total Hrs/Month)", ar: "فترة الإضافي (ساعات/شهر)" },
       absencePeriod: { en: "Absence Period (Total Days/Month)", ar: "فترة الغياب (أيام/شهر)" },
       paymentSettings: { en: "Payment Settings", ar: "إعدادات الدفع" },
@@ -222,48 +133,73 @@
       fullMonth: { en: "Full Month", ar: "الشهر كامل" },
       split: { en: "Split (50/50)", ar: "تقسيم (50/50)" },
       selectReport: { en: "Select Report Period", ar: "اختر فترة التقرير" },
-      arabicSlip: { en: "Arabic Payslip (DL)", ar: "قسيمة راتب (عربي DL)" },
       bulkImport: { en: "Bulk Import", ar: "استيراد جماعي" },
       downloadTemplate: { en: "Download Template", ar: "تحميل قالب الإكسل" },
       importExcel: { en: "Import Excel", ar: "رفع ملف إكسل" },
-      resetData: { en: "Reset Data", ar: "تصفير البيانات" },
       dangerZone: { en: "Danger Zone", ar: "منطقة الخطر" },
       wipeAllWorkers: { en: "Wipe All Workers", ar: "حذف جميع العمال" },
       wipeAllAttendance: { en: "Wipe All Attendance", ar: "حذف جميع سجلات الحضور" },
       wipeConfirm: { en: "This action is irreversible. Type 'DELETE' to confirm.", ar: "هذا الإجراء لا رجعة فيه. اكتب 'DELETE' للتأكيد." },
       viewTotals: { en: "View Totals", ar: "عرض المجاميع" },
       estimatedPayout: { en: "Estimated Payout", ar: "الرواتب المقدرة" },
-      deductionTiming: { en: "Deduction Timing", ar: "توقيت الخصم" },
-      otPayoutRule: { en: "Overtime Payout Rule", ar: "قاعدة دفع الإضافي" },
-      payAsEarned: { en: "Pay As Earned (By Date)", ar: "الدفع حسب التاريخ (كما استحق)" },
-      payAllP2: { en: "Accumulate & Pay in Period 2", ar: "تجميع ودفع في الفترة الثانية" }
+      name: { en: "Name", ar: "الاسم" },
+      wage: { en: "Wage", ar: "الراتب" },
+      day: { en: "Day", ar: "صباحي" },
+      night: { en: "Night", ar: "مسائي" },
+      missing: { en: "Missing", ar: "مفقود" },
+      syp: { en: "SYP", ar: "ل.س" },
+      dictionary: { en: "Dictionary", ar: "القاموس" },
+      saveDictionary: { en: "Save Translations", ar: "حفظ الترجمات" },
+      liabilityContract: { en: "Liability Contract", ar: "عقد التزام" },
+      managingProfile: { en: "Managing profile for", ar: "إدارة ملف" },
+      discard: { en: "Discard", ar: "تجاهل" },
+      saveContract: { en: "Save Contract", ar: "حفظ العقد" },
+      employeeInfo: { en: "Employee Info", ar: "معلومات الموظف" },
+      remainingDebt: { en: "Remaining Debt", ar: "الدين المتبقي" },
+      backupData: { en: "Backup Data", ar: "نسخ احتياطي للبيانات" },
+      mustBePositive: { en: "Values must be positive", ar: "يجب أن تكون القيم موجبة" },
+      editEntries: { en: "Edit Entries", ar: "تعديل المدخلات" },
+      logged: { en: "Logged", ar: "مسجل" },
+      saveAll: { en: "Save All", ar: "حفظ الكل" },
+      distType: { en: "Distribution Type", ar: "نوع التوزيع" },
+      target: { en: "Target", ar: "الهدف" },
+      individual: { en: "Individual", ar: "فردي" },
+      allActive: { en: "All Active", ar: "جميع النشطين" },
+      bonusEngine: { en: "Bonus Engine", ar: "محرك المكافآت" },
+      distributeCapital: { en: "Distribute Bonus", ar: "توزيع المكافأة" },
+      distributionLogs: { en: "Distribution Logs", ar: "سجلات التوزيع" },
+      fixedAmount: { en: "Fixed Amount", ar: "مبلغ ثابت" },
+      percentWage: { en: "% of Wage", ar: "نسبة من الراتب" }
     };
 
-    // --- 3. HELPER COMPONENT ---
     const MoneyInput = ({ value, onChange, placeholder, min, className, type="number" }) => {
       const formatted = value ? parseFloat(value).toLocaleString() : '';
       return (
         <div className="relative w-full">
-          <input 
-            type={type} 
-            min={min}
-            className={className} 
-            placeholder={placeholder} 
-            value={value} 
-            onChange={onChange} 
-          />
-          {formatted && (
-            <div className="text-[10px] text-green-600 font-black text-right mt-1 px-1">
-              {formatted} SYP
-            </div>
-          )}
+          <input type={type} min={min} className={className} placeholder={placeholder} value={value} onChange={onChange} />
+          {formatted && <div className="text-[10px] text-green-600 font-black text-right mt-1 px-1">{formatted} SYP</div>}
         </div>
       );
     };
 
-    // --- 4. SERVICES (PDF & EXCEL & CALCULATIONS) ---
-    
-    // SHARED CALCULATION LOGIC (Preview + PDF)
+    // --- CURRENCY FORMATTER ENGINE ---
+    const formatDisplayMoney = (amount, config) => {
+        const val = parseFloat(amount) || 0;
+        const curr = config.displayCurrency || 'SYP';
+        const rate = config.usdExchangeRate || 1;
+        
+        if (curr === 'USD') return (val / rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (curr === 'NSY') return (val / 100).toLocaleString();
+        return Math.round(val).toLocaleString(); 
+    };
+
+    const getCurrencyLabel = (config) => {
+        const curr = config.displayCurrency || 'SYP';
+        if (curr === 'USD') return '$';
+        if (curr === 'NSY') return 'NSYP';
+        return 'ل.س';
+    };
+
     const calculateTotalPayout = (targetMonth, targetPeriod, employees, attendance, advances, overtime, loans, transportation, config, sections, bonuses) => {
         let grandTotal = 0;
         let count = 0;
@@ -281,22 +217,7 @@
 
         const monthAttendance = attendance.filter(a => a.date.startsWith(targetMonth) && (isFull || (isP1 ? parseInt(a.date.split('-')[2]) <= 15 : parseInt(a.date.split('-')[2]) > 15)));
         const monthAdvances = advances.filter(filterByDate);
-        
-        // OVERTIME LOGIC: Global Configuration Check
-        const otRule = config.otPayoutRule || 'earned'; // 'earned' or 'p2_all'
-        let monthOvertime = [];
-        const rawMonthOvertime = overtime.filter(o => o.date.startsWith(targetMonth)); // Get ALL OT for month first
-
-        if (isFull) {
-            monthOvertime = rawMonthOvertime;
-        } else if (otRule === 'p2_all') {
-            if (isP1) monthOvertime = []; // Zero OT in P1 if rule is P2_ALL
-            else monthOvertime = rawMonthOvertime; // All OT in P2
-        } else {
-            // Default 'earned': Filter by date (1-15 or 16-End)
-            monthOvertime = rawMonthOvertime.filter(filterByDate);
-        }
-
+        const monthOvertime = overtime.filter(filterByDate);
         const monthBonuses = bonuses.filter(b => b.date.startsWith(targetMonth));
         const monthTransport = transportation.filter(t => t.date.startsWith(targetMonth));
         
@@ -342,24 +263,13 @@
             const extraTransport = monthTransport.filter(t => t.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
             const totalTransport = fixedTransport + extraTransport;
 
-            // LOAN LOGIC: Per-Loan Configuration Check
             const loan = loans.find(l => l.employeeId === emp.id);
             let loanDeduction = 0;
             if (loan) {
-                const totalDed = loan.totalAmount * (loan.deductionPercentage / 100);
-                const periodPref = loan.deductionPeriod || '2'; // Default to P2 if not set
-
-                if (isFull) {
-                    loanDeduction = totalDed;
-                } else if (periodPref === 'split') {
-                    loanDeduction = totalDed / 2;
-                } else if (isP1 && periodPref === '1') {
-                    loanDeduction = totalDed;
-                } else if (!isP1 && periodPref === '2') {
-                    loanDeduction = totalDed;
-                }
+                const monthlyCut = (loan.totalAmount * (loan.deductionPercentage / 100));
+                if (isFull) loanDeduction = monthlyCut;
+                else if (!isP1) loanDeduction = monthlyCut; 
             }
-            
             const totalAdvances = monthAdvances.filter(a => a.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
 
             const totalEarnings = wageForPeriod + overtimePay + totalTransport + empBonus;
@@ -401,26 +311,15 @@
 
         const monthAttendance = attendance.filter(a => a.date.startsWith(targetMonth) && (isFull || (isP1 ? parseInt(a.date.split('-')[2]) <= 15 : parseInt(a.date.split('-')[2]) > 15)));
         const monthAdvances = advances.filter(filterByDate);
-        
-        // --- OVERTIME LOGIC (Matched with Calculation Engine) ---
-        const otRule = config.otPayoutRule || 'earned'; 
-        let monthOvertime = [];
-        const rawMonthOvertime = overtime.filter(o => o.date.startsWith(targetMonth));
-
-        if (isFull) {
-            monthOvertime = rawMonthOvertime;
-        } else if (otRule === 'p2_all') {
-            if (isP1) monthOvertime = [];
-            else monthOvertime = rawMonthOvertime;
-        } else {
-            monthOvertime = rawMonthOvertime.filter(filterByDate);
-        }
-
+        const monthOvertime = overtime.filter(filterByDate);
         const monthBonuses = bonuses.filter(b => b.date.startsWith(targetMonth));
         const monthTransport = transportation.filter(t => t.date.startsWith(targetMonth));
-        
+        const totalPotentialDays = monthAttendance.length || 0;
+
         const absDivisor = config.absencePeriod || config.daysInMonth;
         const otDivisor = config.overtimePeriod || (config.daysInMonth * config.hoursPerDay);
+
+        const currLabel = getCurrencyLabel(config);
 
         employees.forEach((emp, index) => {
           if (index !== 0) doc.addPage();
@@ -449,7 +348,7 @@
 
           const absenceRecords = monthAttendance.filter(a => a.absentEmployeeIds.includes(emp.id));
           const daysAbsent = absenceRecords.length;
-          const daysPresent = Math.max(0, 30 - daysAbsent); // Using standard 30 for view
+          const daysPresent = Math.max(0, totalPotentialDays - daysAbsent);
           const dailyRateAbsence = totalWage / absDivisor; 
           const penaltyRate = dailyRateAbsence * config.absentDeductionFactor;
           const totalAbsenceDeduction = daysAbsent * penaltyRate;
@@ -468,35 +367,23 @@
           const extraTransport = monthTransport.filter(t => t.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
           const totalTransport = fixedTransport + extraTransport;
 
-          // --- LOAN LOGIC (Matched with Calculation Engine) ---
           const loan = loans.find(l => l.employeeId === emp.id);
           let loanDeduction = 0;
           let loanBalance = 0;
           let loanRemaining = 0;
           if (loan) {
              loanBalance = loan.totalAmount;
-             const totalDed = loan.totalAmount * (loan.deductionPercentage / 100);
-             const periodPref = loan.deductionPeriod || '2'; 
-
-             if (isFull) {
-                 loanDeduction = totalDed;
-             } else if (periodPref === 'split') {
-                 loanDeduction = totalDed / 2;
-             } else if (isP1 && periodPref === '1') {
-                 loanDeduction = totalDed;
-             } else if (!isP1 && periodPref === '2') {
-                 loanDeduction = totalDed;
-             }
+             const monthlyCut = (loan.totalAmount * (loan.deductionPercentage / 100));
+             if (isFull) loanDeduction = monthlyCut;
+             else if (!isP1) loanDeduction = monthlyCut; 
              loanRemaining = loanBalance - loanDeduction;
           }
-          
           const totalAdvances = monthAdvances.filter(a => a.employeeId === emp.id).reduce((sum, curr) => sum + curr.amount, 0);
 
           const totalEarnings = wageForPeriod + overtimePay + totalTransport + empBonus;
           const totalDeductions = totalAdvances + loanDeduction + totalAbsenceDeduction;
           const netSalary = Math.max(0, totalEarnings - totalDeductions);
 
-          // --- DRAWING SETTINGS ---
           const leftMargin = 10;
           const rightMargin = 100;
           
@@ -518,7 +405,7 @@
              doc.setFontSize(9); 
              doc.setFont('Amiri', 'normal'); 
              doc.text(label, rightMargin, y, { align: 'right' }); 
-             doc.text(value, leftMargin, y, { align: 'left' });    
+             doc.text(value.toString(), leftMargin, y, { align: 'left' });    
              doc.setDrawColor(200);
              doc.line(leftMargin, y + 2, rightMargin, y + 2); 
              y += rowHeight;
@@ -527,23 +414,23 @@
           drawRow("اسم العامل", emp.name, true); 
           drawRow("الوردية", shiftName);
           drawRow("الوظيفة", "عامل"); 
-          drawRow("الراتب المقطوع", Math.round(totalWage).toLocaleString());
-          drawRow("فرق الليل", Math.round(nightDiff).toLocaleString());
-          // drawRow("عدد أيام الدوام", daysPresent.toString()); // Hidden to save space if needed
-          drawRow("أجر اليوم الواحد", Math.round(dailyRateAbsence).toLocaleString());
+          drawRow("الراتب المقطوع", formatDisplayMoney(totalWage, config));
+          drawRow("فرق الليل", formatDisplayMoney(nightDiff, config));
+          drawRow("عدد أيام الدوام", daysPresent.toString());
+          drawRow("أجر اليوم الواحد", formatDisplayMoney(dailyRateAbsence, config));
           drawRow("عدد أيام الغياب", daysAbsent.toString());
-          drawRow("خصم يوم الغياب", Math.round(penaltyRate).toLocaleString());
-          drawRow("خصم الغياب", Math.round(totalAbsenceDeduction).toLocaleString());
+          drawRow("خصم يوم الغياب", formatDisplayMoney(penaltyRate, config));
+          drawRow("خصم الغياب", formatDisplayMoney(totalAbsenceDeduction, config));
           drawRow("اضافي / دوام", empOvertimeHours.toString()); 
-          drawRow("قيمة اضافي / دوام", Math.round(overtimePay).toLocaleString());
-          drawRow("اضافات أخرى / مكافآت", Math.round(empBonus + extraTransport).toLocaleString());
-          drawRow("المواصلات الثابتة", Math.round(fixedTransport).toLocaleString());
-          drawRow("السلفة الشهرية", Math.round(totalAdvances).toLocaleString());
+          drawRow("قيمة اضافي / دوام", formatDisplayMoney(overtimePay, config));
+          drawRow("اضافات أخرى / مكافآت", formatDisplayMoney(empBonus + extraTransport, config));
+          drawRow("المواصلات الثابتة", formatDisplayMoney(fixedTransport, config));
+          drawRow("السلفة الشهرية", formatDisplayMoney(totalAdvances, config));
           
           if (loan) {
-             drawRow("مدور القرض", Math.round(loanBalance).toLocaleString());
-             drawRow("خصم القرض", Math.round(loanDeduction).toLocaleString());
-             drawRow("رصيد القرض", Math.round(loanRemaining).toLocaleString());
+             drawRow("مدور القرض", formatDisplayMoney(loanBalance, config));
+             drawRow("خصم القرض", formatDisplayMoney(loanDeduction, config));
+             drawRow("رصيد القرض", formatDisplayMoney(loanRemaining, config));
           }
 
           y += 5;
@@ -553,7 +440,7 @@
           doc.setFontSize(12);
           doc.setFont('Amiri', 'normal'); 
           doc.text("الصافي للدفع", rightMargin - 2, y + 2, { align: 'right' });
-          doc.text(`${Math.round(netSalary).toLocaleString()} ل.س`, leftMargin + 2, y + 2, { align: 'left' });
+          doc.text(`${formatDisplayMoney(netSalary, config)} ${currLabel}`, leftMargin + 2, y + 2, { align: 'left' });
 
           doc.setTextColor(0); 
         });
@@ -592,26 +479,26 @@
           const rowHeight = 8;
           const drawRow = (label, value) => {
              doc.text(label, 105, y, { align: 'right' });
-             doc.text(value, 5, y, { align: 'left' });
+             doc.text(value.toString(), 5, y, { align: 'left' });
              doc.line(5, y+2, 105, y+2);
              y += rowHeight;
           };
 
           drawRow("اسم العامل", emp.name);
-          drawRow("الراتب الأساسي", Math.round(settlementData.basePay).toLocaleString());
-          drawRow("الإضافي", Math.round(settlementData.overtime).toLocaleString());
-          drawRow("المواصلات", Math.round(settlementData.transport).toLocaleString());
-          drawRow("المكافآت", Math.round(settlementData.bonus).toLocaleString());
-          drawRow("السلف", Math.round(settlementData.advances).toLocaleString());
-          drawRow("خصم القروض", Math.round(settlementData.loans).toLocaleString());
-          drawRow("غرامة الغياب", Math.round(settlementData.penalty).toLocaleString());
+          drawRow("الراتب الأساسي", formatDisplayMoney(settlementData.basePay, config));
+          drawRow("الإضافي", formatDisplayMoney(settlementData.overtime, config));
+          drawRow("المواصلات", formatDisplayMoney(settlementData.transport, config));
+          drawRow("المكافآت", formatDisplayMoney(settlementData.bonus, config));
+          drawRow("السلف", formatDisplayMoney(settlementData.advances, config));
+          drawRow("خصم القروض", formatDisplayMoney(settlementData.loans, config));
+          drawRow("غرامة الغياب", formatDisplayMoney(settlementData.penalty, config));
 
           y += 10;
           doc.setFillColor(0);
           doc.rect(5, y-6, 100, 12, 'F');
           doc.setTextColor(255);
           doc.text("الصافي المستحق", 100, y, { align: 'right' });
-          doc.text(`${Math.round(settlementData.net).toLocaleString()} ل.س`, 10, y, { align: 'left' });
+          doc.text(`${formatDisplayMoney(settlementData.net, config)} ${getCurrencyLabel(config)}`, 10, y, { align: 'left' });
 
           doc.save(`Resignation_${emp.name}.pdf`);
         } catch (error) {
@@ -640,26 +527,12 @@
       };
       return (
         <div className={`min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-indigo-900 flex items-center justify-center p-4 ${lang === 'ar' ? 'font-arabic' : ''}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-          <div className="absolute top-6 right-6">
-            <button onClick={toggleLanguage} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black border border-white/20 uppercase tracking-widest transition-all backdrop-blur-md">{lang === 'en' ? 'العربية' : 'English'}</button>
-          </div>
+          <div className="absolute top-6 right-6"><button onClick={toggleLanguage} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black border border-white/20 uppercase tracking-widest transition-all backdrop-blur-md">{lang === 'en' ? 'العربية' : 'English'}</button></div>
           <div className="bg-white/95 backdrop-blur-sm w-full max-w-md rounded-[2.5rem] shadow-2xl p-10 border border-white/20">
-            <div className="text-center mb-10">
-              <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-indigo-500/30">
-                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-              </div>
-              <h2 className="text-3xl font-black text-black tracking-tight">{t('appTitle')}</h2>
-              <p className="text-black font-semibold mt-1 text-sm">{t('loginTitle')}</p>
-            </div>
+            <div className="text-center mb-10"><div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-indigo-500/30"><svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg></div><h2 className="text-3xl font-black text-black tracking-tight">{t('appTitle')}</h2><p className="text-black font-semibold mt-1 text-sm">{t('loginTitle')}</p></div>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-[10px] font-black text-black uppercase tracking-[0.2em] ml-1 mb-2">{t('username')}</label>
-                <input type="text" required className="w-full px-5 py-4 rounded-2xl bg-white border border-indigo-100 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all font-black text-black placeholder-gray-400" placeholder={t('username')} value={username} onChange={(e) => setUsername(e.target.value)} />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-black uppercase tracking-[0.2em] ml-1 mb-2">{t('password')}</label>
-                <input type="password" required className="w-full px-5 py-4 rounded-2xl bg-white border border-indigo-100 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all font-black text-black placeholder-gray-400" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
-              </div>
+              <div><label className="block text-[10px] font-black text-black uppercase tracking-[0.2em] ml-1 mb-2">{t('username')}</label><input type="text" required className="w-full px-5 py-4 rounded-2xl bg-white border border-indigo-100 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all font-black text-black placeholder-gray-400" placeholder={t('username')} value={username} onChange={(e) => setUsername(e.target.value)} /></div>
+              <div><label className="block text-[10px] font-black text-black uppercase tracking-[0.2em] ml-1 mb-2">{t('password')}</label><input type="password" required className="w-full px-5 py-4 rounded-2xl bg-white border border-indigo-100 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 outline-none transition-all font-black text-black placeholder-gray-400" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
               {error && <p className="text-red-600 text-xs font-black text-center bg-red-50 py-3 rounded-xl border border-red-100 animate-pulse">{error}</p>}
               <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-indigo-500/20 transform active:scale-[0.98] transition-all uppercase tracking-widest text-xs">{t('login')}</button>
             </form>
@@ -673,9 +546,7 @@
       const [isGenerating, setIsGenerating] = React.useState(false);
       const [searchQuery, setSearchQuery] = React.useState('');
       const [viewResigned, setViewResigned] = React.useState(false);
-      
       const [activeTab, setActiveTab] = React.useState('workers');
-      
       const [newSectionName, setNewSectionName] = React.useState('');
       const [editingId, setEditingId] = React.useState(null);
       const [editFormData, setEditFormData] = React.useState({});
@@ -732,20 +603,13 @@
           const p1 = calculateTotalPayout(month, 'p1', activeEmps, attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses);
           const p2 = calculateTotalPayout(month, 'p2', activeEmps, attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses);
           const full = calculateTotalPayout(month, 'full', activeEmps, attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses);
-          
           setTotalsData({ month, p1, p2, full });
       };
 
       const downloadTemplate = () => {
          const isAr = lang === 'ar';
-         const headers = isAr ? 
-             ['الاسم', 'الراتب', 'المواصلات', 'الوردية', 'مبلغ الفترة الأولى', 'فترة المواصلات', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] :
-             ['Name', 'Wage', 'Transport', 'Shift', 'Period 1 Amount', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name'];
-            
-         const sample = isAr ? 
-             ['أحمد', '500000', '50000', 'صباحي', '250000', '2', '010101010', '123456', 'محمود', 'فاطمة'] :
-             ['John Doe', '500000', '50000', 'day', '250000', '2', '010101010', '123456', 'Robert', 'Mary'];
-
+         const headers = isAr ? ['الاسم', 'الراتب', 'المواصلات', 'الوردية', 'مبلغ الفترة الأولى', 'فترة المواصلات', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] : ['Name', 'Wage', 'Transport', 'Shift', 'Period 1 Amount', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name'];
+         const sample = isAr ? ['أحمد', '500000', '50000', 'صباحي', '250000', '2', '010101010', '123456', 'محمود', 'فاطمة'] : ['John Doe', '500000', '50000', 'day', '250000', '2', '010101010', '123456', 'Robert', 'Mary'];
          const ws_data = [headers, sample];
          const ws = XLSX.utils.aoa_to_sheet(ws_data);
          const wb = XLSX.utils.book_new();
@@ -756,50 +620,27 @@
       const handleExcelUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.readAsArrayBuffer(file);
-
         reader.onload = (evt) => {
           const arrayBuffer = evt.target.result;
           const wb = XLSX.read(arrayBuffer, { type: 'array' });
           const wsname = wb.SheetNames[0];
           const ws = wb.Sheets[wsname];
           const data = XLSX.utils.sheet_to_json(ws);
-
           let count = 0;
           data.forEach(row => {
             const name = row['Name'] || row['الاسم'];
             const wage = row['Wage'] || row['الراتب'];
-            
             if (!name || !wage) return; 
-            
             const rawShift = (row['Shift'] || row['الوردية'] || '').toString().toLowerCase();
             const shiftVal = (rawShift.includes('night') || rawShift.includes('مساء') || rawShift.includes('ليل')) ? 'night' : 'day';
-            
             const rawTPeriod = (row['Transport Period'] || row['فترة المواصلات'] || '2').toString().toLowerCase();
             const tPeriod = rawTPeriod.includes('1') ? '1' : (rawTPeriod.includes('split') || rawTPeriod.includes('تقسيم') ? 'split' : '2');
-            
-            const newEmp = {
-              name: name.toString(),
-              monthlyWage: parseFloat(wage) || 0,
-              transportationAllowance: parseFloat(row['Transport'] || row['المواصلات']) || 0,
-              shift: shiftVal,
-              joinDate: new Date().toISOString().split('T')[0],
-              nationalId: (row['National ID'] || row['الرقم الوطني'] || '').toString(),
-              socialInsuranceId: (row['Insurance ID'] || row['رقم التأمين'] || '').toString(),
-              fatherName: (row['Father Name'] || row['اسم الأب'] || '').toString(),
-              motherName: (row['Mother Name'] || row['اسم الأم'] || '').toString(),
-              sectionId: '', 
-              period1Amount: parseFloat(row['Period 1 Amount'] || row['مبلغ الفترة الأولى']) || 0,
-              transportPeriod: tPeriod,
-              isResigned: false
-            };
-            
+            const newEmp = { name: name.toString(), monthlyWage: parseFloat(wage) || 0, transportationAllowance: parseFloat(row['Transport'] || row['المواصلات']) || 0, shift: shiftVal, joinDate: new Date().toISOString().split('T')[0], nationalId: (row['National ID'] || row['الرقم الوطني'] || '').toString(), socialInsuranceId: (row['Insurance ID'] || row['رقم التأمين'] || '').toString(), fatherName: (row['Father Name'] || row['اسم الأب'] || '').toString(), motherName: (row['Mother Name'] || row['اسم الأم'] || '').toString(), sectionId: '', period1Amount: parseFloat(row['Period 1 Amount'] || row['مبلغ الفترة الأولى']) || 0, transportPeriod: tPeriod, isResigned: false };
             addEmployee(newEmp);
             count++;
           });
-          
           alert(`Successfully imported ${count} employees!`);
           e.target.value = null; 
         };
@@ -810,10 +651,8 @@
          const targetMonth = new Date().toISOString().substring(0,7);
          const monthAttendance = attendance.filter(a => a.date.startsWith(targetMonth));
          const daysAbsent = monthAttendance.filter(a => a.absentEmployeeIds.includes(emp.id)).length;
-         
          const absDivisor = pdfConfig.absencePeriod || pdfConfig.daysInMonth;
          const otDivisor = pdfConfig.overtimePeriod || (pdfConfig.daysInMonth * pdfConfig.hoursPerDay);
-         
          const basePay = parseFloat(emp.monthlyWage) || 0; 
          const penalty = daysAbsent * (basePay / absDivisor) * pdfConfig.absentDeductionFactor;
          const ot = overtime.filter(o => o.date.startsWith(targetMonth) && o.employeeId === emp.id).reduce((s,c) => s+c.hours,0) * (basePay/otDivisor) * pdfConfig.otMultiplier;
@@ -821,9 +660,7 @@
          const trans = (parseFloat(emp.transportationAllowance) || 0) + transportation.filter(t => t.date.startsWith(targetMonth) && t.employeeId === emp.id).reduce((s,c) => s+c.amount,0);
          const bonus = bonuses.filter(b => b.date.startsWith(targetMonth) && b.employeeId === emp.id).reduce((s,c) => s+c.amount,0);
          const loan = loans.find(l => l.employeeId === emp.id) ? (loans.find(l => l.employeeId === emp.id).totalAmount * (loans.find(l => l.employeeId === emp.id).deductionPercentage/100)) : 0;
-         
          const net = Math.max(0, (basePay - penalty + ot + trans + bonus) - (adv + loan));
-         
          setSettlementData({ basePay, penalty, overtime: ot, advances: adv, transport: trans, bonus, loans: loan, net });
          setShowResignModal(true); 
       };
@@ -837,28 +674,18 @@
       const handleWipeData = async (type) => {
          const confirmMsg = type === 'employees' ? t('wipeAllWorkers') : t('wipeAllAttendance');
          if (!confirm(`${t('dangerZone')}: ${confirmMsg}\n\n${t('wipeConfirm')}`)) return;
-         
          const userInput = prompt("Type 'DELETE' to confirm:");
          if (userInput !== 'DELETE') return alert("Cancelled.");
-         
          const collection = type === 'employees' ? 'employees' : 'attendance';
          const snapshot = await db.collection(collection).get();
-         
          if (snapshot.empty) return alert("No data to delete.");
-         
          let count = 0;
-         snapshot.docs.forEach(doc => {
-            db.collection(collection).doc(doc.id).delete();
-            count++;
-         });
-         
+         snapshot.docs.forEach(doc => { db.collection(collection).doc(doc.id).delete(); count++; });
          alert(`Deleted ${count} records from ${collection}.`);
       };
 
       return (
         <div className="max-w-6xl mx-auto space-y-6 pb-20 relative">
-          
-          {/* TOP TABS NAVIGATION */}
           <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-gray-100 w-fit flex-wrap gap-1">
             <button onClick={() => setActiveTab('workers')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'workers' ? 'bg-indigo-600 text-white shadow-lg' : 'text-black hover:text-indigo-600'}`}>{t('workers')}</button>
             <button onClick={() => setActiveTab('add')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'add' ? 'bg-indigo-600 text-white shadow-lg' : 'text-black hover:text-indigo-600'}`}>{t('add')} / EXCEL</button>
@@ -867,7 +694,6 @@
             <button onClick={() => setActiveTab('danger')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'danger' ? 'bg-red-600 text-white shadow-lg' : 'text-red-600 hover:bg-red-50'}`}>⚠️ {t('resetData')}</button>
           </div>
             
-          {/* TAB 1: WORKERS LIST */}
           {activeTab === 'workers' && (
             <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden animate-in fade-in">
               <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -892,14 +718,8 @@
                                   <tr className="hover:bg-indigo-50/30 transition-colors border-b border-gray-50">
                                     <td className="px-4 py-4 w-10 text-center"><button onClick={() => setExpandedId(expandedId === emp.id ? null : emp.id)} className="text-black hover:text-indigo-600 font-bold text-lg">{expandedId === emp.id ? '-' : '+'}</button></td>
                                     <td className="px-6 py-4"><span className="font-black text-black">{emp.name}</span> <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${emp.shift === 'night' ? 'bg-black text-amber-400' : 'bg-amber-100 text-amber-700'}`}>{t(emp.shift || 'day')}</span></td>
-                                    <td className="px-6 py-4 text-center font-black text-black">{emp.monthlyWage.toLocaleString()} {t('syp')}</td>
-                                    <td className="px-6 py-4 text-center font-black text-black">
-                                      {emp.transportationAllowance > 0 ? (
-                                        <span className="text-green-600">{emp.transportationAllowance.toLocaleString()}</span>
-                                      ) : (
-                                        <span className="text-red-500 bg-red-50 px-2 py-1 rounded text-[10px] uppercase">{t('missing')}</span>
-                                      )}
-                                    </td>
+                                    <td className="px-6 py-4 text-center font-black text-black">{emp.monthlyWage.toLocaleString()} SYP</td>
+                                    <td className="px-6 py-4 text-center font-black text-black">{emp.transportationAllowance > 0 ? <span className="text-green-600">{emp.transportationAllowance.toLocaleString()}</span> : <span className="text-red-500 bg-red-50 px-2 py-1 rounded text-[10px] uppercase">{t('missing')}</span>}</td>
                                     <td className="px-6 py-4 text-right flex gap-1 justify-end">
                                       {!viewResigned && <button onClick={() => startEditing(emp)} className="text-indigo-600 font-black px-2 text-[10px] uppercase">{t('edit')}</button>}
                                       {!viewResigned && <button onClick={() => handleResign(emp)} className="bg-amber-100 text-amber-700 font-black px-2 py-1 rounded text-[10px] uppercase hover:bg-amber-200">RESIGN</button>}
@@ -911,23 +731,12 @@
                                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         <div><label className="text-[10px] font-black uppercase block mb-1">{t('name')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.name} onChange={e=>setEditFormData({...editFormData, name:e.target.value})} /> : <p className="font-black">{emp.name}</p>}</div>
                                         <div><label className="text-[10px] font-black uppercase block mb-1">{t('wage')}</label>{editingId === emp.id ? <MoneyInput className={inputClass} value={editFormData.wage} onChange={e=>setEditFormData({...editFormData, wage:e.target.value})} /> : <p className="font-black">{emp.monthlyWage}</p>}</div>
-                                        
-                                        {/* Payment Settings */}
-                                        <div className="col-span-full border-t border-gray-200 mt-2 pt-2">
-                                            <p className="text-[10px] font-black uppercase text-indigo-600 mb-2">{t('paymentSettings')}</p>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div><label className="block text-[10px] font-black text-gray-500 uppercase mb-1">{t('period1Amount')}</label><MoneyInput className={inputClass} value={editFormData.period1Amount || ''} onChange={e=>setEditFormData({...editFormData, period1Amount:e.target.value})} placeholder="Fixed Amount (e.g. 200,000)" /></div>
-                                                <div><label className="block text-[10px] font-black text-gray-500 uppercase mb-1">{t('transPeriod')}</label><select className={inputClass} value={editFormData.transportPeriod || '2'} onChange={e=>setEditFormData({...editFormData, transportPeriod:e.target.value})}><option value="1">{t('period1')}</option><option value="2">{t('period2')}</option><option value="split">{t('split')}</option></select></div>
-                                            </div>
-                                        </div>
-
-                                        {/* Missing Fields Added Here for Editing */}
+                                        <div className="col-span-full border-t border-gray-200 mt-2 pt-2"><p className="text-[10px] font-black uppercase text-indigo-600 mb-2">{t('paymentSettings')}</p><div className="grid grid-cols-2 gap-4"><div><label className="block text-[10px] font-black text-gray-500 uppercase mb-1">{t('period1Amount')}</label><MoneyInput className={inputClass} value={editFormData.period1Amount || ''} onChange={e=>setEditFormData({...editFormData, period1Amount:e.target.value})} placeholder="Fixed Amount" /></div><div><label className="block text-[10px] font-black text-gray-500 uppercase mb-1">{t('transPeriod')}</label><select className={inputClass} value={editFormData.transportPeriod || '2'} onChange={e=>setEditFormData({...editFormData, transportPeriod:e.target.value})}><option value="1">{t('period1')}</option><option value="2">{t('period2')}</option><option value="split">{t('split')}</option></select></div></div></div>
                                         <div><label className="text-[10px] font-black uppercase block mb-1">{t('fatherName')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.fatherName} onChange={e=>setEditFormData({...editFormData, fatherName:e.target.value})} /> : <p className="font-black">{emp.fatherName || '-'}</p>}</div>
                                         <div><label className="text-[10px] font-black uppercase block mb-1">{t('motherName')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.motherName} onChange={e=>setEditFormData({...editFormData, motherName:e.target.value})} /> : <p className="font-black">{emp.motherName || '-'}</p>}</div>
                                         <div><label className="text-[10px] font-black uppercase block mb-1">{t('nationalId')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.nationalId} onChange={e=>setEditFormData({...editFormData, nationalId:e.target.value})} /> : <p className="font-black">{emp.nationalId || '-'}</p>}</div>
                                         <div><label className="text-[10px] font-black uppercase block mb-1">{t('insuranceId')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.socialInsuranceId} onChange={e=>setEditFormData({...editFormData, socialInsuranceId:e.target.value})} /> : <p className="font-black">{emp.socialInsuranceId || '-'}</p>}</div>
                                         <div><label className="text-[10px] font-black uppercase block mb-1">{t('transport')}</label>{editingId === emp.id ? <MoneyInput className={inputClass} value={editFormData.transportationAllowance} onChange={e=>setEditFormData({...editFormData, transportationAllowance:e.target.value})} /> : <p className="font-black">{emp.transportationAllowance || '0'}</p>}</div>
-
                                         {editingId === emp.id && <div className="col-span-full flex justify-end gap-2 mt-4"><button onClick={handleUpdate} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-black uppercase text-xs">{t('save')}</button><button onClick={()=>setEditingId(null)} className="bg-gray-200 text-black px-6 py-2 rounded-lg font-black uppercase text-xs">{t('cancel')}</button></div>}
                                       </div>
                                     </td></tr>
@@ -944,14 +753,10 @@
             </section>
           )}
 
-          {/* TAB 2: ADD / IMPORT WORKERS */}
           {activeTab === 'add' && (
             <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in">
               <section className="bg-indigo-600 rounded-[2rem] shadow-xl border border-indigo-700 p-8 flex flex-col md:flex-row justify-between items-center gap-6 text-white">
-                <div>
-                  <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3"><span className="text-3xl">📊</span> {t('bulkImport')}</h3>
-                  <p className="text-sm font-bold opacity-80 mt-2">Download the template, fill up to 500 workers, and upload in 1 click.</p>
-                </div>
+                <div><h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3"><span className="text-3xl">📊</span> {t('bulkImport')}</h3><p className="text-sm font-bold opacity-80 mt-2">Download template, fill workers, and upload.</p></div>
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                   <button onClick={downloadTemplate} className="w-full sm:w-auto px-6 py-4 bg-white/20 hover:bg-white/30 text-white font-black rounded-xl uppercase text-[10px] tracking-widest transition-all text-center">{t('downloadTemplate')}</button>
                   <div className="relative w-full sm:w-auto">
@@ -960,58 +765,29 @@
                   </div>
                 </div>
               </section>
-
               <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8">
                 <h3 className="font-black text-black text-xl uppercase tracking-tight mb-8 flex items-center gap-3"><div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 text-2xl">+</div> {t('add')} {t('workers')} (Individual)</h3>
                 <form onSubmit={handleAdd} className="space-y-6">
                   <input type="text" required className={inputClass} placeholder={t('name')} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <input type="text" className={inputClass} placeholder={t('fatherName')} value={formData.fatherName} onChange={e => setFormData({...formData, fatherName: e.target.value})} />
-                    <input type="text" className={inputClass} placeholder={t('motherName')} value={formData.motherName} onChange={e => setFormData({...formData, motherName: e.target.value})} />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <input type="text" className={inputClass} placeholder={t('nationalId')} value={formData.nationalId} onChange={e => setFormData({...formData, nationalId: e.target.value})} />
-                    <input type="text" className={inputClass} placeholder={t('insuranceId')} value={formData.socialInsuranceId} onChange={e => setFormData({...formData, socialInsuranceId: e.target.value})} />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <MoneyInput required className={inputClass} placeholder={t('wage')} value={formData.wage} onChange={e => setFormData({...formData, wage: e.target.value})} />
-                    <MoneyInput required className={inputClass} placeholder={t('transport')} value={formData.transportAllowance} onChange={e => setFormData({...formData, transportAllowance: e.target.value})} />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                    <p className="col-span-full text-xs font-black uppercase text-gray-500 tracking-widest">{t('paymentSettings')}</p>
-                    <div><label className="block text-[10px] font-bold mb-2">{t('period1Amount')}</label><MoneyInput className={inputClass} placeholder="Amount" value={formData.period1Amount || ''} onChange={e => setFormData({...formData, period1Amount: e.target.value})} /></div>
-                    <div><label className="block text-[10px] font-bold mb-2">{t('transPeriod')}</label><select className={inputClass} value={formData.transportPeriod || '2'} onChange={e => setFormData({...formData, transportPeriod: e.target.value})}><option value="1">{t('period1')}</option><option value="2">{t('period2')}</option><option value="split">{t('split')}</option></select></div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <select className={inputClass} value={formData.shift} onChange={e => setFormData({...formData, shift: e.target.value})}><option value="day">{t('day')}</option><option value="night">{t('night')}</option></select>
-                    <select className={inputClass} value={formData.sectionId} onChange={e => setFormData({...formData, sectionId: e.target.value})}><option value="">{t('unassigned')}</option>{sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
-                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><input type="text" className={inputClass} placeholder={t('fatherName')} value={formData.fatherName} onChange={e => setFormData({...formData, fatherName: e.target.value})} /><input type="text" className={inputClass} placeholder={t('motherName')} value={formData.motherName} onChange={e => setFormData({...formData, motherName: e.target.value})} /></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><input type="text" className={inputClass} placeholder={t('nationalId')} value={formData.nationalId} onChange={e => setFormData({...formData, nationalId: e.target.value})} /><input type="text" className={inputClass} placeholder={t('insuranceId')} value={formData.socialInsuranceId} onChange={e => setFormData({...formData, socialInsuranceId: e.target.value})} /></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><MoneyInput required className={inputClass} placeholder={t('wage')} value={formData.wage} onChange={e => setFormData({...formData, wage: e.target.value})} /><MoneyInput required className={inputClass} placeholder={t('transport')} value={formData.transportAllowance} onChange={e => setFormData({...formData, transportAllowance: e.target.value})} /></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100"><p className="col-span-full text-xs font-black uppercase text-gray-500 tracking-widest">{t('paymentSettings')}</p><div><label className="block text-[10px] font-bold mb-2">{t('period1Amount')}</label><MoneyInput className={inputClass} placeholder="Amount" value={formData.period1Amount || ''} onChange={e => setFormData({...formData, period1Amount: e.target.value})} /></div><div><label className="block text-[10px] font-bold mb-2">{t('transPeriod')}</label><select className={inputClass} value={formData.transportPeriod || '2'} onChange={e => setFormData({...formData, transportPeriod: e.target.value})}><option value="1">{t('period1')}</option><option value="2">{t('period2')}</option><option value="split">{t('split')}</option></select></div></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><select className={inputClass} value={formData.shift} onChange={e => setFormData({...formData, shift: e.target.value})}><option value="day">{t('day')}</option><option value="night">{t('night')}</option></select><select className={inputClass} value={formData.sectionId} onChange={e => setFormData({...formData, sectionId: e.target.value})}><option value="">{t('unassigned')}</option>{sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
                   <button type="submit" className="w-full bg-black text-white font-black py-5 rounded-xl shadow-xl hover:bg-gray-800 transition-all uppercase tracking-widest text-sm mt-6">{t('confirm')}</button>
                 </form>
               </section>
             </div>
           )}
           
-          {/* TAB 3: SECTIONS */}
           {activeTab === 'sections' && (
             <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 animate-in fade-in">
               <h3 className="text-xl font-black text-black uppercase mb-6">{t('sections')}</h3>
-              <div className="flex gap-4 mb-6">
-                <input type="text" className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl outline-none font-bold text-black" placeholder={t('name')} value={newSectionName} onChange={e => setNewSectionName(e.target.value)} />
-                <button onClick={() => { if(newSectionName) { addSection(newSectionName); setNewSectionName(''); }}} className="px-8 py-3 bg-indigo-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest">{t('add')}</button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {sections.map(s => (
-                  <div key={s.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center justify-between">
-                    <span className="font-black text-sm text-black">{s.name}</span>
-                    <button onClick={() => deleteSection(s.id)} className="text-red-600 font-black">X</button>
-                  </div>
-                ))}
-              </div>
+              <div className="flex gap-4 mb-6"><input type="text" className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl outline-none font-bold text-black" placeholder={t('name')} value={newSectionName} onChange={e => setNewSectionName(e.target.value)} /><button onClick={() => { if(newSectionName) { addSection(newSectionName); setNewSectionName(''); }}} className="px-8 py-3 bg-indigo-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest">{t('add')}</button></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{sections.map(s => (<div key={s.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center justify-between"><span className="font-black text-sm text-black">{s.name}</span><button onClick={() => deleteSection(s.id)} className="text-red-600 font-black">X</button></div>))}</div>
             </section>
           )}
 
-          {/* TAB 4: PERIODS */}
           {activeTab === 'periods' && (
              <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 animate-in fade-in">
                 <h3 className="text-xl font-black text-black uppercase mb-6">{t('payrollPeriods')}</h3>
@@ -1019,26 +795,19 @@
                    {recentMonths.map(month => {
                       const isP1Locked = lockedMonths.includes(`${month}-p1`) || lockedMonths.includes(month); 
                       const isP2Locked = lockedMonths.includes(`${month}-p2`) || lockedMonths.includes(month);
-
                       return (
                          <div key={month} className="p-5 rounded-2xl border-2 border-gray-100 bg-gray-50 mb-4 space-y-4 shadow-sm hover:shadow-md transition-all">
                             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                                <p className="text-2xl font-black text-black tracking-tight">{month}</p>
                                <div className="flex gap-2 flex-wrap justify-center">
-                                  {/* VIEW TOTALS BUTTON */}
                                   <button onClick={()=>handleViewTotals(month)} className="px-4 py-2 bg-amber-100 text-amber-800 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-200 transition-all flex items-center gap-1">💰 {t('viewTotals')}</button>
-                                  
                                   <button onClick={()=>handleExportCSV(month)} className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-green-200 transition-all">{t('exportCsv')}</button>
                                   <button onClick={() => { setReportType('pdf'); setTargetReportMonth(month); }} className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-200 transition-all">{t('generatePdf')}</button>
                                </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-200 pt-4">
-                               <button onClick={() => toggleMonthLock(`${month}-p1`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP1Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>
-                                  {isP1Locked ? 'P1 Locked 🔒 (Tap to Unlock)' : 'Lock P1 (Days 1-15)'}
-                               </button>
-                               <button onClick={() => toggleMonthLock(`${month}-p2`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP2Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>
-                                  {isP2Locked ? 'P2 Locked 🔒 (Tap to Unlock)' : 'Lock P2 (Days 16-31)'}
-                               </button>
+                               <button onClick={() => toggleMonthLock(`${month}-p1`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP1Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>{isP1Locked ? 'P1 Locked 🔒 (Tap to Unlock)' : 'Lock P1 (Days 1-15)'}</button>
+                               <button onClick={() => toggleMonthLock(`${month}-p2`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP2Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>{isP2Locked ? 'P2 Locked 🔒 (Tap to Unlock)' : 'Lock P2 (Days 16-31)'}</button>
                             </div>
                          </div>
                       );
@@ -1047,104 +816,55 @@
              </section>
           )}
 
-          {/* TAB 5: DANGER ZONE */}
           {activeTab === 'danger' && (
              <section className="bg-red-50 rounded-xl shadow-lg border-2 border-red-200 p-8 animate-in fade-in text-center">
                 <div className="w-16 h-16 bg-red-200 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">⚠️</div>
                 <h3 className="text-2xl font-black text-red-700 uppercase mb-2">{t('dangerZone')}</h3>
                 <p className="text-red-900 font-bold text-sm mb-8">{t('wipeConfirm')}</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
-                        <h4 className="font-black text-black uppercase mb-4">{t('wipeAllWorkers')}</h4>
-                        <button onClick={() => handleWipeData('employees')} className="w-full py-4 bg-red-600 text-white font-black rounded-xl uppercase text-xs tracking-widest hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all">DELETE EMPLOYEES</button>
-                    </div>
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
-                        <h4 className="font-black text-black uppercase mb-4">{t('wipeAllAttendance')}</h4>
-                        <button onClick={() => handleWipeData('attendance')} className="w-full py-4 bg-red-600 text-white font-black rounded-xl uppercase text-xs tracking-widest hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all">DELETE ATTENDANCE</button>
-                    </div>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100"><h4 className="font-black text-black uppercase mb-4">{t('wipeAllWorkers')}</h4><button onClick={() => handleWipeData('employees')} className="w-full py-4 bg-red-600 text-white font-black rounded-xl uppercase text-xs tracking-widest hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all">DELETE EMPLOYEES</button></div>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100"><h4 className="font-black text-black uppercase mb-4">{t('wipeAllAttendance')}</h4><button onClick={() => handleWipeData('attendance')} className="w-full py-4 bg-red-600 text-white font-black rounded-xl uppercase text-xs tracking-widest hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all">DELETE ATTENDANCE</button></div>
                 </div>
              </section>
           )}
 
-          {/* MODALS */}
           {showDeleteModal && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center animate-in zoom-in duration-200">
-                <h4 className="text-xl font-black mb-2 text-red-600">{t('delete')}</h4>
-                <p className="text-black text-sm mb-6">{t('eraseConfirm')} <span className="font-black underline">{employeeTarget?.name}</span>?</p>
-                <div className="flex gap-3">
-                  <button onClick={() => setShowDeleteModal(false)} className="flex-1 py-3 bg-gray-100 text-black font-black rounded-lg uppercase text-xs">{t('cancel')}</button>
-                  <button onClick={() => { deleteEmployee(employeeTarget.id); setShowDeleteModal(false); }} className="flex-1 py-3 bg-red-600 text-white font-black rounded-lg uppercase text-xs">{t('delete')}</button>
-                </div>
-              </div>
-            </div>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"><div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center animate-in zoom-in duration-200"><h4 className="text-xl font-black mb-2 text-red-600">{t('delete')}</h4><p className="text-black text-sm mb-6">{t('eraseConfirm')} <span className="font-black underline">{employeeTarget?.name}</span>?</p><div className="flex gap-3"><button onClick={() => setShowDeleteModal(false)} className="flex-1 py-3 bg-gray-100 text-black font-black rounded-lg uppercase text-xs">{t('cancel')}</button><button onClick={() => { deleteEmployee(employeeTarget.id); setShowDeleteModal(false); }} className="flex-1 py-3 bg-red-600 text-white font-black rounded-lg uppercase text-xs">{t('delete')}</button></div></div></div>
           )}
 
           {showResignModal && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in fade-in zoom-in duration-200">
-                <h4 className="text-2xl font-black mb-4 text-amber-600 uppercase tracking-widest">{t('finalSettlement')}</h4>
-                <p className="text-black text-sm mb-6 uppercase font-bold">{t('managingProfile')} <span className="text-indigo-600">{employeeTarget?.name}</span></p>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"><div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in fade-in zoom-in duration-200"><h4 className="text-2xl font-black mb-4 text-amber-600 uppercase tracking-widest">{t('finalSettlement')}</h4><p className="text-black text-sm mb-6 uppercase font-bold">{t('managingProfile')} <span className="text-indigo-600">{employeeTarget?.name}</span></p>
                 {settlementData && (
                   <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-2 text-left">
-                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Base Wage</span><span className="font-black">{Math.round(settlementData.basePay).toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Overtime</span><span className="font-black text-green-600">+{Math.round(settlementData.overtime).toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Transport</span><span className="font-black text-green-600">+{Math.round(settlementData.transport).toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Bonus</span><span className="font-black text-green-600">+{Math.round(settlementData.bonus).toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Advances</span><span className="font-black text-red-500">-{Math.round(settlementData.advances).toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Loan Deduction</span><span className="font-black text-red-500">-{Math.round(settlementData.loans).toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Absence Penalty</span><span className="font-black text-red-500">-{Math.round(settlementData.penalty).toLocaleString()}</span></div>
-                      <div className="flex justify-between border-t border-gray-200 pt-2 mt-2"><span className="text-sm font-black uppercase">Net Pay</span><span className="font-black text-lg text-indigo-600">{Math.round(settlementData.net).toLocaleString()} SYP</span></div>
+                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Base Wage</span><span className="font-black">{formatDisplayMoney(settlementData.basePay, pdfConfig)}</span></div>
+                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Overtime</span><span className="font-black text-green-600">+{formatDisplayMoney(settlementData.overtime, pdfConfig)}</span></div>
+                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Transport</span><span className="font-black text-green-600">+{formatDisplayMoney(settlementData.transport, pdfConfig)}</span></div>
+                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Bonus</span><span className="font-black text-green-600">+{formatDisplayMoney(settlementData.bonus, pdfConfig)}</span></div>
+                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Advances</span><span className="font-black text-red-500">-{formatDisplayMoney(settlementData.advances, pdfConfig)}</span></div>
+                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Loan Deduction</span><span className="font-black text-red-500">-{formatDisplayMoney(settlementData.loans, pdfConfig)}</span></div>
+                      <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Absence Penalty</span><span className="font-black text-red-500">-{formatDisplayMoney(settlementData.penalty, pdfConfig)}</span></div>
+                      <div className="flex justify-between border-t border-gray-200 pt-2 mt-2"><span className="text-sm font-black uppercase">Net Pay</span><span className="font-black text-lg text-indigo-600">{formatDisplayMoney(settlementData.net, pdfConfig)} {getCurrencyLabel(pdfConfig)}</span></div>
                   </div>
                 )}
-                <div className="flex gap-3">
-                  <button onClick={() => setShowResignModal(false)} className="flex-1 py-4 bg-gray-100 text-black font-black rounded-xl uppercase text-xs">{t('cancel')}</button>
-                  <button onClick={confirmResign} className="flex-1 py-4 bg-black text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-gray-800 transition-all">{t('printAndArchive')}</button>
-                </div>
-              </div>
-            </div>
+                <div className="flex gap-3"><button onClick={() => setShowResignModal(false)} className="flex-1 py-4 bg-gray-100 text-black font-black rounded-xl uppercase text-xs">{t('cancel')}</button><button onClick={confirmResign} className="flex-1 py-4 bg-black text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-gray-800 transition-all">{t('printAndArchive')}</button></div>
+            </div></div>
           )}
 
           {reportType && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-               <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center animate-in fade-in zoom-in duration-200">
-                  <h4 className="text-xl font-black mb-6 text-black uppercase tracking-widest">{t('selectReport')}</h4>
-                  <div className="space-y-4">
-                      <button onClick={() => handleGeneratePDF('p1')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period1')}</button>
-                      <button onClick={() => handleGeneratePDF('p2')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period2')}</button>
-                      <button onClick={() => handleGeneratePDF('full')} className="w-full py-4 bg-black text-white font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-gray-800 transition-all">{t('fullMonth')}</button>
-                  </div>
-                  <button onClick={() => setReportType(null)} className="mt-8 text-gray-400 font-bold text-xs uppercase hover:text-black transition-colors">{t('cancel')}</button>
-               </div>
-            </div>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"><div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center animate-in fade-in zoom-in duration-200"><h4 className="text-xl font-black mb-6 text-black uppercase tracking-widest">{t('selectReport')}</h4><div className="space-y-4"><button onClick={() => handleGeneratePDF('p1')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period1')}</button><button onClick={() => handleGeneratePDF('p2')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period2')}</button><button onClick={() => handleGeneratePDF('full')} className="w-full py-4 bg-black text-white font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-gray-800 transition-all">{t('fullMonth')}</button></div><button onClick={() => setReportType(null)} className="mt-8 text-gray-400 font-bold text-xs uppercase hover:text-black transition-colors">{t('cancel')}</button></div></div>
           )}
 
           {totalsData && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-               <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center animate-in zoom-in duration-200">
-                  <h4 className="text-2xl font-black mb-2 text-black uppercase tracking-widest">{t('estimatedPayout')}</h4>
-                  <p className="text-gray-500 text-sm font-bold mb-6">{totalsData.month}</p>
-                  
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"><div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center animate-in zoom-in duration-200">
+                  <h4 className="text-2xl font-black mb-2 text-black uppercase tracking-widest">{t('estimatedPayout')}</h4><p className="text-gray-500 text-sm font-bold mb-6">{totalsData.month}</p>
                   <div className="space-y-4 text-left">
-                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                          <div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase text-gray-400">Period 1</span><span className="font-black text-lg">{Math.round(totalsData.p1.grandTotal).toLocaleString()}</span></div>
-                          <p className="text-[10px] text-gray-400 font-bold text-right">{totalsData.p1.count} Employees</p>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                          <div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase text-gray-400">Period 2</span><span className="font-black text-lg">{Math.round(totalsData.p2.grandTotal).toLocaleString()}</span></div>
-                          <p className="text-[10px] text-gray-400 font-bold text-right">{totalsData.p2.count} Employees</p>
-                      </div>
-                      <div className="bg-black p-4 rounded-xl shadow-lg">
-                          <div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase text-gray-400">Full Month</span><span className="font-black text-lg text-white">{Math.round(totalsData.full.grandTotal).toLocaleString()}</span></div>
-                          <p className="text-[10px] text-gray-400 font-bold text-right">SYP</p>
-                      </div>
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100"><div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase text-gray-400">Period 1</span><span className="font-black text-lg">{formatDisplayMoney(totalsData.p1.grandTotal, pdfConfig)}</span></div><p className="text-[10px] text-gray-400 font-bold text-right">{totalsData.p1.count} Employees</p></div>
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100"><div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase text-gray-400">Period 2</span><span className="font-black text-lg">{formatDisplayMoney(totalsData.p2.grandTotal, pdfConfig)}</span></div><p className="text-[10px] text-gray-400 font-bold text-right">{totalsData.p2.count} Employees</p></div>
+                      <div className="bg-black p-4 rounded-xl shadow-lg"><div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase text-gray-400">Full Month</span><span className="font-black text-lg text-white">{formatDisplayMoney(totalsData.full.grandTotal, pdfConfig)}</span></div><p className="text-[10px] text-gray-400 font-bold text-right text-white opacity-50">{getCurrencyLabel(pdfConfig)}</p></div>
                   </div>
-
                   <button onClick={() => setTotalsData(null)} className="mt-8 text-gray-400 font-bold text-xs uppercase hover:text-black transition-colors">{t('cancel')}</button>
-               </div>
-            </div>
+            </div></div>
           )}
-
         </div>
       );
     };
@@ -1163,129 +883,46 @@
       const pStr = dayNum <= 15 ? 'p1' : 'p2';
       const isLocked = lockedMonths.includes(monthStr) || lockedMonths.includes(`${monthStr}-${pStr}`);
 
-      // NEW ATTENDANCE LOGIC
       const existingRecord = attendance.find(a => a.date === selectedDate);
       const isLogged = !!existingRecord;
       const dailyRecord = existingRecord || { date: selectedDate, absentEmployeeIds: [] };
-      
       const dailyAdvances = advances.filter(a => a.date === selectedDate);
       const dailyOvertime = overtime.filter(o => o.date === selectedDate);
 
       const filteredEmployees = employees.filter(emp => !emp.isResigned && emp.name.toLowerCase().includes(searchQuery.toLowerCase()));
-      const employeesBySection = React.useMemo(() => {
-         const grouped = { 'unassigned': [] };
-         sections.forEach(s => grouped[s.id] = []);
-         filteredEmployees.forEach(emp => { if (emp.sectionId && grouped[emp.sectionId]) grouped[emp.sectionId].push(emp); else grouped['unassigned'].push(emp); });
-         return grouped;
-      }, [filteredEmployees, sections]);
-
-      const sortedSectionIds = React.useMemo(() => {
-         return Object.keys(employeesBySection).sort((a, b) => {
-            if (a === 'unassigned') return 1; 
-            if (b === 'unassigned') return -1;
-            const nameA = sections.find(s => s.id === a)?.name || '';
-            const nameB = sections.find(s => s.id === b)?.name || '';
-            return nameA.localeCompare(nameB);
-         });
-      }, [employeesBySection, sections]);
+      const employeesBySection = React.useMemo(() => { const grouped = { 'unassigned': [] }; sections.forEach(s => grouped[s.id] = []); filteredEmployees.forEach(emp => { if (emp.sectionId && grouped[emp.sectionId]) grouped[emp.sectionId].push(emp); else grouped['unassigned'].push(emp); }); return grouped; }, [filteredEmployees, sections]);
+      const sortedSectionIds = React.useMemo(() => { return Object.keys(employeesBySection).sort((a, b) => { if (a === 'unassigned') return 1; if (b === 'unassigned') return -1; const nameA = sections.find(s => s.id === a)?.name || ''; const nameB = sections.find(s => s.id === b)?.name || ''; return nameA.localeCompare(nameB); }); }, [employeesBySection, sections]);
 
       const toggleSection = (id) => setExpandedSections(prev => ({...prev, [id]: !prev[id]}));
-      
-      // Auto-save on toggle
       const toggleAbsence = (id) => { if(isLocked) return; const ids = dailyRecord.absentEmployeeIds.includes(id) ? dailyRecord.absentEmployeeIds.filter(x=>x!==id) : [...dailyRecord.absentEmployeeIds, id]; updateAttendance(selectedDate, ids); };
-      
-      // Manual confirm for "All Present"
-      const confirmAttendance = () => {
-          if(isLocked) return;
-          updateAttendance(selectedDate, dailyRecord.absentEmployeeIds);
-          alert(t('verified'));
-      };
+      const confirmAttendance = () => { if(isLocked) return; updateAttendance(selectedDate, dailyRecord.absentEmployeeIds); alert(t('verified')); };
 
       const handleAddAdv = (id) => { if(isLocked) return; const val = parseFloat(advanceAmount[id]); if(val <= 0) return alert(t('mustBePositive')); addAdvance(id, val, selectedDate); setAdvanceAmount({...advanceAmount, [id]:''}); };
       const handleAddOT = (id) => { if(isLocked) return; const val = parseFloat(otHours[id]); if(val <= 0) return alert(t('mustBePositive')); addOvertime(id, val, selectedDate); setOtHours({...otHours, [id]:''}); };
 
-      const saveAllAdvances = () => {
-         if (isLocked) return;
-         let count = 0;
-         Object.entries(advanceAmount).forEach(([id, val]) => {
-            const amount = parseFloat(val);
-            if (amount > 0) { addAdvance(id, amount, selectedDate); count++; }
-         });
-         setAdvanceAmount({});
-         if(count > 0) alert(`${count} advances saved successfully.`);
-      };
+      const saveAllAdvances = () => { if (isLocked) return; let count = 0; Object.entries(advanceAmount).forEach(([id, val]) => { const amount = parseFloat(val); if (amount > 0) { addAdvance(id, amount, selectedDate); count++; } }); setAdvanceAmount({}); if(count > 0) alert(`${count} advances saved successfully.`); };
+      const saveAllOvertime = () => { if (isLocked) return; let count = 0; Object.entries(otHours).forEach(([id, val]) => { const hours = parseFloat(val); if (hours > 0) { addOvertime(id, hours, selectedDate); count++; } }); setOtHours({}); if(count > 0) alert(`${count} overtime records saved successfully.`); };
 
-      const saveAllOvertime = () => {
-         if (isLocked) return;
-         let count = 0;
-         Object.entries(otHours).forEach(([id, val]) => {
-            const hours = parseFloat(val);
-            if (hours > 0) { addOvertime(id, hours, selectedDate); count++; }
-         });
-         setOtHours({});
-         if(count > 0) alert(`${count} overtime records saved successfully.`);
-      };
-
-      const openEditModal = (empId, type) => {
-         if(!canEdit || isLocked) return;
-         setEditingEntries({ empId, type });
-      };
-
-      const handleEditSave = (recordId, newVal) => {
-         const val = parseFloat(newVal);
-         if(val <= 0) return alert(t('mustBePositive'));
-         if(editingEntries.type === 'advances') updateAdvance(recordId, val);
-         else updateOvertime(recordId, val);
-      };
-
-      const handleEditDelete = (recordId) => {
-         if(editingEntries.type === 'advances') deleteAdvance(recordId);
-         else deleteOvertime(recordId);
-      };
+      const openEditModal = (empId, type) => { if(!canEdit || isLocked) return; setEditingEntries({ empId, type }); };
+      const handleEditSave = (recordId, newVal) => { const val = parseFloat(newVal); if(val <= 0) return alert(t('mustBePositive')); if(editingEntries.type === 'advances') updateAdvance(recordId, val); else updateOvertime(recordId, val); };
+      const handleEditDelete = (recordId) => { if(editingEntries.type === 'advances') deleteAdvance(recordId); else deleteOvertime(recordId); };
 
       return (
         <div className="max-w-6xl mx-auto space-y-6 pb-20 relative">
            <section className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row gap-6 items-center justify-between relative overflow-hidden">
              {isLocked && <div className="absolute top-0 right-0 px-6 py-1 bg-red-600 text-white text-[8px] font-black uppercase tracking-widest shadow-lg">{t('locked')}</div>}
              <div className="flex-1"><h2 className="text-xl font-black text-black tracking-tight uppercase">{t('opsHub')}</h2><p className="text-sm text-black font-black">{t('recordingFor')} <span className="text-indigo-600">{selectedDate}</span></p></div>
-             <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                <input type="date" className="px-4 py-3 border-2 border-gray-300 rounded-2xl font-bold text-black bg-white" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
-                <div className="flex bg-gray-100 p-1 rounded-2xl">
-                   {['attendance','advances','overtime'].map(m => <button key={m} onClick={()=>setActiveTab(m)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === m ? 'bg-white text-indigo-600 shadow-sm' : 'text-black opacity-50 hover:opacity-100'}`}>{t(m)}</button>)}
-                </div>
-             </div>
+             <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto"><input type="date" className="px-4 py-3 border-2 border-gray-300 rounded-2xl font-bold text-black bg-white" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} /><div className="flex bg-gray-100 p-1 rounded-2xl">{['attendance','advances','overtime'].map(m => <button key={m} onClick={()=>setActiveTab(m)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === m ? 'bg-white text-indigo-600 shadow-sm' : 'text-black opacity-50 hover:opacity-100'}`}>{t(m)}</button>)}</div></div>
            </section>
            
-           {/* ATTENDANCE STATUS BANNER */}
            {activeTab === 'attendance' && (
-               <div className={`p-4 rounded-2xl border-2 flex flex-col sm:flex-row items-center justify-between gap-4 transition-all ${isLogged ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
-                   <div className="flex items-center gap-3">
-                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${isLogged ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
-                           {isLogged ? '✓' : '!'}
-                       </div>
-                       <div>
-                           <h4 className={`font-black uppercase ${isLogged ? 'text-green-800' : 'text-amber-800'}`}>
-                               {isLogged ? t('verified') : t('notLogged')}
-                           </h4>
-                           <p className="text-xs font-bold opacity-60">
-                               {isLogged ? t('verifiedSub') : t('notLoggedSub')}
-                           </p>
-                       </div>
-                   </div>
-                   {!isLocked && (
-                       <button onClick={confirmAttendance} className={`px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg transition-transform hover:scale-105 ${isLogged ? 'bg-white text-green-700 border border-green-200' : 'bg-black text-white'}`}>
-                           {isLogged ? t('updateLog') : t('verifyLog')}
-                       </button>
-                   )}
-               </div>
+               <div className={`p-4 rounded-2xl border-2 flex flex-col sm:flex-row items-center justify-between gap-4 transition-all ${isLogged ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}><div className="flex items-center gap-3"><div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${isLogged ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{isLogged ? '✓' : '!'}</div><div><h4 className={`font-black uppercase ${isLogged ? 'text-green-800' : 'text-amber-800'}`}>{isLogged ? t('verified') : t('notLogged')}</h4><p className="text-xs font-bold opacity-60">{isLogged ? t('verifiedSub') : t('notLoggedSub')}</p></div></div>{!isLocked && (<button onClick={confirmAttendance} className={`px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg transition-transform hover:scale-105 ${isLogged ? 'bg-white text-green-700 border border-green-200' : 'bg-black text-white'}`}>{isLogged ? t('updateLog') : t('verifyLog')}</button>)}</div>
            )}
 
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
              <div className="lg:col-span-2 space-y-6">
                 <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
-                   <div className="p-6 border-b border-gray-100 bg-gray-50/30 flex justify-between items-center">
-                      <input type="text" placeholder={t('search')} className="w-full sm:w-80 py-4 bg-transparent border-b-2 border-gray-300 focus:border-indigo-600 outline-none font-bold text-black" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                   </div>
+                   <div className="p-6 border-b border-gray-100 bg-gray-50/30 flex justify-between items-center"><input type="text" placeholder={t('search')} className="w-full sm:w-80 py-4 bg-transparent border-b-2 border-gray-300 focus:border-indigo-600 outline-none font-bold text-black" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
                    <div className={`divide-y divide-gray-50 ${isLocked ? 'pointer-events-none opacity-50' : ''}`}>
                       {sortedSectionIds.map(sId => {
                          const emps = employeesBySection[sId];
@@ -1293,36 +930,18 @@
                          const isExpanded = expandedSections[sId] !== false; 
                          return (
                             <div key={sId}>
-                               <button onClick={() => toggleSection(sId)} className="w-full flex justify-between items-center bg-gray-100/50 px-8 py-3 text-[10px] font-black text-black uppercase tracking-[0.2em] hover:bg-gray-200/50 transition-colors">
-                                  <span>{sId === 'unassigned' ? t('unassigned') : sections.find(s => s.id === sId)?.name}</span>
-                                  <span className="text-xs font-bold text-gray-500">{isExpanded ? 'v' : '>'}</span>
-                               </button>
+                               <button onClick={() => toggleSection(sId)} className="w-full flex justify-between items-center bg-gray-100/50 px-8 py-3 text-[10px] font-black text-black uppercase tracking-[0.2em] hover:bg-gray-200/50 transition-colors"><span>{sId === 'unassigned' ? t('unassigned') : sections.find(s => s.id === sId)?.name}</span><span className="text-xs font-bold text-gray-500">{isExpanded ? 'v' : '>'}</span></button>
                                {isExpanded && emps.map(emp => {
                                   const isAbsent = dailyRecord.absentEmployeeIds.includes(emp.id);
                                   const existingAdv = dailyAdvances.filter(a => a.employeeId === emp.id).reduce((sum, r) => sum + r.amount, 0);
                                   const existingOT = dailyOvertime.filter(o => o.employeeId === emp.id).reduce((sum, r) => sum + r.hours, 0);
-
                                   return (
                                      <div key={emp.id} className={`px-8 py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition-all hover:bg-gray-50 ${isAbsent && activeTab==='attendance'?'bg-red-50/30':''}`}>
                                         <div className="flex items-center gap-5 flex-1"><div className={`w-14 h-14 rounded-[1.25rem] flex items-center justify-center font-black text-lg shadow-sm border-2 ${isAbsent && activeTab==='attendance' ? 'bg-red-100 text-red-600 border-red-200' : 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>{emp.name.charAt(0)}</div><div><p className={`font-black text-base ${isAbsent && activeTab==='attendance' ? 'text-red-700' : 'text-black'}`}>{emp.name}</p><p className="text-[11px] font-black uppercase opacity-60">{t(emp.shift)}</p></div></div>
                                         <div className="flex items-center gap-4 shrink-0">
-                                           {activeTab === 'attendance' && (
-                                              <button onClick={() => toggleAbsence(emp.id)} className={`w-12 h-12 rounded-2xl border-4 flex items-center justify-center transition-all ${isAbsent ? 'bg-red-600 border-red-200 text-white' : 'bg-white border-gray-100 text-black shadow-sm'}`}>
-                                                 {isAbsent ? 'X' : '✓'}
-                                              </button>
-                                           )}
-                                           {activeTab === 'advances' && !isAbsent && (
-                                              <div className="flex flex-col items-end gap-1">
-                                                 {existingAdv > 0 && <div className="flex items-center gap-2"><span className="text-[10px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded-lg">{t('logged')}: {existingAdv.toLocaleString()}</span>{canEdit && <button onClick={()=>openEditModal(emp.id, 'advances')} className="text-xs">✏️</button>}</div>}
-                                                 <div className="flex gap-2"><MoneyInput className="w-24 px-3 py-2 font-bold text-black bg-white rounded-xl border-2 border-gray-300" min="0" placeholder="0" value={advanceAmount[emp.id]||''} onChange={e => setAdvanceAmount({...advanceAmount, [emp.id]:e.target.value})} /><button onClick={() => handleAddAdv(emp.id)} className="px-4 py-2 bg-black text-white rounded-xl font-black uppercase text-[10px]">{t('add')}</button></div>
-                                              </div>
-                                           )}
-                                           {activeTab === 'overtime' && !isAbsent && (
-                                              <div className="flex flex-col items-end gap-1">
-                                                 {existingOT > 0 && <div className="flex items-center gap-2"><span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">{t('logged')}: {existingOT}h</span>{canEdit && <button onClick={()=>openEditModal(emp.id, 'overtime')} className="text-xs">✏️</button>}</div>}
-                                                 <div className="flex gap-2"><input type="number" min="0" placeholder="Hrs" className="w-20 px-3 py-2 font-bold text-black bg-white rounded-xl border-2 border-gray-300" value={otHours[emp.id]||''} onChange={e => setOtHours({...otHours, [emp.id]:e.target.value})} /><button onClick={() => handleAddOT(emp.id)} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px]">{t('add')}</button></div>
-                                              </div>
-                                           )}
+                                           {activeTab === 'attendance' && <button onClick={() => toggleAbsence(emp.id)} className={`w-12 h-12 rounded-2xl border-4 flex items-center justify-center transition-all ${isAbsent ? 'bg-red-600 border-red-200 text-white' : 'bg-white border-gray-100 text-black shadow-sm'}`}>{isAbsent ? 'X' : '✓'}</button>}
+                                           {activeTab === 'advances' && !isAbsent && <div className="flex flex-col items-end gap-1">{existingAdv > 0 && <div className="flex items-center gap-2"><span className="text-[10px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded-lg">{t('logged')}: {existingAdv.toLocaleString()}</span>{canEdit && <button onClick={()=>openEditModal(emp.id, 'advances')} className="text-xs">✏️</button>}</div>}<div className="flex gap-2"><MoneyInput className="w-24 px-3 py-2 font-bold text-black bg-white rounded-xl border-2 border-gray-300" min="0" placeholder="0" value={advanceAmount[emp.id]||''} onChange={e => setAdvanceAmount({...advanceAmount, [emp.id]:e.target.value})} /><button onClick={() => handleAddAdv(emp.id)} className="px-4 py-2 bg-black text-white rounded-xl font-black uppercase text-[10px]">{t('add')}</button></div></div>}
+                                           {activeTab === 'overtime' && !isAbsent && <div className="flex flex-col items-end gap-1">{existingOT > 0 && <div className="flex items-center gap-2"><span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">{t('logged')}: {existingOT}h</span>{canEdit && <button onClick={()=>openEditModal(emp.id, 'overtime')} className="text-xs">✏️</button>}</div>}<div className="flex gap-2"><input type="number" min="0" placeholder="Hrs" className="w-20 px-3 py-2 font-bold text-black bg-white rounded-xl border-2 border-gray-300" value={otHours[emp.id]||''} onChange={e => setOtHours({...otHours, [emp.id]:e.target.value})} /><button onClick={() => handleAddOT(emp.id)} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px]">{t('add')}</button></div></div>}
                                         </div>
                                      </div>
                                   );
@@ -1333,41 +952,14 @@
                    </div>
                 </section>
              </div>
-             <div className="space-y-6 lg:sticky lg:top-24">
-                <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8">
-                   <h3 className="font-black text-black text-sm mb-6 flex items-center gap-3 uppercase tracking-widest"><div className="w-2 h-6 bg-indigo-600 rounded-full"></div>{t('activitySummary')}</h3>
-                   <p className="text-xs text-gray-500 font-bold">{t('historyProtected')}</p>
-                </section>
-             </div>
+             <div className="space-y-6 lg:sticky lg:top-24"><section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8"><h3 className="font-black text-black text-sm mb-6 flex items-center gap-3 uppercase tracking-widest"><div className="w-2 h-6 bg-indigo-600 rounded-full"></div>{t('activitySummary')}</h3><p className="text-xs text-gray-500 font-bold">{t('historyProtected')}</p></section></div>
            </div>
-           {!isLocked && (activeTab === 'advances' || activeTab === 'overtime') && (
-             <div className="fixed bottom-6 right-6 z-50 animate-bounce-in">
-                <button onClick={activeTab === 'advances' ? saveAllAdvances : saveAllOvertime} className="bg-black text-white px-8 py-4 rounded-full shadow-2xl font-black uppercase text-xs tracking-widest hover:scale-105 transition-transform flex items-center gap-3">
-                   <span>{t('saveAll')} {activeTab === 'advances' ? t('advances') : t('overtime')}</span>
-                   <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                </button>
-             </div>
-           )}
+           {!isLocked && (activeTab === 'advances' || activeTab === 'overtime') && (<div className="fixed bottom-6 right-6 z-50 animate-bounce-in"><button onClick={activeTab === 'advances' ? saveAllAdvances : saveAllOvertime} className="bg-black text-white px-8 py-4 rounded-full shadow-2xl font-black uppercase text-xs tracking-widest hover:scale-105 transition-transform flex items-center gap-3"><span>{t('saveAll')} {activeTab === 'advances' ? t('advances') : t('overtime')}</span><div className="w-2 h-2 bg-green-400 rounded-full"></div></button></div>)}
            {editingEntries && (
-             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md p-8 animate-in fade-in zoom-in duration-200">
-                   <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-xl font-black uppercase">{t('editEntries')}</h3>
-                      <button onClick={()=>setEditingEntries(null)} className="text-gray-400 hover:text-black">✕</button>
-                   </div>
-                   <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                      {(editingEntries.type === 'advances' ? dailyAdvances : dailyOvertime)
-                         .filter(x => x.employeeId === editingEntries.empId)
-                         .map(record => (
-                            <div key={record.id} className="flex gap-2 items-center">
-                               <input className="flex-1 p-3 border-2 rounded-xl font-bold bg-gray-50" type="number" min="0" defaultValue={editingEntries.type === 'advances' ? record.amount : record.hours} onBlur={(e) => handleEditSave(record.id, e.target.value)} />
-                               <button onClick={() => handleEditDelete(record.id)} className="bg-red-100 text-red-600 p-3 rounded-xl font-bold">🗑</button>
-                            </div>
-                         ))}
-                   </div>
+             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"><div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md p-8 animate-in fade-in zoom-in duration-200"><div className="flex justify-between items-center mb-6"><h3 className="text-xl font-black uppercase">{t('editEntries')}</h3><button onClick={()=>setEditingEntries(null)} className="text-gray-400 hover:text-black">✕</button></div>
+                   <div className="space-y-4 max-h-[60vh] overflow-y-auto">{(editingEntries.type === 'advances' ? dailyAdvances : dailyOvertime).filter(x => x.employeeId === editingEntries.empId).map(record => (<div key={record.id} className="flex gap-2 items-center"><input className="flex-1 p-3 border-2 rounded-xl font-bold bg-gray-50" type="number" min="0" defaultValue={editingEntries.type === 'advances' ? record.amount : record.hours} onBlur={(e) => handleEditSave(record.id, e.target.value)} /><button onClick={() => handleEditDelete(record.id)} className="bg-red-100 text-red-600 p-3 rounded-xl font-bold">🗑</button></div>))}</div>
                    <button onClick={()=>setEditingEntries(null)} className="w-full mt-6 bg-black text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest">{t('confirm')}</button>
-                </div>
-             </div>
+                </div></div>
            )}
         </div>
       );
@@ -1378,57 +970,18 @@
       const [loanTarget, setLoanTarget] = React.useState(null);
       const [loanAmount, setLoanAmount] = React.useState('');
       const [loanPercent, setLoanPercent] = React.useState('10');
-      const [loanPeriod, setLoanPeriod] = React.useState('2'); // NEW STATE
-
       const activeEmployees = employees.filter(emp => !emp.isResigned && emp.name.toLowerCase().includes(searchQuery.toLowerCase()));
-      // UPDATED: Now saves deductionPeriod
-      const handleSaveLoan = () => { if (loanTarget) { updateLoan(loanTarget.id, parseFloat(loanAmount), parseFloat(loanPercent), loanPeriod); setLoanTarget(null); }};
+      const handleSaveLoan = () => { if (loanTarget) { updateLoan(loanTarget.id, parseFloat(loanAmount), parseFloat(loanPercent)); setLoanTarget(null); }};
 
       return (
          <div className="space-y-8 max-w-7xl mx-auto pb-12">
-            <header className="flex justify-between items-center">
-               <div><h2 className="text-3xl font-black text-black uppercase">{t('liabilityOversight')}</h2></div>
-               <input type="text" placeholder={t('name')} className="px-4 py-3 bg-white border border-gray-200 rounded-2xl outline-none font-black text-black w-72" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} />
-            </header>
+            <header className="flex justify-between items-center"><div><h2 className="text-3xl font-black text-black uppercase">{t('liabilityOversight')}</h2></div><input type="text" placeholder={t('name')} className="px-4 py-3 bg-white border border-gray-200 rounded-2xl outline-none font-black text-black w-72" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} /></header>
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-               <table className="w-full text-left">
-                  <thead className="bg-white text-[10px] uppercase font-black text-black tracking-widest border-b"><tr><th className="px-8 py-5">{t('employeeInfo')}</th><th className="px-8 py-5 text-center">{t('remainingDebt')}</th><th className="px-8 py-5 text-right">{t('actions')}</th></tr></thead>
-                  <tbody className="divide-y divide-gray-100">
-                     {activeEmployees.map(emp => {
-                        const loan = loans.find(l => l.employeeId === emp.id);
-                        return (
-                           <tr key={emp.id} className="hover:bg-indigo-50/30">
-                              <td className="px-8 py-6 font-black text-black">{emp.name}</td>
-                              <td className="px-8 py-6 text-center">{loan ? `${loan.totalAmount.toLocaleString()} SYP` : '-'}</td>
-                              <td className="px-8 py-6 text-right"><button onClick={() => { setLoanTarget(emp); setLoanAmount(loan?.totalAmount||''); setLoanPercent(loan?.deductionPercentage||'10'); setLoanPeriod(loan?.deductionPeriod||'2'); }} className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest ${loan ? 'bg-white text-black border-2 border-black' : 'bg-indigo-600 text-white'}`}>{loan ? t('editContract') : t('issueLoan')}</button></td>
-                           </tr>
-                        );
-                     })}
-                  </tbody>
+               <table className="w-full text-left"><thead className="bg-white text-[10px] uppercase font-black text-black tracking-widest border-b"><tr><th className="px-8 py-5">{t('employeeInfo')}</th><th className="px-8 py-5 text-center">{t('remainingDebt')}</th><th className="px-8 py-5 text-right">{t('actions')}</th></tr></thead>
+                  <tbody className="divide-y divide-gray-100">{activeEmployees.map(emp => { const loan = loans.find(l => l.employeeId === emp.id); return (<tr key={emp.id} className="hover:bg-indigo-50/30"><td className="px-8 py-6 font-black text-black">{emp.name}</td><td className="px-8 py-6 text-center">{loan ? `${loan.totalAmount.toLocaleString()} SYP` : '-'}</td><td className="px-8 py-6 text-right"><button onClick={() => { setLoanTarget(emp); setLoanAmount(loan?.totalAmount||''); setLoanPercent(loan?.deductionPercentage||'10'); }} className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest ${loan ? 'bg-white text-black border-2 border-black' : 'bg-indigo-600 text-white'}`}>{loan ? t('editContract') : t('issueLoan')}</button></td></tr>);})}</tbody>
                </table>
             </div>
-            {loanTarget && (
-               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md">
-                  <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full p-10 space-y-6">
-                     <h4 className="text-2xl font-black text-black uppercase">{t('liabilityContract')}</h4>
-                     <p className="font-black uppercase text-xs">{t('managingProfile')} <span className="text-indigo-600 underline">{loanTarget.name}</span></p>
-                     <div><label className="block text-[10px] font-black uppercase mb-2">{t('total')} ({t('syp')})</label><input type="number" className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-black text-xl text-black" value={loanAmount} onChange={e=>setLoanAmount(e.target.value)} /></div>
-                     <div><label className="block text-[10px] font-black uppercase mb-2">{t('recoveryVelocity')} (%)</label><input type="number" className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-black text-xl text-black" value={loanPercent} onChange={e=>setLoanPercent(e.target.value)} /></div>
-                     
-                     {/* NEW LOAN PERIOD SELECTOR */}
-                     <div>
-                        <label className="block text-[10px] font-black uppercase mb-2">{t('deductionTiming')}</label>
-                        <select className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-black text-xl text-black" value={loanPeriod} onChange={e=>setLoanPeriod(e.target.value)}>
-                            <option value="1">{t('period1')}</option>
-                            <option value="2">{t('period2')}</option>
-                            <option value="split">{t('split')}</option>
-                        </select>
-                     </div>
-
-                     <div className="flex gap-4"><button onClick={()=>setLoanTarget(null)} className="flex-1 px-4 py-4 bg-gray-100 text-black font-black rounded-2xl uppercase text-[10px]">{t('discard')}</button><button onClick={handleSaveLoan} className="flex-1 px-4 py-4 bg-black text-white font-black rounded-2xl uppercase text-[10px]">{t('saveContract')}</button></div>
-                  </div>
-               </div>
-            )}
+            {loanTarget && (<div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md"><div className="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full p-10 space-y-6"><h4 className="text-2xl font-black text-black uppercase">{t('liabilityContract')}</h4><p className="font-black uppercase text-xs">{t('managingProfile')} <span className="text-indigo-600 underline">{loanTarget.name}</span></p><div><label className="block text-[10px] font-black uppercase mb-2">{t('total')} ({t('syp')})</label><input type="number" className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-black text-xl text-black" value={loanAmount} onChange={e=>setLoanAmount(e.target.value)} /></div><div><label className="block text-[10px] font-black uppercase mb-2">{t('recoveryVelocity')} (%)</label><input type="number" className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-black text-xl text-black" value={loanPercent} onChange={e=>setLoanPercent(e.target.value)} /></div><div className="flex gap-4"><button onClick={()=>setLoanTarget(null)} className="flex-1 px-4 py-4 bg-gray-100 text-black font-black rounded-2xl uppercase text-[10px]">{t('discard')}</button><button onClick={handleSaveLoan} className="flex-1 px-4 py-4 bg-black text-white font-black rounded-2xl uppercase text-[10px]">{t('saveContract')}</button></div></div></div>)}
          </div>
       );
     };
@@ -1454,12 +1007,10 @@
       const inputClass = "w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl font-bold text-black outline-none focus:border-indigo-600 transition-all";
       const handleSave = () => { setConfig(tempConfig); alert(t('logicSync')); };
       
-      // --- GRANULAR RESET FUNCTION ---
       const handleSpecificReset = async (collectionName, displayName) => {
           if (!confirm(`⚠️ WARNING: DELETE ALL ${displayName}? ⚠️\n\nThis will permanently erase every record in the ${displayName} category.\n\nAre you sure?`)) return;
           const code = prompt(`Type 'DELETE' to confirm wiping ${displayName}:`);
           if (code !== 'DELETE') return alert("Cancelled.");
-
           try {
               const snap = await db.collection(collectionName).get();
               if (snap.empty) return alert(`No records found in ${displayName}.`);
@@ -1467,35 +1018,27 @@
               snap.docs.forEach(doc => batch.delete(doc.ref));
               await batch.commit();
               alert(`✅ Success: All ${displayName} records have been deleted.`);
-          } catch (err) {
-              alert("Error during deletion: " + err.message);
-          }
+          } catch (err) { alert("Error during deletion: " + err.message); }
       };
 
       const handleExportCSV = (month) => { alert("CSV feature coming soon."); };
       
       const handleViewTotals = (month) => {
           const activeEmps = employees.filter(e => !e.isResigned);
-          const p1 = calculateTotalPayout(month, 'p1', activeEmps, attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses);
-          const p2 = calculateTotalPayout(month, 'p2', activeEmps, attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses);
-          const full = calculateTotalPayout(month, 'full', activeEmps, attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses);
+          const p1 = calculateTotalPayout(month, 'p1', activeEmps, attendance, advances, overtime, loans, transportation, config, sections, bonuses);
+          const p2 = calculateTotalPayout(month, 'p2', activeEmps, attendance, advances, overtime, loans, transportation, config, sections, bonuses);
+          const full = calculateTotalPayout(month, 'full', activeEmps, attendance, advances, overtime, loans, transportation, config, sections, bonuses);
           setTotalsData({ month, p1, p2, full });
       };
 
       const handleGeneratePDF = async (type) => { 
            setIsGenerating(true); 
-           try {
-              await generateAllPayslips(targetReportMonth, type, employees.filter(e=>!e.isResigned), attendance, advances, overtime, loans, transportation, config, sections, bonuses); 
-           } catch(e) { console.log("PDF Error", e); }
+           try { await generateAllPayslips(targetReportMonth, type, employees.filter(e=>!e.isResigned), attendance, advances, overtime, loans, transportation, config, sections, bonuses); } catch(e) { console.log("PDF Error", e); }
            setIsGenerating(false); 
            setReportType(null); 
       };
       
-      const handleUserSubmit = (e) => { 
-        e.preventDefault(); 
-        if (editingUserId) { updateUser(editingUserId, newUserFormData); setEditingUserId(null); } else { addUser(newUserFormData); }
-        setNewUserFormData({ username: '', password: '', role: 'hr' }); 
-      };
+      const handleUserSubmit = (e) => { e.preventDefault(); if (editingUserId) { updateUser(editingUserId, newUserFormData); setEditingUserId(null); } else { addUser(newUserFormData); } setNewUserFormData({ username: '', password: '', role: 'hr' }); };
       const startEditUser = (user) => { setEditingUserId(user.id); setNewUserFormData({ username: user.username, password: user.password, role: user.role }); };
       const cancelEditUser = () => { setEditingUserId(null); setNewUserFormData({ username: '', password: '', role: 'hr' }); };
       
@@ -1521,49 +1064,28 @@
       const handleBackupJSON = async () => {
           const collections = ['users', 'employees', 'sections', 'attendance', 'advances', 'bonuses', 'overtime', 'transportation', 'loans', 'meta'];
           const backup = {};
-          for (const col of collections) {
-              const snap = await db.collection(col).get();
-              backup[col] = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
-          }
+          for (const col of collections) { const snap = await db.collection(col).get(); backup[col] = snap.docs.map(d => ({ _id: d.id, ...d.data() })); }
           const blob = new Blob([JSON.stringify(backup, null, 2)], {type : 'application/json'});
-          const link = document.createElement('a');
-          link.href = URL.createObjectURL(blob);
-          link.download = `UNISALARIES_SYSTEM_BACKUP_${new Date().toISOString().split('T')[0]}.json`;
-          link.click();
+          const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `UNISALARIES_SYSTEM_BACKUP_${new Date().toISOString().split('T')[0]}.json`; link.click();
       };
 
       const handleExcelBackup = async () => {
           try {
             const wb = XLSX.utils.book_new();
             const collections = ['employees', 'attendance', 'advances', 'overtime', 'bonuses', 'loans', 'users'];
-            
             for (const colName of collections) {
                 const snap = await db.collection(colName).get();
-                let data = snap.docs.map(doc => {
-                    let d = doc.data();
-                    if(d.absentEmployeeIds && Array.isArray(d.absentEmployeeIds)) {
-                        d.absentEmployeeIds = d.absentEmployeeIds.join(", ");
-                    }
-                    return { ID: doc.id, ...d };
-                });
-
-                if (data.length > 0) {
-                    const ws = XLSX.utils.json_to_sheet(data);
-                    XLSX.utils.book_append_sheet(wb, ws, colName.toUpperCase());
-                }
+                let data = snap.docs.map(doc => { let d = doc.data(); if(d.absentEmployeeIds && Array.isArray(d.absentEmployeeIds)) { d.absentEmployeeIds = d.absentEmployeeIds.join(", "); } return { ID: doc.id, ...d }; });
+                if (data.length > 0) { const ws = XLSX.utils.json_to_sheet(data); XLSX.utils.book_append_sheet(wb, ws, colName.toUpperCase()); }
             }
-            
             XLSX.writeFile(wb, `Human_Readable_Data_${new Date().toISOString().split('T')[0]}.xlsx`);
-          } catch(err) {
-              alert("Error creating Excel: " + err.message);
-          }
+          } catch(err) { alert("Error creating Excel: " + err.message); }
       };
 
       const periodList = React.useMemo(() => {
           const dates = attendance.map(a => a.date);
           const rawMonths = [...dates.map(d => d.substring(0, 7)), ...lockedMonths.map(l => l.substring(0,7))];
           const today = new Date();
-          // Include last 6 months so empty months like Jan are visible
           for(let i=0; i<6; i++) {
              const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
              const y = d.getFullYear();
@@ -1593,34 +1115,13 @@
                  <h3 className="text-xl font-black text-red-700 uppercase mb-2 flex items-center gap-2">⚠️ Data Maintenance & Reset</h3>
                  <p className="text-sm font-bold text-red-900/60 mb-8">Select a specific category to permanently delete all its records. This action cannot be undone.</p>
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Workers / Employees</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all worker profiles.</p></div>
-                        <button onClick={() => handleSpecificReset('employees', 'WORKERS')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Workers</button>
-                    </div>
-                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Attendance Logs</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all daily attendance history.</p></div>
-                        <button onClick={() => handleSpecificReset('attendance', 'ATTENDANCE')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Attendance</button>
-                    </div>
-                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Financial: Loans</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all loan contracts.</p></div>
-                        <button onClick={() => handleSpecificReset('loans', 'LOANS')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Loans</button>
-                    </div>
-                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Financial: Advances</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all cash advance records.</p></div>
-                        <button onClick={() => handleSpecificReset('advances', 'ADVANCES')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Advances</button>
-                    </div>
-                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Financial: Overtime</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all overtime hour logs.</p></div>
-                        <button onClick={() => handleSpecificReset('overtime', 'OVERTIME')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Overtime</button>
-                    </div>
-                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Financial: Bonuses</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all bonus distributions.</p></div>
-                        <button onClick={() => handleSpecificReset('bonuses', 'BONUSES')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Bonuses</button>
-                    </div>
-                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Financial: Transport</h4><p className="text-[10px] text-gray-500 mt-1">Deletes extra transport logs.</p></div>
-                        <button onClick={() => handleSpecificReset('transportation', 'TRANSPORT')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Transport</button>
-                    </div>
+                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40"><div><h4 className="font-black text-black">Workers / Employees</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all worker profiles.</p></div><button onClick={() => handleSpecificReset('employees', 'WORKERS')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Workers</button></div>
+                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40"><div><h4 className="font-black text-black">Attendance Logs</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all daily attendance history.</p></div><button onClick={() => handleSpecificReset('attendance', 'ATTENDANCE')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Attendance</button></div>
+                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40"><div><h4 className="font-black text-black">Financial: Loans</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all loan contracts.</p></div><button onClick={() => handleSpecificReset('loans', 'LOANS')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Loans</button></div>
+                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40"><div><h4 className="font-black text-black">Financial: Advances</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all cash advance records.</p></div><button onClick={() => handleSpecificReset('advances', 'ADVANCES')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Advances</button></div>
+                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40"><div><h4 className="font-black text-black">Financial: Overtime</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all overtime hour logs.</p></div><button onClick={() => handleSpecificReset('overtime', 'OVERTIME')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Overtime</button></div>
+                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40"><div><h4 className="font-black text-black">Financial: Bonuses</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all bonus distributions.</p></div><button onClick={() => handleSpecificReset('bonuses', 'BONUSES')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Bonuses</button></div>
+                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40"><div><h4 className="font-black text-black">Financial: Transport</h4><p className="text-[10px] text-gray-500 mt-1">Deletes extra transport logs.</p></div><button onClick={() => handleSpecificReset('transportation', 'TRANSPORT')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Transport</button></div>
                  </div>
               </div>
            )}
@@ -1628,6 +1129,23 @@
            {activeOwnerTab === 'logic' && (
               <div className="bg-white rounded-[2rem] shadow-xl border border-gray-50 p-8 space-y-6">
                  <h3 className="text-xl font-black text-black uppercase tracking-tight">{t('systemVariables')}</h3>
+                 
+                 {/* NEW CURRENCY SETTINGS */}
+                 <div className="grid grid-cols-2 gap-4 bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6">
+                    <div>
+                        <label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">Display Currency</label>
+                        <select className={inputClass} value={tempConfig.displayCurrency || 'SYP'} onChange={e => setTempConfig({...tempConfig, displayCurrency: e.target.value})}>
+                            <option value="SYP">Standard SYP</option>
+                            <option value="NSY">New SYP (Remove 2 Zeros)</option>
+                            <option value="USD">US Dollars ($)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">USD Exchange Rate</label>
+                        <input type="number" className={inputClass} value={tempConfig.usdExchangeRate || 15000} onChange={e => setTempConfig({...tempConfig, usdExchangeRate: +e.target.value})} />
+                    </div>
+                 </div>
+
                  <div className="grid grid-cols-2 gap-4">
                     <div><label className="block text-[10px] font-black uppercase mb-2">{t('daysPerMonth')}</label><input type="number" className={inputClass} value={tempConfig.daysInMonth} onChange={e => setTempConfig({...tempConfig, daysInMonth: +e.target.value})} /></div>
                     <div><label className="block text-[10px] font-black uppercase mb-2">{t('hoursPerDay')}</label><input type="number" className={inputClass} value={tempConfig.hoursPerDay} onChange={e => setTempConfig({...tempConfig, hoursPerDay: +e.target.value})} /></div>
@@ -1636,15 +1154,6 @@
                     <div><label className="block text-[10px] font-black uppercase mb-2 text-red-600">{t('absencePenalty')}</label><input type="number" step="0.1" className={inputClass} value={tempConfig.absentDeductionFactor} onChange={e => setTempConfig({...tempConfig, absentDeductionFactor: +e.target.value})} /></div>
                     <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-600">{t('overtimePeriod')}</label><input type="number" className={inputClass} value={tempConfig.overtimePeriod || 208} onChange={e => setTempConfig({...tempConfig, overtimePeriod: +e.target.value})} /></div>
                     <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-600">{t('absencePeriod')}</label><input type="number" className={inputClass} value={tempConfig.absencePeriod || 26} onChange={e => setTempConfig({...tempConfig, absencePeriod: +e.target.value})} /></div>
-                    
-                    {/* NEW: OVERTIME STRATEGY */}
-                    <div className="col-span-2 border-t pt-4 mt-2">
-                        <label className="block text-[10px] font-black uppercase mb-2 text-indigo-600">{t('otPayoutRule')}</label>
-                        <select className={inputClass} value={tempConfig.otPayoutRule || 'earned'} onChange={e => setTempConfig({...tempConfig, otPayoutRule: e.target.value})}>
-                            <option value="earned">{t('payAsEarned')}</option>
-                            <option value="p2_all">{t('payAllP2')}</option>
-                        </select>
-                    </div>
                  </div>
                  <button onClick={handleSave} className="w-full bg-black text-white font-black py-4 rounded-2xl shadow-xl uppercase text-[10px] tracking-widest">{t('commitLogic')}</button>
               </div>
@@ -1662,12 +1171,10 @@
                             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                                <p className="text-2xl font-black text-black tracking-tight">{month}</p>
                                <div className="flex gap-2 flex-wrap justify-center">
-                                  {/* VIEW TOTALS BUTTON */}
                                   <button onClick={()=>handleViewTotals(month)} className="px-4 py-2 bg-amber-100 text-amber-800 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-200 transition-all flex items-center gap-1">💰 {t('viewTotals')}</button>
-                                  
                                   <button onClick={()=>handleExportCSV(month)} className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-green-200 transition-all">{t('exportCsv')}</button>
                                   <button onClick={() => { setReportType('pdf'); setTargetReportMonth(month); }} className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-200 transition-all">{t('generatePdf')}</button>
-                                </div>
+                               </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-200 pt-4">
                                <button onClick={() => toggleMonthLock(`${month}-p1`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP1Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>{isP1Locked ? 'P1 Locked 🔒 (Tap to Unlock)' : 'Lock P1 (Days 1-15)'}</button>
@@ -1685,144 +1192,54 @@
                  <div className="bg-white rounded-[2rem] shadow-xl p-8">
                     <h3 className="text-xl font-black uppercase mb-6">{t('bonusEngine')}</h3>
                     <form onSubmit={handleDistributeBonus} className="space-y-4">
-                       <div>
-                          <label className="block text-[10px] font-black uppercase mb-2">{t('target')}</label>
-                          <div className="flex bg-gray-100 p-1 rounded-xl">
-                             <button type="button" onClick={()=>setBonusTarget('individual')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusTarget==='individual'?'bg-white shadow text-black':'text-gray-400'}`}>{t('individual')}</button>
-                             <button type="button" onClick={()=>setBonusTarget('all')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusTarget==='all'?'bg-white shadow text-indigo-600':'text-gray-400'}`}>{t('allActive')}</button>
-                          </div>
-                       </div>
-                       <div>
-                          <label className="block text-[10px] font-black uppercase mb-2">{t('distType')}</label>
-                          <div className="flex bg-gray-100 p-1 rounded-xl">
-                             <button type="button" onClick={()=>setBonusType('fixed')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='fixed'?'bg-white shadow text-black':'text-gray-400'}`}>{t('fixedAmount')}</button>
-                             <button type="button" onClick={()=>setBonusType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='percent'?'bg-white shadow text-indigo-600':'text-gray-400'}`}>{t('percentWage')}</button>
-                          </div>
-                       </div>
-                       <div>
-                          <label className="block text-[10px] font-black uppercase mb-2">Pay Period</label>
-                          <select className={inputClass} value={bonusPeriod} onChange={e=>setBonusPeriod(e.target.value)}><option value="1">Period 1 (1st-15th)</option><option value="2">Period 2 (16th-End)</option></select>
-                       </div>
-                       {bonusTarget === 'individual' && (
-                          <select className={inputClass} value={selectedBonusEmp} onChange={e=>setSelectedBonusEmp(e.target.value)} required={bonusTarget==='individual'}>
-                             <option value="">Select Employee</option>
-                             {employees.filter(e=>!e.isResigned).map(e=><option key={e.id} value={e.id}>{e.name}</option>)}
-                          </select>
-                       )}
+                       <div><label className="block text-[10px] font-black uppercase mb-2">{t('target')}</label><div className="flex bg-gray-100 p-1 rounded-xl"><button type="button" onClick={()=>setBonusTarget('individual')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusTarget==='individual'?'bg-white shadow text-black':'text-gray-400'}`}>{t('individual')}</button><button type="button" onClick={()=>setBonusTarget('all')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusTarget==='all'?'bg-white shadow text-indigo-600':'text-gray-400'}`}>{t('allActive')}</button></div></div>
+                       <div><label className="block text-[10px] font-black uppercase mb-2">{t('distType')}</label><div className="flex bg-gray-100 p-1 rounded-xl"><button type="button" onClick={()=>setBonusType('fixed')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='fixed'?'bg-white shadow text-black':'text-gray-400'}`}>{t('fixedAmount')}</button><button type="button" onClick={()=>setBonusType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='percent'?'bg-white shadow text-indigo-600':'text-gray-400'}`}>{t('percentWage')}</button></div></div>
+                       <div><label className="block text-[10px] font-black uppercase mb-2">Pay Period</label><select className={inputClass} value={bonusPeriod} onChange={e=>setBonusPeriod(e.target.value)}><option value="1">Period 1 (1st-15th)</option><option value="2">Period 2 (16th-End)</option></select></div>
+                       {bonusTarget === 'individual' && (<select className={inputClass} value={selectedBonusEmp} onChange={e=>setSelectedBonusEmp(e.target.value)} required={bonusTarget==='individual'}><option value="">Select Employee</option>{employees.filter(e=>!e.isResigned).map(e=><option key={e.id} value={e.id}>{e.name}</option>)}</select>)}
                        <input className={inputClass} type="number" placeholder={bonusType === 'fixed' ? 'Amount (SYP)' : 'Percentage (%)'} value={bonusValue} onChange={e=>setBonusValue(e.target.value)} required />
                        <input className={inputClass} placeholder="Reason / Description" value={bonusDesc} onChange={e=>setBonusDesc(e.target.value)} required />
                        <button className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-indigo-700 transition-all">{t('distributeCapital')}</button>
                     </form>
                  </div>
-                 <div className="bg-white rounded-[2rem] shadow-xl p-8 max-h-[500px] overflow-y-auto">
-                    <h3 className="text-xl font-black uppercase mb-6">{t('distributionLogs')}</h3>
-                    {bonuses.length === 0 && <p className="text-center text-gray-400 font-bold text-xs py-10">No records found.</p>}
-                    {bonuses.map(b => (
-                       <div key={b.id} className="flex justify-between items-center p-3 border-b hover:bg-gray-50 transition-colors">
-                          <div><p className="font-black">{employees.find(e=>e.id===b.employeeId)?.name || 'Unknown'}</p><p className="text-[10px] font-bold text-gray-400 uppercase">{b.description} • {b.amount.toLocaleString()} SYP (P{b.period||'?'})</p></div>
-                          <button onClick={()=>deleteBonus(b.id)} className="text-red-500 font-black text-[10px] uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button>
-                       </div>
-                    ))}
-                 </div>
+                 <div className="bg-white rounded-[2rem] shadow-xl p-8 max-h-[500px] overflow-y-auto"><h3 className="text-xl font-black uppercase mb-6">{t('distributionLogs')}</h3>{bonuses.length === 0 && <p className="text-center text-gray-400 font-bold text-xs py-10">No records found.</p>}{bonuses.map(b => (<div key={b.id} className="flex justify-between items-center p-3 border-b hover:bg-gray-50 transition-colors"><div><p className="font-black">{employees.find(e=>e.id===b.employeeId)?.name || 'Unknown'}</p><p className="text-[10px] font-bold text-gray-400 uppercase">{b.description} • {b.amount.toLocaleString()} SYP (P{b.period||'?'})</p></div><button onClick={()=>deleteBonus(b.id)} className="text-red-500 font-black text-[10px] uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button></div>))}</div>
               </div>
            )}
 
            {activeOwnerTab === 'users' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                 <div className="bg-white rounded-[2rem] shadow-xl p-8">
-                    <h3 className="text-xl font-black uppercase mb-6">{t('credentialManagement')}</h3>
-                    {users.map(u => (
-                       <div key={u.id} className="flex justify-between items-center p-4 border-b">
-                          <span className="font-black">{u.username} <span className="bg-indigo-100 px-2 rounded text-xs uppercase text-indigo-600">{u.role}</span></span>
-                          <div className="flex gap-2">
-                             <button onClick={()=>startEditUser(u)} className="text-indigo-600 font-black text-xs uppercase hover:bg-indigo-50 px-2 py-1 rounded">{t('edit')}</button>
-                             {u.id !== currentUser.id && <button onClick={()=>deleteUser(u.id)} className="text-red-600 font-black text-xs uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button>}
-                          </div>
-                       </div>
-                    ))}
-                 </div>
-                 <div className="bg-white rounded-[2rem] shadow-xl p-8 h-fit">
-                    <h3 className="text-xl font-black uppercase mb-6">{editingUserId ? t('updateIdentity') : t('createAccess')}</h3>
-                    <form onSubmit={handleUserSubmit} className="space-y-4">
-                       <input className={inputClass} placeholder={t('username')} value={newUserFormData.username} onChange={e=>setNewUserFormData({...newUserFormData, username:e.target.value})} required />
-                       <input className={inputClass} placeholder={t('secretKey')} value={newUserFormData.password} onChange={e=>setNewUserFormData({...newUserFormData, password:e.target.value})} required />
-                       <select className={inputClass} value={newUserFormData.role} onChange={e=>setNewUserFormData({...newUserFormData, role:e.target.value})}><option value="hr">HR</option><option value="manager">Manager</option><option value="finance">Finance</option><option value="data_entry">Data Entry</option><option value="owner">Owner</option></select>
-                       <div className="flex gap-2">
-                          {editingUserId && <button type="button" onClick={cancelEditUser} className="flex-1 bg-gray-200 text-black p-4 rounded-xl font-black uppercase text-xs tracking-widest">{t('cancel')}</button>}
-                          <button className="flex-1 bg-black text-white p-4 rounded-xl font-black uppercase text-xs tracking-widest">{editingUserId ? t('commit') : t('authorizeIdentity')}</button>
-                       </div>
-                    </form>
-                 </div>
+                 <div className="bg-white rounded-[2rem] shadow-xl p-8"><h3 className="text-xl font-black uppercase mb-6">{t('credentialManagement')}</h3>{users.map(u => (<div key={u.id} className="flex justify-between items-center p-4 border-b"><span className="font-black">{u.username} <span className="bg-indigo-100 px-2 rounded text-xs uppercase text-indigo-600">{u.role}</span></span><div className="flex gap-2"><button onClick={()=>startEditUser(u)} className="text-indigo-600 font-black text-xs uppercase hover:bg-indigo-50 px-2 py-1 rounded">{t('edit')}</button>{u.id !== currentUser.id && <button onClick={()=>deleteUser(u.id)} className="text-red-600 font-black text-xs uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button>}</div></div>))}</div>
+                 <div className="bg-white rounded-[2rem] shadow-xl p-8 h-fit"><h3 className="text-xl font-black uppercase mb-6">{editingUserId ? t('updateIdentity') : t('createAccess')}</h3><form onSubmit={handleUserSubmit} className="space-y-4"><input className={inputClass} placeholder={t('username')} value={newUserFormData.username} onChange={e=>setNewUserFormData({...newUserFormData, username:e.target.value})} required /><input className={inputClass} placeholder={t('secretKey')} value={newUserFormData.password} onChange={e=>setNewUserFormData({...newUserFormData, password:e.target.value})} required /><select className={inputClass} value={newUserFormData.role} onChange={e=>setNewUserFormData({...newUserFormData, role:e.target.value})}><option value="hr">HR</option><option value="manager">Manager</option><option value="finance">Finance</option><option value="data_entry">Data Entry</option><option value="owner">Owner</option></select><div className="flex gap-2">{editingUserId && <button type="button" onClick={cancelEditUser} className="flex-1 bg-gray-200 text-black p-4 rounded-xl font-black uppercase text-xs tracking-widest">{t('cancel')}</button>}<button className="flex-1 bg-black text-white p-4 rounded-xl font-black uppercase text-xs tracking-widest">{editingUserId ? t('commit') : t('authorizeIdentity')}</button></div></form></div>
               </div>
            )}
            
            {activeOwnerTab === 'dictionary' && (
               <div className="bg-white rounded-[2rem] shadow-xl p-8">
-                 <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-black uppercase">{t('dictionary')}</h3>
-                    <button onClick={saveDictionary} className="px-6 py-2 bg-black text-white rounded-lg font-black uppercase text-xs tracking-widest">{t('saveDictionary')}</button>
-                 </div>
+                 <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-black uppercase">{t('dictionary')}</h3><button onClick={saveDictionary} className="px-6 py-2 bg-black text-white rounded-lg font-black uppercase text-xs tracking-widest">{t('saveDictionary')}</button></div>
                  <input className="w-full mb-6 px-4 py-3 border-2 border-gray-300 rounded-xl font-bold text-black outline-none" placeholder={t('search')} value={dictionarySearch} onChange={e=>setDictionarySearch(e.target.value)} />
-                 <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                    {Object.keys(translations).filter(k => k.toLowerCase().includes(dictionarySearch.toLowerCase()) || translations[k]?.en?.toLowerCase()?.includes(dictionarySearch.toLowerCase())).map(key => {
-                       const currentVal = localDict[key] || translations[key];
-                       return (
-                          <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-xl bg-gray-50">
-                             <div className="flex items-center"><span className="font-mono text-xs font-bold text-gray-500">{key}</span></div>
-                             <input className="px-3 py-2 rounded-lg border font-bold text-sm" value={currentVal.en} onChange={e=>setLocalDict({...localDict, [key]: {...currentVal, en: e.target.value}})} placeholder="English" />
-                             <input className="px-3 py-2 rounded-lg border font-bold text-sm text-right" value={currentVal.ar} onChange={e=>setLocalDict({...localDict, [key]: {...currentVal, ar: e.target.value}})} placeholder="Arabic" />
-                          </div>
-                       );
-                    })}
-                 </div>
+                 <div className="space-y-4 max-h-[60vh] overflow-y-auto">{Object.keys(translations).filter(k => k.toLowerCase().includes(dictionarySearch.toLowerCase()) || translations[k]?.en?.toLowerCase()?.includes(dictionarySearch.toLowerCase())).map(key => { const currentVal = localDict[key] || translations[key]; return (<div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-xl bg-gray-50"><div className="flex items-center"><span className="font-mono text-xs font-bold text-gray-500">{key}</span></div><input className="px-3 py-2 rounded-lg border font-bold text-sm" value={currentVal.en} onChange={e=>setLocalDict({...localDict, [key]: {...currentVal, en: e.target.value}})} placeholder="English" /><input className="px-3 py-2 rounded-lg border font-bold text-sm text-right" value={currentVal.ar} onChange={e=>setLocalDict({...localDict, [key]: {...currentVal, ar: e.target.value}})} placeholder="Arabic" /></div>);})}</div>
               </div>
            )}
            
            {reportType && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-               <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center animate-in fade-in zoom-in duration-200">
-                  <h4 className="text-xl font-black mb-6 text-black uppercase tracking-widest">{t('selectReport')}</h4>
-                  <div className="space-y-4">
-                      <button onClick={() => handleGeneratePDF('p1')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period1')}</button>
-                      <button onClick={() => handleGeneratePDF('p2')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period2')}</button>
-                      <button onClick={() => handleGeneratePDF('full')} className="w-full py-4 bg-black text-white font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-gray-800 transition-all">{t('fullMonth')}</button>
-                  </div>
-                  <button onClick={() => setReportType(null)} className="mt-8 text-gray-400 font-bold text-xs uppercase hover:text-black transition-colors">{t('cancel')}</button>
-               </div>
-            </div>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"><div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center animate-in fade-in zoom-in duration-200"><h4 className="text-xl font-black mb-6 text-black uppercase tracking-widest">{t('selectReport')}</h4><div className="space-y-4"><button onClick={() => handleGeneratePDF('p1')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period1')}</button><button onClick={() => handleGeneratePDF('p2')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period2')}</button><button onClick={() => handleGeneratePDF('full')} className="w-full py-4 bg-black text-white font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-gray-800 transition-all">{t('fullMonth')}</button></div><button onClick={() => setReportType(null)} className="mt-8 text-gray-400 font-bold text-xs uppercase hover:text-black transition-colors">{t('cancel')}</button></div></div>
           )}
 
           {totalsData && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-               <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center animate-in zoom-in duration-200">
-                  <h4 className="text-2xl font-black mb-2 text-black uppercase tracking-widest">{t('estimatedPayout')}</h4>
-                  <p className="text-gray-500 text-sm font-bold mb-6">{totalsData.month}</p>
-                  
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"><div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center animate-in zoom-in duration-200">
+                  <h4 className="text-2xl font-black mb-2 text-black uppercase tracking-widest">{t('estimatedPayout')}</h4><p className="text-gray-500 text-sm font-bold mb-6">{totalsData.month}</p>
                   <div className="space-y-4 text-left">
-                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                          <div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase text-gray-400">Period 1</span><span className="font-black text-lg">{Math.round(totalsData.p1.grandTotal).toLocaleString()}</span></div>
-                          <p className="text-[10px] text-gray-400 font-bold text-right">{totalsData.p1.count} Employees</p>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                          <div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase text-gray-400">Period 2</span><span className="font-black text-lg">{Math.round(totalsData.p2.grandTotal).toLocaleString()}</span></div>
-                          <p className="text-[10px] text-gray-400 font-bold text-right">{totalsData.p2.count} Employees</p>
-                      </div>
-                      <div className="bg-black p-4 rounded-xl shadow-lg">
-                          <div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase text-gray-400">Full Month</span><span className="font-black text-lg text-white">{Math.round(totalsData.full.grandTotal).toLocaleString()}</span></div>
-                          <p className="text-[10px] text-gray-400 font-bold text-right">SYP</p>
-                      </div>
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100"><div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase text-gray-400">Period 1</span><span className="font-black text-lg">{formatDisplayMoney(totalsData.p1.grandTotal, config)}</span></div><p className="text-[10px] text-gray-400 font-bold text-right">{totalsData.p1.count} Employees</p></div>
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100"><div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase text-gray-400">Period 2</span><span className="font-black text-lg">{formatDisplayMoney(totalsData.p2.grandTotal, config)}</span></div><p className="text-[10px] text-gray-400 font-bold text-right">{totalsData.p2.count} Employees</p></div>
+                      <div className="bg-black p-4 rounded-xl shadow-lg"><div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase text-gray-400">Full Month</span><span className="font-black text-lg text-white">{formatDisplayMoney(totalsData.full.grandTotal, config)}</span></div><p className="text-[10px] text-gray-400 font-bold text-right text-white opacity-50">{getCurrencyLabel(config)}</p></div>
                   </div>
-
                   <button onClick={() => setTotalsData(null)} className="mt-8 text-gray-400 font-bold text-xs uppercase hover:text-black transition-colors">{t('cancel')}</button>
-               </div>
-            </div>
+            </div></div>
           )}
 
         </div>
       );
     };
 
-    // --- 5. MAIN APP ---
     const App = () => {
       const [currentUser, setCurrentUser] = React.useState(null);
       const [lang, setLang] = React.useState(localStorage.getItem('sa_lang') || 'en');
@@ -1836,7 +1253,9 @@
       const [transportation, setTransportation] = React.useState([]);
       const [loans, setLoans] = React.useState([]);
       const [lockedMonths, setLockedMonths] = React.useState([]);
-      const [pdfConfig, setPdfConfig] = React.useState({ companyName: 'SalaryMaster', footerText: 'System Generated', logoPlaceholder: 'S|M', otMultiplier: 1.5, daysInMonth: 26, hoursPerDay: 8, absentDeductionFactor: 1.0, nightShiftMultiplier: 1.0 });
+      
+      const [pdfConfig, setPdfConfig] = React.useState({ companyName: 'SalaryMaster', footerText: 'System Generated', logoPlaceholder: 'S|M', otMultiplier: 1.5, daysInMonth: 26, hoursPerDay: 8, absentDeductionFactor: 1.0, nightShiftMultiplier: 1.0, usdExchangeRate: 15000, displayCurrency: 'SYP' });
+      
       const [customTranslations, setCustomTranslations] = React.useState({});
       const t = (key) => { const entry = customTranslations[key] || translations[key]; return entry?.[lang] || key; };
       const toggleLanguage = () => { const l = lang === 'en' ? 'ar' : 'en'; setLang(l); localStorage.setItem('sa_lang', l); };
@@ -1879,27 +1298,10 @@
 
       const renderDashboard = () => {
           const props = { employees, sections, attendance, advances, bonuses, overtime, transportation, loans, pdfConfig, config: pdfConfig, lockedMonths, lang, t, toggleMonthLock: handleToggleMonthLock };
-          if (currentUser.role === 'owner') return <OwnerDashboard {...props} currentUser={currentUser} users={users} 
-            setConfig={(c)=>db.collection('meta').doc('config').set(c)} 
-            addUser={(u)=>db.collection('users').add(u)} 
-            updateUser={(id, u)=>db.collection('users').doc(id).update(u)}
-            deleteUser={(id)=>db.collection('users').doc(id).delete()} 
-            addBonus={(eid, amt, date, desc, period) => db.collection('bonuses').add({employeeId: eid, amount: amt, date, description: desc, period: period})} 
-            deleteBonus={(id) => db.collection('bonuses').doc(id).delete()}
-          />;
+          if (currentUser.role === 'owner') return <OwnerDashboard {...props} currentUser={currentUser} users={users} setConfig={(c)=>db.collection('meta').doc('config').set(c)} addUser={(u)=>db.collection('users').add(u)} updateUser={(id, u)=>db.collection('users').doc(id).update(u)} deleteUser={(id)=>db.collection('users').doc(id).delete()} addBonus={(eid, amt, date, desc, period) => db.collection('bonuses').add({employeeId: eid, amount: amt, date, description: desc, period: period})} deleteBonus={(id) => db.collection('bonuses').doc(id).delete()} />;
           if (currentUser.role === 'hr') return <HRDashboard {...props} lockPeriod={handleToggleMonthLock} setPdfConfig={(c)=>db.collection('meta').doc('config').set(c)} addEmployee={(d)=>db.collection('employees').add(d)} updateEmployee={(id,d)=>db.collection('employees').doc(id).update(d)} deleteEmployee={(id)=>db.collection('employees').doc(id).delete()} addSection={(n)=>db.collection('sections').add({name:n})} deleteSection={(id)=>db.collection('sections').doc(id).delete()} resignEmployee={(id)=>db.collection('employees').doc(id).update({isResigned:true})} />;
-          if (currentUser.role === 'manager' || currentUser.role === 'data_entry') {
-             return <ManagerDashboard {...props} canEdit={currentUser.role === 'manager'}
-                updateAttendance={(d, ids) => { const r = attendance.find(a=>a.date===d); if(r) db.collection('attendance').doc(r.id).update({absentEmployeeIds:ids}); else db.collection('attendance').add({date:d, absentEmployeeIds:ids}); }} 
-                addAdvance={(eid, amt, d)=>db.collection('advances').add({employeeId:eid, amount:amt, date:d})} 
-                addOvertime={(eid, hrs, d)=>db.collection('overtime').add({employeeId:eid, hours:hrs, date:d})} 
-                updateAdvance={(id, val)=>db.collection('advances').doc(id).update({amount:val})}
-                updateOvertime={(id, val)=>db.collection('overtime').doc(id).update({hours:val})}
-                deleteAdvance={(id)=>db.collection('advances').doc(id).delete()}
-                deleteOvertime={(id)=>db.collection('overtime').doc(id).delete()}
-             />;
-          }
-          if (currentUser.role === 'finance') return <FinanceDashboard {...props} updateLoan={(eid, tot, pct, period) => { const l = loans.find(x=>x.employeeId===eid); if(tot<=0 && l) db.collection('loans').doc(l.id).delete(); else if(l) db.collection('loans').doc(l.id).update({totalAmount:tot, deductionPercentage:pct, deductionPeriod: period}); else db.collection('loans').add({employeeId:eid, totalAmount:tot, deductionPercentage:pct, deductionPeriod: period}); }} />;
+          if (currentUser.role === 'manager' || currentUser.role === 'data_entry') return <ManagerDashboard {...props} canEdit={currentUser.role === 'manager'} updateAttendance={(d, ids) => { const r = attendance.find(a=>a.date===d); if(r) db.collection('attendance').doc(r.id).update({absentEmployeeIds:ids}); else db.collection('attendance').add({date:d, absentEmployeeIds:ids}); }} addAdvance={(eid, amt, d)=>db.collection('advances').add({employeeId:eid, amount:amt, date:d})} addOvertime={(eid, hrs, d)=>db.collection('overtime').add({employeeId:eid, hours:hrs, date:d})} updateAdvance={(id, val)=>db.collection('advances').doc(id).update({amount:val})} updateOvertime={(id, val)=>db.collection('overtime').doc(id).update({hours:val})} deleteAdvance={(id)=>db.collection('advances').doc(id).delete()} deleteOvertime={(id)=>db.collection('overtime').doc(id).delete()} />;
+          if (currentUser.role === 'finance') return <FinanceDashboard {...props} updateLoan={(eid, tot, pct) => { const l = loans.find(x=>x.employeeId===eid); if(tot<=0 && l) db.collection('loans').doc(l.id).delete(); else if(l) db.collection('loans').doc(l.id).update({totalAmount:tot, deductionPercentage:pct}); else db.collection('loans').add({employeeId:eid, totalAmount:tot, deductionPercentage:pct}); }} />;
           return <div className="text-center p-10 font-black">{t('unauthorized')}</div>;
       };
 
