@@ -183,11 +183,12 @@
       remainingCash: { en: "Remaining Cash", ar: "النقد المتبقي" },
       paymentType: { en: "Payment Type", ar: "نوع الدفعة" },
       dailyLogs: { en: "Daily Ledger", ar: "السجل اليومي" },
-      wipePayouts: { en: "Wipe Cashier Logs", ar: "مسح سجلات الصندوق" }
+      wipePayouts: { en: "Wipe Cashier Logs", ar: "مسح سجلات الصندوق" },
+      printEodReport: { en: "Print EOD Report (PDF)", ar: "طباعة تقرير الإغلاق (PDF)" }
     };
 
     // --- 3. UI COMPONENTS ---
-    const MoneyInput = ({ value, onChange, placeholder, min, className, type="number", currency="" }) => {
+    const MoneyInput = ({ value, onChange, placeholder, min, className, type="number", currency="", readOnly=false }) => {
       const formatted = value ? parseFloat(value).toLocaleString() : '';
       return (
         <div className="relative w-full">
@@ -197,7 +198,8 @@
             className={className} 
             placeholder={placeholder} 
             value={value} 
-            onChange={onChange} 
+            onChange={onChange}
+            readOnly={readOnly}
           />
           {formatted && (
             <div className="text-[10px] text-green-600 font-black text-right mt-1 px-1">
@@ -287,6 +289,7 @@
         
         const totalAdvances = advances.filter(a => a.employeeId === emp.id && filterByDate(a)).reduce((sum, curr) => sum + (parseFloat(curr.amount) || 0), 0);
 
+        // Grants are intentionally excluded here so they don't bloat standard period payslips.
         const totalEarnings = wageForPeriod + overtimePay + totalTransport + empBonus;
         const totalDeductions = totalAdvances + loanDeduction + totalAbsenceDeduction;
         const netSalary = Math.max(0, totalEarnings - totalDeductions);
@@ -510,6 +513,63 @@
         }
     };
 
+    const generateSingleResignationSlip = async (emp, settlementData, config) => {
+        try {
+          const { jsPDF } = window.jspdf;
+          const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf';
+          const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+          let binary = '';
+          const bytes = new Uint8Array(fontBytes);
+          for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+          const base64Font = window.btoa(binary);
+
+          const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [110, 220] });
+          doc.addFileToVFS('Amiri-Regular.ttf', base64Font);
+          doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
+          doc.setFont('Amiri'); 
+          
+          doc.setFillColor(220, 38, 38); 
+          doc.rect(0, 0, 110, 25, 'F'); 
+          doc.setTextColor(255, 255, 255); 
+          doc.setFontSize(14); 
+          doc.text("تصفية حساب نهائية", 105, 10, { align: 'right' }); 
+          doc.setFontSize(10); 
+          doc.text(new Date().toLocaleDateString(), 10, 10, { align: 'left' });
+
+          doc.setTextColor(0); 
+          let y = 40; 
+          const rowHeight = 8;
+          const drawRow = (label, value) => { doc.text(label, 105, y, { align: 'right' }); doc.text(value.toString(), 5, y, { align: 'left' }); doc.line(5, y+2, 105, y+2); y += rowHeight; };
+
+          drawRow("اسم العامل", emp.name);
+          drawRow("الراتب الأساسي", formatBase(settlementData.basePay));
+          drawRow("الإضافي", formatBase(settlementData.overtime));
+          drawRow("المواصلات", formatBase(settlementData.transport));
+          drawRow("المكافآت", formatBase(settlementData.bonus));
+          if (settlementData.grant > 0) drawRow("منح ومساعدات", formatBase(settlementData.grant));
+          drawRow("السلف", formatBase(settlementData.advances));
+          drawRow("خصم القروض", formatBase(settlementData.loans));
+          drawRow("غرامة الغياب", formatBase(settlementData.penalty));
+
+          // DUAL CURRENCY TOTAL
+          y += 10; 
+          doc.setFillColor(0); 
+          doc.rect(5, y-6, 100, 16, 'F'); 
+          
+          doc.setTextColor(255); 
+          doc.setFontSize(11);
+          doc.text("الصافي المستحق", 100, y, { align: 'right' }); 
+          doc.text(`${formatBase(settlementData.net)} ${config.mainSymbol || 'ل.س'}`, 10, y, { align: 'left' });
+
+          doc.setTextColor(200); 
+          doc.setFontSize(9);
+          doc.text("يعادل", 100, y + 6, { align: 'right' }); 
+          doc.text(`${formatSec(settlementData.net, config)} ${config.secSymbol || '$'}`, 10, y + 6, { align: 'left' });
+
+          doc.save(`Resignation_${emp.name}.pdf`);
+        } catch (error) { alert("PDF Error: " + error.message); }
+    };
+
     // --- 6. DASHBOARD COMPONENTS ---
 
     const Login = ({ onLogin, users, lang, t, toggleLanguage }) => {
@@ -563,12 +623,15 @@
       );
     };
 
-    const CashierDashboard = ({ employees, payoutLogs, cashRegisters, addPayout, deletePayout, updateCashRegister, lang, t, config }) => {
+    // --- CASHIER DASHBOARD WITH PDF EXPORT & AUTO-MATH ---
+    const CashierDashboard = ({ employees, payoutLogs, cashRegisters, addPayout, deletePayout, updateCashRegister, lang, t, config, attendance, advances, overtime, loans, transportation, bonuses, grants, sections }) => {
         const [selectedDate, setSelectedDate] = React.useState(new Date().toISOString().split('T')[0]);
+        const [targetMonth, setTargetMonth] = React.useState(new Date().toISOString().substring(0,7));
         const [selectedEmp, setSelectedEmp] = React.useState('');
         const [amount, setAmount] = React.useState('');
         const [payType, setPayType] = React.useState('period1');
         const [startingCashInput, setStartingCashInput] = React.useState('');
+        const [isExporting, setIsExporting] = React.useState(false);
 
         const inputClass = "w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl font-bold text-black outline-none focus:border-indigo-600 transition-all";
 
@@ -578,6 +641,33 @@
         const totalPaid = todaysLogs.reduce((sum, log) => sum + parseFloat(log.amount), 0);
         const startingCash = todaysRegister ? parseFloat(todaysRegister.startingBalance) : 0;
         const remainingCash = startingCash - totalPaid;
+
+        // Auto-Calculate Math when Employee or Type changes
+        React.useEffect(() => {
+            if (!selectedEmp || payType === 'advance') {
+                if (payType === 'advance') setAmount('');
+                return;
+            }
+            const emp = employees.find(e => e.id === selectedEmp);
+            if (!emp) return;
+
+            let calc = 0;
+            if (payType === 'period1') {
+                calc = calculateEmployeePayroll(emp, targetMonth, 'p1', attendance, advances, overtime, loans, transportation, config, bonuses).netSalary;
+            } else if (payType === 'period2') {
+                calc = calculateEmployeePayroll(emp, targetMonth, 'p2', attendance, advances, overtime, loans, transportation, config, bonuses).netSalary;
+            } else if (payType === 'fullMonth') {
+                calc = calculateEmployeePayroll(emp, targetMonth, 'full', attendance, advances, overtime, loans, transportation, config, bonuses).netSalary;
+            } else if (payType === 'supportAid') {
+                calc = grants.filter(g => g.employeeId === emp.id && g.date === selectedDate).reduce((s, c) => s + parseFloat(c.amount || 0), 0);
+            }
+            
+            // SMART ROUNDING UP TO NEAREST 500 SYP
+            const finalAmount = Math.ceil(calc / 500) * 500;
+            setAmount(finalAmount > 0 ? finalAmount : '');
+
+        }, [selectedEmp, payType, selectedDate, targetMonth, employees, attendance, advances, overtime, loans, transportation, config, bonuses, grants]);
+
 
         const handleSetBalance = (e) => {
             e.preventDefault();
@@ -605,7 +695,90 @@
             });
             
             setSelectedEmp('');
-            setAmount('');
+            if (payType === 'advance') setAmount('');
+        };
+
+        const exportDailyCashierReport = async () => {
+            if (todaysLogs.length === 0 && !todaysRegister) {
+                return alert("No records found for this date.");
+            }
+            setIsExporting(true);
+            try {
+                const { jsPDF } = window.jspdf;
+                const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf';
+                const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+                let binary = '';
+                const bytes = new Uint8Array(fontBytes);
+                for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+                const base64Font = window.btoa(binary);
+
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                doc.addFileToVFS('Amiri-Regular.ttf', base64Font);
+                doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
+                doc.setFont('Amiri', 'normal'); 
+                
+                // Header
+                doc.setFontSize(22);
+                doc.text("تقرير حركة الصندوق اليومي", 105, 20, { align: 'center' });
+                
+                doc.setFontSize(12);
+                doc.text(`التاريخ: ${selectedDate}`, 190, 35, { align: 'right' });
+
+                // Summary Block
+                doc.setFillColor(245, 245, 245);
+                doc.rect(20, 45, 170, 30, 'F');
+                doc.setFontSize(14);
+                doc.text(`الرصيد الافتتاحي: ${formatBase(startingCash)} ${config.mainSymbol || 'SYP'}`, 185, 53, { align: 'right' });
+                doc.text(`إجمالي المدفوعات: ${formatBase(totalPaid)} ${config.mainSymbol || 'SYP'}`, 185, 63, { align: 'right' });
+                doc.setFontSize(16);
+                doc.setTextColor(remainingCash >= 0 ? 0 : 255, 0, 0); 
+                doc.text(`الرصيد المتبقي: ${formatBase(remainingCash)} ${config.mainSymbol || 'SYP'}`, 185, 73, { align: 'right' });
+                doc.setTextColor(0, 0, 0);
+
+                // Table Headers
+                let y = 90;
+                doc.setFontSize(11);
+                doc.setFillColor(200, 200, 200);
+                doc.rect(20, y - 6, 170, 8, 'F');
+                
+                doc.text("المبلغ", 40, y, { align: 'right' });
+                doc.text("النوع", 80, y, { align: 'right' });
+                doc.text("اسم العامل", 140, y, { align: 'right' });
+                doc.text("الوقت", 185, y, { align: 'right' });
+                
+                y += 8;
+
+                // Table Rows
+                todaysLogs.forEach(log => {
+                    if (y > 260) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                    const timeStr = new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    doc.setFontSize(10);
+                    doc.text(`${formatBase(log.amount)}`, 40, y, { align: 'right' });
+                    doc.text(t(log.type), 80, y, { align: 'right' });
+                    doc.text(log.employeeName, 140, y, { align: 'right' });
+                    doc.text(timeStr, 185, y, { align: 'right' });
+                    
+                    doc.setDrawColor(220);
+                    doc.line(20, y + 2, 190, y + 2);
+                    y += 8;
+                });
+
+                // Signatures
+                y = Math.max(y + 30, 250); 
+                if (y > 280) { doc.addPage(); y = 40; }
+                
+                doc.setFontSize(12);
+                doc.text("توقيع أمين الصندوق: ___________________", 180, y, { align: 'right' });
+                doc.text("توقيع المراجعة / الإدارة: ___________________", 80, y, { align: 'right' });
+
+                doc.save(`Cashier_EOD_${selectedDate}.pdf`);
+            } catch (err) {
+                alert("Error generating PDF: " + err.message);
+            }
+            setIsExporting(false);
         };
 
         return (
@@ -615,7 +788,16 @@
                         <h2 className="text-2xl font-black text-black uppercase tracking-tight">{t('cashRegister')}</h2>
                         <p className="text-sm text-gray-500 font-bold">{t('recordingFor')} <span className="text-indigo-600">{selectedDate}</span></p>
                     </div>
-                    <input type="date" className={inputClass + " md:w-auto"} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
+                    <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                        <button 
+                            onClick={exportDailyCashierReport} 
+                            disabled={isExporting} 
+                            className="bg-gray-800 text-white px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-black transition-all"
+                        >
+                            {isExporting ? 'Generating...' : t('printEodReport')}
+                        </button>
+                        <input type="date" className={inputClass + " md:w-auto"} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
+                    </div>
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -646,6 +828,15 @@
                     <div className="lg:col-span-1 bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 h-fit">
                         <h3 className="text-xl font-black uppercase mb-6">{t('recordPayout')}</h3>
                         <form onSubmit={handleLogPayout} className="space-y-5">
+                            
+                            {/* NEW: Target Month Selector for Salaries */}
+                            {['period1', 'period2', 'fullMonth'].includes(payType) && (
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Target Payroll Month</label>
+                                    <input type="month" className={inputClass} value={targetMonth} onChange={e=>setTargetMonth(e.target.value)} required />
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('name')}</label>
                                 <select className={inputClass} value={selectedEmp} onChange={e=>setSelectedEmp(e.target.value)} required>
@@ -653,6 +844,7 @@
                                     {employees.filter(e=>!e.isResigned).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                                 </select>
                             </div>
+                            
                             <div>
                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('paymentType')}</label>
                                 <select className={inputClass} value={payType} onChange={e=>setPayType(e.target.value)} required>
@@ -663,11 +855,28 @@
                                     <option value="supportAid">{t('supportAid')}</option>
                                 </select>
                             </div>
+                            
+                            {/* DYNAMIC AMOUNT INPUT */}
                             <div>
                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Amount</label>
-                                <MoneyInput required className={inputClass} placeholder="0" min="1" value={amount} onChange={e=>setAmount(e.target.value)} currency={config.mainSymbol || 'SYP'} />
+                                <MoneyInput 
+                                    required 
+                                    className={`${inputClass} ${payType !== 'advance' ? 'bg-gray-100 cursor-not-allowed opacity-70' : ''}`} 
+                                    placeholder="0" 
+                                    min="1" 
+                                    value={amount} 
+                                    onChange={e=> { if(payType === 'advance') setAmount(e.target.value) }} 
+                                    currency={config.mainSymbol || 'SYP'} 
+                                    readOnly={payType !== 'advance'}
+                                />
+                                {payType !== 'advance' && (
+                                    <p className="text-[8px] text-gray-400 mt-1 uppercase font-bold text-right">Auto-calculated & rounded up to nearest 500</p>
+                                )}
                             </div>
-                            <button type="submit" className="w-full bg-black text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-gray-800 transition-all">{t('confirm')}</button>
+                            
+                            <button type="submit" className="w-full bg-black text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-gray-800 transition-all">
+                                {payType !== 'advance' && amount ? `PAY ${parseFloat(amount).toLocaleString()}` : t('confirm')}
+                            </button>
                         </form>
                     </div>
 
@@ -699,7 +908,6 @@
             </div>
         );
     };
-
 
     const HRDashboard = ({ employees, sections, addEmployee, updateEmployee, resignEmployee, deleteEmployee, addSection, deleteSection, attendance, advances, overtime, transportation, loans, pdfConfig, bonuses, grants, lockedMonths, toggleMonthLock, lang, t }) => {
       const [formData, setFormData] = React.useState({ name: '', wage: '', transportAllowance: '0', shift: 'day', joinDate: new Date().toISOString().split('T')[0], nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '', dateOfBirth: '', sectionId: '' });
@@ -775,15 +983,7 @@
          setIsGenerating(false); setReportType(null); 
       };
 
-      const downloadTemplate = () => { 
-          const isAr = lang === 'ar'; 
-          const headers = isAr ? ['الاسم', 'الراتب', 'المواصلات', 'الوردية', 'مبلغ الفترة الأولى', 'فترة المواصلات', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] : ['Name', 'Wage', 'Transport', 'Shift', 'Period 1 Amount', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name']; 
-          const sample = isAr ? ['أحمد', '500000', '50000', 'صباحي', '250000', '2', '010101010', '123456', 'محمود', 'فاطمة'] : ['John Doe', '500000', '50000', 'day', '250000', '2', '010101010', '123456', 'Robert', 'Mary']; 
-          const ws = XLSX.utils.aoa_to_sheet([headers, sample]); 
-          const wb = XLSX.utils.book_new(); 
-          XLSX.utils.book_append_sheet(wb, ws, "Template"); 
-          XLSX.writeFile(wb, "Employee_Import_Template.xlsx"); 
-      };
+      const downloadTemplate = () => { const isAr = lang === 'ar'; const headers = isAr ? ['الاسم', 'الراتب', 'المواصلات', 'الوردية', 'مبلغ الفترة الأولى', 'فترة المواصلات', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] : ['Name', 'Wage', 'Transport', 'Shift', 'Period 1 Amount', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name']; const sample = isAr ? ['أحمد', '500000', '50000', 'صباحي', '250000', '2', '010101010', '123456', 'محمود', 'فاطمة'] : ['John Doe', '500000', '50000', 'day', '250000', '2', '010101010', '123456', 'Robert', 'Mary']; const ws = XLSX.utils.aoa_to_sheet([headers, sample]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Template"); XLSX.writeFile(wb, "Employee_Import_Template.xlsx"); };
       
       const handleExcelUpload = async (e) => { 
           const file = e.target.files[0]; 
@@ -812,6 +1012,20 @@
           }; 
       };
       
+      const handleResign = (emp) => { 
+         setEmployeeTarget(emp); 
+         const targetMonth = new Date().toISOString().substring(0,7); 
+         const pay = calculateEmployeePayroll(emp, targetMonth, 'full', attendance, advances, overtime, loans, transportation, pdfConfig, bonuses, grants);
+         setSettlementData({ basePay: pay.totalWage, penalty: pay.totalAbsenceDeduction, overtime: pay.overtimePay, advances: pay.totalAdvances, transport: pay.totalTransport, bonus: pay.empBonus, grant: pay.empGrant, loans: pay.loanDeduction, net: pay.netSalary }); 
+         setShowResignModal(true); 
+      };
+
+      const confirmResign = async () => { 
+         await generateSingleResignationSlip(employeeTarget, settlementData, pdfConfig); 
+         resignEmployee(employeeTarget.id); 
+         setShowResignModal(false); 
+      };
+
       const handleWipeData = async (type) => { 
           if (!confirm(`${t('dangerZone')}: ${type === 'employees' ? t('wipeAllWorkers') : t('wipeAllAttendance')}\n\n${t('wipeConfirm')}`)) return; 
           if (prompt("Type 'DELETE' to confirm:") !== 'DELETE') return alert("Cancelled."); 
@@ -861,6 +1075,7 @@
                                                       <td className="px-6 py-4 text-center font-black text-black">{emp.transportationAllowance > 0 ? <span className="text-green-600">{emp.transportationAllowance.toLocaleString()}</span> : <span className="text-red-500 bg-red-50 px-2 py-1 rounded text-[10px] uppercase">{t('missing')}</span>}</td>
                                                       <td className="px-6 py-4 text-right flex gap-1 justify-end">
                                                           {!viewResigned && <button onClick={() => startEditing(emp)} className="text-indigo-600 font-black px-2 text-[10px] uppercase">{t('edit')}</button>}
+                                                          {!viewResigned && <button onClick={() => handleResign(emp)} className="bg-amber-100 text-amber-700 font-black px-2 py-1 rounded text-[10px] uppercase hover:bg-amber-200">RESIGN</button>}
                                                           <button onClick={() => { setEmployeeTarget(emp); setShowDeleteModal(true); }} className="text-red-600 font-black px-2 text-[10px] uppercase">{t('delete')}</button>
                                                       </td>
                                                   </tr>
@@ -1014,6 +1229,31 @@
               </div>
           )}
 
+          {showResignModal && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                  <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in fade-in zoom-in duration-200">
+                      <h4 className="text-2xl font-black mb-4 text-amber-600 uppercase tracking-widest">{t('finalSettlement')}</h4>
+                      <p className="text-black text-sm mb-6 uppercase font-bold">{t('managingProfile')} <span className="text-indigo-600">{employeeTarget?.name}</span></p>
+                      {settlementData && (
+                          <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-2 text-left">
+                              <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Base Wage</span><span className="font-black">{formatBase(settlementData.basePay)}</span></div>
+                              <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Overtime</span><span className="font-black text-green-600">+{formatBase(settlementData.overtime)}</span></div>
+                              <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Transport</span><span className="font-black text-green-600">+{formatBase(settlementData.transport)}</span></div>
+                              <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Bonus</span><span className="font-black text-green-600">+{formatBase(settlementData.bonus)}</span></div>
+                              <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Advances</span><span className="font-black text-red-500">-{formatBase(settlementData.advances)}</span></div>
+                              <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Loan Deduction</span><span className="font-black text-red-500">-{formatBase(settlementData.loans)}</span></div>
+                              <div className="flex justify-between"><span className="text-xs font-bold text-gray-500">Absence Penalty</span><span className="font-black text-red-500">-{formatBase(settlementData.penalty)}</span></div>
+                              <div className="flex justify-between border-t border-gray-200 pt-2 mt-2"><span className="text-sm font-black uppercase">Net Pay</span><span className="font-black text-lg text-indigo-600">{formatBase(settlementData.net)} {pdfConfig.mainSymbol || 'SYP'}</span></div>
+                          </div>
+                      )}
+                      <div className="flex gap-3">
+                          <button onClick={() => setShowResignModal(false)} className="flex-1 py-4 bg-gray-100 text-black font-black rounded-xl uppercase text-xs">{t('cancel')}</button>
+                          <button onClick={confirmResign} className="flex-1 py-4 bg-black text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-gray-800 transition-all">{t('printAndArchive')}</button>
+                      </div>
+                  </div>
+              </div>
+          )}
+
           {reportType && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center animate-in fade-in zoom-in duration-200">
@@ -1074,6 +1314,235 @@
       );
     };
 
+    const ManagerDashboard = ({ employees, sections, attendance, advances, overtime, updateAttendance, addAdvance, addOvertime, lockedMonths, lang, t, canEdit, updateAdvance, updateOvertime, deleteAdvance, deleteOvertime, config }) => {
+      const [selectedDate, setSelectedDate] = React.useState(new Date().toISOString().split('T')[0]);
+      const [searchQuery, setSearchQuery] = React.useState('');
+      const [activeTab, setActiveTab] = React.useState('attendance');
+      const [advanceAmount, setAdvanceAmount] = React.useState({});
+      const [otHours, setOtHours] = React.useState({});
+      const [expandedSections, setExpandedSections] = React.useState({});
+      const [editingEntries, setEditingEntries] = React.useState(null);
+      
+      const monthStr = selectedDate.substring(0, 7);
+      const dayNum = parseInt(selectedDate.split('-')[2]);
+      const pStr = dayNum <= 15 ? 'p1' : 'p2';
+      const isLocked = lockedMonths.includes(monthStr) || lockedMonths.includes(`${monthStr}-${pStr}`);
+
+      const existingRecord = attendance.find(a => a.date === selectedDate);
+      const isLogged = !!existingRecord;
+      const dailyRecord = existingRecord || { date: selectedDate, absentEmployeeIds: [] };
+      const absentIds = dailyRecord.absentEmployeeIds || []; 
+      
+      const dailyAdvances = advances.filter(a => a.date === selectedDate);
+      const dailyOvertime = overtime.filter(o => o.date === selectedDate);
+
+      const filteredEmployees = employees.filter(emp => !emp.isResigned && (emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const employeesBySection = React.useMemo(() => { 
+          const grouped = { 'unassigned': [] }; 
+          sections.forEach(s => grouped[s.id] = []); 
+          filteredEmployees.forEach(emp => { if (emp.sectionId && grouped[emp.sectionId]) grouped[emp.sectionId].push(emp); else grouped['unassigned'].push(emp); }); 
+          return grouped; 
+      }, [filteredEmployees, sections]);
+      
+      const sortedSectionIds = React.useMemo(() => { 
+          return Object.keys(employeesBySection).sort((a, b) => { 
+              if (a === 'unassigned') return 1; 
+              if (b === 'unassigned') return -1; 
+              const nameA = sections.find(s => s.id === a)?.name || ''; 
+              const nameB = sections.find(s => s.id === b)?.name || ''; 
+              return nameA.localeCompare(nameB); 
+          }); 
+      }, [employeesBySection, sections]);
+
+      const toggleSection = (id) => setExpandedSections(prev => ({...prev, [id]: !prev[id]}));
+      
+      const toggleAbsence = (id) => { 
+          if(isLocked) return; 
+          const ids = absentIds.includes(id) ? absentIds.filter(x=>x!==id) : [...absentIds, id]; 
+          updateAttendance(selectedDate, ids); 
+      };
+      
+      const confirmAttendance = () => { if(isLocked) return; updateAttendance(selectedDate, absentIds); alert(t('verified')); };
+      const handleAddAdv = (id) => { if(isLocked) return; const val = parseFloat(advanceAmount[id]); if(val <= 0) return alert(t('mustBePositive')); addAdvance(id, val, selectedDate); setAdvanceAmount({...advanceAmount, [id]:''}); };
+      const handleAddOT = (id) => { if(isLocked) return; const val = parseFloat(otHours[id]); if(val <= 0) return alert(t('mustBePositive')); addOvertime(id, val, selectedDate); setOtHours({...otHours, [id]:''}); };
+
+      const saveAllAdvances = () => { if (isLocked) return; let count = 0; Object.entries(advanceAmount).forEach(([id, val]) => { const amount = parseFloat(val); if (amount > 0) { addAdvance(id, amount, selectedDate); count++; } }); setAdvanceAmount({}); if(count > 0) alert(`${count} advances saved successfully.`); };
+      const saveAllOvertime = () => { if (isLocked) return; let count = 0; Object.entries(otHours).forEach(([id, val]) => { const hours = parseFloat(val); if (hours > 0) { addOvertime(id, hours, selectedDate); count++; } }); setOtHours({}); if(count > 0) alert(`${count} overtime records saved successfully.`); };
+
+      const openEditModal = (empId, type) => { if(!canEdit || isLocked) return; setEditingEntries({ empId, type }); };
+      const handleEditSave = (recordId, newVal) => { const val = parseFloat(newVal); if(val <= 0) return alert(t('mustBePositive')); if(editingEntries.type === 'advances') updateAdvance(recordId, val); else updateOvertime(recordId, val); };
+      const handleEditDelete = (recordId) => { if(editingEntries.type === 'advances') deleteAdvance(recordId); else deleteOvertime(recordId); };
+
+      return (
+        <div className="max-w-6xl mx-auto space-y-6 pb-20 relative">
+           <section className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row gap-6 items-center justify-between relative overflow-hidden">
+               {isLocked && <div className="absolute top-0 right-0 px-6 py-1 bg-red-600 text-white text-[8px] font-black uppercase tracking-widest shadow-lg">{t('locked')}</div>}
+               <div className="flex-1">
+                   <h2 className="text-xl font-black text-black tracking-tight uppercase">{t('opsHub')}</h2>
+                   <p className="text-sm text-black font-black">{t('recordingFor')} <span className="text-indigo-600">{selectedDate}</span></p>
+               </div>
+               <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                   <input type="date" className="px-4 py-3 border-2 border-gray-300 rounded-2xl font-bold text-black bg-white" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
+                   <div className="flex bg-gray-100 p-1 rounded-2xl">
+                       {['attendance','advances','overtime'].map(m => (
+                           <button key={m} onClick={()=>setActiveTab(m)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === m ? 'bg-white text-indigo-600 shadow-sm' : 'text-black opacity-50 hover:opacity-100'}`}>{t(m)}</button>
+                       ))}
+                   </div>
+               </div>
+           </section>
+           
+           {activeTab === 'attendance' && (
+               <div className={`p-4 rounded-2xl border-2 flex flex-col sm:flex-row items-center justify-between gap-4 transition-all ${isLogged ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                   <div className="flex items-center gap-3">
+                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${isLogged ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{isLogged ? '✓' : '!'}</div>
+                       <div>
+                           <h4 className={`font-black uppercase ${isLogged ? 'text-green-800' : 'text-amber-800'}`}>{isLogged ? t('verified') : t('notLogged')}</h4>
+                           <p className="text-xs font-bold opacity-60">{isLogged ? t('verifiedSub') : t('notLoggedSub')}</p>
+                       </div>
+                   </div>
+                   {!isLocked && (<button onClick={confirmAttendance} className={`px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg transition-transform hover:scale-105 ${isLogged ? 'bg-white text-green-700 border border-green-200' : 'bg-black text-white'}`}>{isLogged ? t('updateLog') : t('verifyLog')}</button>)}
+               </div>
+           )}
+
+           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+             <div className="lg:col-span-2 space-y-6">
+                <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+                   <div className="p-6 border-b border-gray-100 bg-gray-50/30 flex justify-between items-center">
+                       <input type="text" placeholder={t('search')} className="w-full sm:w-80 py-4 bg-transparent border-b-2 border-gray-300 focus:border-indigo-600 outline-none font-bold text-black" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                   </div>
+                   <div className={`divide-y divide-gray-50 ${isLocked ? 'pointer-events-none opacity-50' : ''}`}>
+                      {sortedSectionIds.map(sId => {
+                         const emps = employeesBySection[sId];
+                         if (emps.length === 0) return null;
+                         const isExpanded = expandedSections[sId] !== false; 
+                         return (
+                            <div key={sId}>
+                               <button onClick={() => toggleSection(sId)} className="w-full flex justify-between items-center bg-gray-100/50 px-8 py-3 text-[10px] font-black text-black uppercase tracking-[0.2em] hover:bg-gray-200/50 transition-colors">
+                                   <span>{sId === 'unassigned' ? t('unassigned') : sections.find(s => s.id === sId)?.name}</span>
+                                   <span className="text-xs font-bold text-gray-500">{isExpanded ? 'v' : '>'}</span>
+                               </button>
+                               {isExpanded && emps.map(emp => {
+                                  const isAbsent = absentIds.includes(emp.id);
+                                  const existingAdv = dailyAdvances.filter(a => a.employeeId === emp.id).reduce((sum, r) => sum + r.amount, 0);
+                                  const existingOT = dailyOvertime.filter(o => o.employeeId === emp.id).reduce((sum, r) => sum + r.hours, 0);
+                                  return (
+                                     <div key={emp.id} className={`px-8 py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition-all hover:bg-gray-50 ${isAbsent && activeTab==='attendance'?'bg-red-50/30':''}`}>
+                                        <div className="flex items-center gap-5 flex-1">
+                                            <div className={`w-14 h-14 rounded-[1.25rem] flex items-center justify-center font-black text-lg shadow-sm border-2 ${isAbsent && activeTab==='attendance' ? 'bg-red-100 text-red-600 border-red-200' : 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>{emp.name.charAt(0)}</div>
+                                            <div>
+                                                <p className={`font-black text-base ${isAbsent && activeTab==='attendance' ? 'text-red-700' : 'text-black'}`}>{emp.name}</p>
+                                                <p className="text-[11px] font-black uppercase opacity-60">{t(emp.shift || 'day')}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4 shrink-0">
+                                           {activeTab === 'attendance' && (
+                                               <button onClick={() => toggleAbsence(emp.id)} className={`w-12 h-12 rounded-2xl border-4 flex items-center justify-center transition-all ${isAbsent ? 'bg-red-600 border-red-200 text-white' : 'bg-white border-gray-100 text-black shadow-sm'}`}>{isAbsent ? 'X' : '✓'}</button>
+                                           )}
+                                           {activeTab === 'advances' && !isAbsent && (
+                                               <div className="flex flex-col items-end gap-1">
+                                                   {existingAdv > 0 && <div className="flex items-center gap-2"><span className="text-[10px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded-lg">{t('logged')}: {existingAdv.toLocaleString()}</span>{canEdit && <button onClick={()=>openEditModal(emp.id, 'advances')} className="text-xs">✏️</button>}</div>}
+                                                   <div className="flex gap-2"><MoneyInput className="w-24 px-3 py-2 font-bold text-black bg-white rounded-xl border-2 border-gray-300" min="0" placeholder="0" value={advanceAmount[emp.id]||''} onChange={e => setAdvanceAmount({...advanceAmount, [emp.id]:e.target.value})} currency={config.mainSymbol || 'SYP'} /><button onClick={() => handleAddAdv(emp.id)} className="px-4 py-2 bg-black text-white rounded-xl font-black uppercase text-[10px]">{t('add')}</button></div>
+                                               </div>
+                                           )}
+                                           {activeTab === 'overtime' && !isAbsent && (
+                                               <div className="flex flex-col items-end gap-1">
+                                                   {existingOT > 0 && <div className="flex items-center gap-2"><span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">{t('logged')}: {existingOT}h</span>{canEdit && <button onClick={()=>openEditModal(emp.id, 'overtime')} className="text-xs">✏️</button>}</div>}
+                                                   <div className="flex gap-2"><input type="number" min="0" placeholder="Hrs" className="w-20 px-3 py-2 font-bold text-black bg-white rounded-xl border-2 border-gray-300" value={otHours[emp.id]||''} onChange={e => setOtHours({...otHours, [emp.id]:e.target.value})} /><button onClick={() => handleAddOT(emp.id)} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px]">{t('add')}</button></div>
+                                               </div>
+                                           )}
+                                        </div>
+                                     </div>
+                                  );
+                               })}
+                            </div>
+                         );
+                      })}
+                   </div>
+                </section>
+             </div>
+             <div className="space-y-6 lg:sticky lg:top-24">
+                 <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8">
+                     <h3 className="font-black text-black text-sm mb-6 flex items-center gap-3 uppercase tracking-widest"><div className="w-2 h-6 bg-indigo-600 rounded-full"></div>{t('activitySummary')}</h3>
+                     <p className="text-xs text-gray-500 font-bold">{t('historyProtected')}</p>
+                 </section>
+             </div>
+           </div>
+           {!isLocked && (activeTab === 'advances' || activeTab === 'overtime') && (
+               <div className="fixed bottom-6 right-6 z-50 animate-bounce-in">
+                   <button onClick={activeTab === 'advances' ? saveAllAdvances : saveAllOvertime} className="bg-black text-white px-8 py-4 rounded-full shadow-2xl font-black uppercase text-xs tracking-widest hover:scale-105 transition-transform flex items-center gap-3">
+                       <span>{t('saveAll')} {activeTab === 'advances' ? t('advances') : t('overtime')}</span>
+                       <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                   </button>
+               </div>
+           )}
+           {editingEntries && (
+               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                   <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md p-8 animate-in fade-in zoom-in duration-200">
+                       <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-black uppercase">{t('editEntries')}</h3><button onClick={()=>setEditingEntries(null)} className="text-gray-400 hover:text-black">✕</button></div>
+                       <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                           {(editingEntries.type === 'advances' ? dailyAdvances : dailyOvertime).filter(x => x.employeeId === editingEntries.empId).map(record => (
+                               <div key={record.id} className="flex gap-2 items-center">
+                                   <input className="flex-1 p-3 border-2 rounded-xl font-bold bg-gray-50" type="number" min="0" defaultValue={editingEntries.type === 'advances' ? record.amount : record.hours} onBlur={(e) => handleEditSave(record.id, e.target.value)} />
+                                   <button onClick={() => handleEditDelete(record.id)} className="bg-red-100 text-red-600 p-3 rounded-xl font-bold">🗑</button>
+                               </div>
+                           ))}
+                       </div>
+                       <button onClick={()=>setEditingEntries(null)} className="w-full mt-6 bg-black text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest">{t('confirm')}</button>
+                   </div>
+               </div>
+           )}
+        </div>
+      );
+    };
+
+    const FinanceDashboard = ({ employees, loans, advances, transportation, overtime, updateLoan, lockedMonths, lang, t, config }) => {
+      const [searchQuery, setSearchQuery] = React.useState('');
+      const [loanTarget, setLoanTarget] = React.useState(null);
+      const [loanAmount, setLoanAmount] = React.useState('');
+      const [loanPercent, setLoanPercent] = React.useState('10');
+      
+      const activeEmployees = employees.filter(emp => !emp.isResigned && (emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()));
+      const handleSaveLoan = () => { if (loanTarget) { updateLoan(loanTarget.id, parseFloat(loanAmount), parseFloat(loanPercent)); setLoanTarget(null); }};
+
+      return (
+         <div className="space-y-8 max-w-7xl mx-auto pb-12">
+            <header className="flex justify-between items-center">
+                <div><h2 className="text-3xl font-black text-black uppercase">{t('liabilityOversight')}</h2></div>
+                <input type="text" placeholder={t('name')} className="px-4 py-3 bg-white border border-gray-200 rounded-2xl outline-none font-black text-black w-72" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} />
+            </header>
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+               <table className="w-full text-left">
+                  <thead className="bg-white text-[10px] uppercase font-black text-black tracking-widest border-b"><tr><th className="px-8 py-5">{t('employeeInfo')}</th><th className="px-8 py-5 text-center">{t('remainingDebt')}</th><th className="px-8 py-5 text-right">{t('actions')}</th></tr></thead>
+                  <tbody className="divide-y divide-gray-100">
+                     {activeEmployees.map(emp => {
+                        const loan = loans.find(l => l.employeeId === emp.id);
+                        return (
+                           <tr key={emp.id} className="hover:bg-indigo-50/30">
+                              <td className="px-8 py-6 font-black text-black">{emp.name}</td>
+                              <td className="px-8 py-6 text-center">{loan ? `${parseFloat(loan.totalAmount).toLocaleString()} ${config.mainSymbol || 'SYP'}` : '-'}</td>
+                              <td className="px-8 py-6 text-right"><button onClick={() => { setLoanTarget(emp); setLoanAmount(loan?.totalAmount||''); setLoanPercent(loan?.deductionPercentage||'10'); }} className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest ${loan ? 'bg-white text-black border-2 border-black' : 'bg-indigo-600 text-white'}`}>{loan ? t('editContract') : t('issueLoan')}</button></td>
+                           </tr>
+                        );
+                     })}
+                  </tbody>
+               </table>
+            </div>
+            {loanTarget && (
+               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md">
+                  <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full p-10 space-y-6">
+                     <h4 className="text-2xl font-black text-black uppercase">{t('liabilityContract')}</h4>
+                     <p className="font-black uppercase text-xs">{t('managingProfile')} <span className="text-indigo-600 underline">{loanTarget.name}</span></p>
+                     <div><label className="block text-[10px] font-black uppercase mb-2">{t('total')} ({config.mainSymbol || 'SYP'})</label><input type="number" className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-black text-xl text-black" value={loanAmount} onChange={e=>setLoanAmount(e.target.value)} /></div>
+                     <div><label className="block text-[10px] font-black uppercase mb-2">{t('recoveryVelocity')} (%)</label><input type="number" className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-black text-xl text-black" value={loanPercent} onChange={e=>setLoanPercent(e.target.value)} /></div>
+                     <div className="flex gap-4"><button onClick={()=>setLoanTarget(null)} className="flex-1 px-4 py-4 bg-gray-100 text-black font-black rounded-2xl uppercase text-[10px]">{t('discard')}</button><button onClick={handleSaveLoan} className="flex-1 px-4 py-4 bg-black text-white font-black rounded-2xl uppercase text-[10px]">{t('saveContract')}</button></div>
+                  </div>
+               </div>
+            )}
+         </div>
+      );
+    };
+
     const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, attendance, employees, bonuses, addBonus, deleteBonus, grants, addGrant, deleteGrant, users, addUser, updateUser, deleteUser, currentUser, lang, t, sections, advances, overtime, transportation, loans }) => {
       const [activeOwnerTab, setActiveOwnerTab] = React.useState('logic');
       const [tempConfig, setTempConfig] = React.useState(config);
@@ -1082,18 +1551,21 @@
       const [reportType, setReportType] = React.useState(null);
       const [targetReportMonth, setTargetReportMonth] = React.useState(null);
       const [isGenerating, setIsGenerating] = React.useState(false);
+      
       const [bonusType, setBonusType] = React.useState('fixed'); 
       const [bonusTarget, setBonusTarget] = React.useState('individual'); 
       const [selectedBonusEmp, setSelectedBonusEmp] = React.useState('');
       const [bonusValue, setBonusValue] = React.useState(''); 
       const [bonusDesc, setBonusDesc] = React.useState('');
       const [bonusPeriod, setBonusPeriod] = React.useState('1'); 
+      
       const [dictionarySearch, setDictionarySearch] = React.useState('');
       const [localDict, setLocalDict] = React.useState({});
       const [totalsData, setTotalsData] = React.useState(null);
       
       const [grantType, setGrantType] = React.useState('fixed');
       const [grantTarget, setGrantTarget] = React.useState('individual');
+      const [grantBasis, setGrantBasis] = React.useState('full'); // New State for Support Percentage Basis
       const [selectedGrantEmp, setSelectedGrantEmp] = React.useState('');
       const [grantValue, setGrantValue] = React.useState('');
       const [grantDesc, setGrantDesc] = React.useState('');
@@ -1191,11 +1663,19 @@
           const val = parseFloat(grantValue); 
           if (!val || !grantDesc || !grantDate) return; 
 
+          const getGrantTargetWage = (emp) => {
+              const basePlusNight = (parseFloat(emp.monthlyWage) || 0) * (emp.shift === 'night' ? (config.nightShiftMultiplier || 1.0) : 1.0);
+              const p1Amt = parseFloat(emp.period1Amount) || 0;
+              if (grantBasis === '1') return Math.min(basePlusNight, p1Amt);
+              if (grantBasis === '2') return Math.max(0, basePlusNight - p1Amt);
+              return basePlusNight; 
+          };
+
           if (grantTarget === 'all') { 
               const activeEmps = employees.filter(e => !e.isResigned); 
               activeEmps.forEach(emp => { 
-                  const fullWage = parseFloat(emp.monthlyWage) || 0;
-                  const amount = grantType === 'percent' ? (fullWage * val / 100) : val; 
+                  const targetWage = getGrantTargetWage(emp);
+                  const amount = grantType === 'percent' ? (targetWage * val / 100) : val; 
                   addGrant(emp.id, amount, grantDate, grantDesc); 
               }); 
               alert(`Distributed support to ${activeEmps.length} employees.`); 
@@ -1203,8 +1683,8 @@
               if(!selectedGrantEmp) return; 
               const emp = employees.find(e => e.id === selectedGrantEmp); 
               if(emp) { 
-                  const fullWage = parseFloat(emp.monthlyWage) || 0;
-                  const amount = grantType === 'percent' ? (fullWage * val / 100) : val; 
+                  const targetWage = getGrantTargetWage(emp);
+                  const amount = grantType === 'percent' ? (targetWage * val / 100) : val; 
                   addGrant(emp.id, amount, grantDate, grantDesc); 
               } 
           } 
@@ -1448,9 +1928,22 @@
                           <label className="block text-[10px] font-black uppercase mb-2">{t('distType')}</label>
                           <div className="flex bg-gray-100 p-1 rounded-xl">
                               <button type="button" onClick={()=>setGrantType('fixed')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantType==='fixed'?'bg-white shadow text-black':'text-gray-400'}`}>{t('fixedAmount')}</button>
-                              <button type="button" onClick={()=>setGrantType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantType==='percent'?'bg-white shadow text-teal-600':'text-gray-400'}`}>% of Full Wage</button>
+                              <button type="button" onClick={()=>setGrantType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantType==='percent'?'bg-white shadow text-teal-600':'text-gray-400'}`}>Percentage (%)</button>
                           </div>
                        </div>
+                       
+                       {/* NEW: PERCENTAGE BASIS FOR GRANTS */}
+                       {grantType === 'percent' && (
+                          <div>
+                              <label className="block text-[10px] font-black uppercase mb-2 text-teal-700">Calculate % From:</label>
+                              <div className="flex bg-teal-50 p-1 rounded-xl border border-teal-100">
+                                  <button type="button" onClick={()=>setGrantBasis('full')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='full'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('fullMonth')}</button>
+                                  <button type="button" onClick={()=>setGrantBasis('1')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='1'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('period1')}</button>
+                                  <button type="button" onClick={()=>setGrantBasis('2')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='2'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('period2')}</button>
+                              </div>
+                          </div>
+                       )}
+
                        <div>
                           <label className="block text-[10px] font-black uppercase mb-2">Event Date</label>
                           <input type="date" className={inputClass} value={grantDate} onChange={e=>setGrantDate(e.target.value)} required />
@@ -1688,7 +2181,7 @@
           
           if (currentUser.role === 'finance') return <FinanceDashboard {...props} updateLoan={(eid, tot, pct) => { const l = loans.find(x=>x.employeeId===eid); if(tot<=0 && l) db.collection('loans').doc(l.id).delete(); else if(l) db.collection('loans').doc(l.id).update({totalAmount:tot, deductionPercentage:pct}); else db.collection('loans').add({employeeId:eid, totalAmount:tot, deductionPercentage:pct}); }} />;
           
-          if (currentUser.role === 'cashier') return <CashierDashboard employees={employees} payoutLogs={payoutLogs} cashRegisters={cashRegisters} addPayout={(data) => db.collection('payout_logs').add(data)} deletePayout={(id) => db.collection('payout_logs').doc(id).delete()} updateCashRegister={(date, balance) => db.collection('cash_registers').doc(date).set({startingBalance: balance})} lang={lang} t={t} config={pdfConfig} />;
+          if (currentUser.role === 'cashier') return <CashierDashboard employees={employees} payoutLogs={payoutLogs} cashRegisters={cashRegisters} addPayout={(data) => db.collection('payout_logs').add(data)} deletePayout={(id) => db.collection('payout_logs').doc(id).delete()} updateCashRegister={(date, balance) => db.collection('cash_registers').doc(date).set({startingBalance: balance})} lang={lang} t={t} config={pdfConfig} attendance={attendance} advances={advances} overtime={overtime} loans={loans} transportation={transportation} bonuses={bonuses} grants={grants} sections={sections} />;
 
           return <div className="text-center p-10 font-black text-red-600">{t('unauthorized')}</div>;
       };
