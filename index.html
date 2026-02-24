@@ -86,6 +86,7 @@
       advance: { en: "Advance", ar: "سلفة" },
       advances: { en: "Advances", ar: "السلف" },
       bonus: { en: "Bonus", ar: "مكافأة" },
+      supportAid: { en: "Support & Aid", ar: "منح ومساعدات" },
       loan: { en: "Loan", ar: "قرض" },
       transport: { en: "Fixed Transport", ar: "المواصلات الثابتة" },
       overtime: { en: "Overtime", ar: "الإضافي" },
@@ -170,7 +171,9 @@
       distributionLogs: { en: "Distribution Logs", ar: "سجلات التوزيع" },
       fixedAmount: { en: "Fixed Amount", ar: "مبلغ ثابت" },
       percentWage: { en: "% of Wage", ar: "نسبة من الراتب" },
-      equivalent: { en: "Equivalent", ar: "يعادل" }
+      equivalent: { en: "Equivalent", ar: "يعادل" },
+      grantsLogs: { en: "Aid & Support Logs", ar: "سجلات المساعدات" },
+      wipeGrants: { en: "Wipe Support/Aid", ar: "مسح جميع المساعدات" }
     };
 
     // --- 3. UI COMPONENTS ---
@@ -184,7 +187,7 @@
       );
     };
 
-    // --- 4. CORE PAYROLL ENGINE (DUAL CURRENCY) ---
+    // --- 4. CORE PAYROLL ENGINE (DUAL CURRENCY & GRANTS DECOUPLED) ---
     const formatBase = (amount) => {
         return Math.round(parseFloat(amount) || 0).toLocaleString();
     };
@@ -240,6 +243,7 @@
         const empOvertimeHours = overtime.filter(ot => ot.employeeId === emp.id && filterByDate(ot)).reduce((sum, curr) => sum + (parseFloat(curr.hours) || 0), 0);
         const overtimePay = empOvertimeHours * (totalWage / otDivisor) * (config.otMultiplier || 1.5);
 
+        // Regular Bonuses (Tied to periods)
         const empBonus = bonuses.filter(b => {
              if (b.employeeId !== emp.id) return false;
              if (isFull) return true;
@@ -263,6 +267,7 @@
         
         const totalAdvances = advances.filter(a => a.employeeId === emp.id && filterByDate(a)).reduce((sum, curr) => sum + (parseFloat(curr.amount) || 0), 0);
 
+        // NOTE: Grants are intentionally excluded here so they don't bloat standard period payslips.
         const totalEarnings = wageForPeriod + overtimePay + totalTransport + empBonus;
         const totalDeductions = totalAdvances + loanDeduction + totalAbsenceDeduction;
         const netSalary = Math.max(0, totalEarnings - totalDeductions);
@@ -389,7 +394,7 @@
           doc.text(`${formatBase(pay.netSalary)} ${config.mainSymbol || 'ل.س'}`, leftMargin + 2, y + 1, { align: 'left' });
 
           // Row 2: Secondary Currency
-          doc.setTextColor(200, 200, 200); // Lighter gray for secondary text
+          doc.setTextColor(200, 200, 200); 
           doc.setFontSize(9);
           doc.text("يعادل", rightMargin - 2, y + 8, { align: 'right' });
           doc.text(`${formatSec(pay.netSalary, config)} ${config.secSymbol || '$'}`, leftMargin + 2, y + 8, { align: 'left' });
@@ -401,6 +406,90 @@
       } catch (error) {
         alert("Unable to generate PDF. Error: " + error.message);
       }
+    };
+
+    // NEW: INSTANT AID/SUPPORT SLIPS
+    const generateAidPayslips = async (targetDate, employees, grants, config, sections) => {
+        try {
+            const { jsPDF } = window.jspdf;
+            const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf';
+            const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+            let binary = '';
+            const bytes = new Uint8Array(fontBytes);
+            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+            const base64Font = window.btoa(binary);
+
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [110, 220] });
+            doc.addFileToVFS('Amiri-Regular.ttf', base64Font);
+            doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
+            doc.setFont('Amiri', 'normal'); 
+            
+            const dayGrants = grants.filter(g => g.date === targetDate);
+            if (dayGrants.length === 0) return alert("No support/aid records found for this exact date.");
+
+            let pageIndex = 0;
+
+            dayGrants.forEach((grant) => {
+                const emp = employees.find(e => e.id === grant.employeeId);
+                if(!emp) return;
+
+                if (pageIndex !== 0) doc.addPage();
+                pageIndex++;
+
+                const sectionName = sections.find(s => s.id === emp.sectionId)?.name || 'القسم العام';
+
+                const leftMargin = 10; 
+                const rightMargin = 100;
+                
+                doc.setFillColor(13, 148, 136); // Teal color for Aid
+                doc.rect(0, 0, 110, 25, 'F');
+                
+                doc.setFontSize(14);
+                doc.setTextColor(255, 255, 255);
+                doc.text("إيصال صرف منحة / مساعدة", rightMargin, 15, { align: 'right' }); 
+                
+                doc.setFontSize(10);
+                doc.text(targetDate, leftMargin, 15, { align: 'left' }); 
+
+                let y = 45;
+                const rowHeight = 10; 
+
+                doc.setTextColor(0, 0, 0);
+
+                const drawRow = (label, value) => {
+                   doc.setFontSize(10); 
+                   doc.text(label, rightMargin, y, { align: 'right' }); 
+                   doc.text(value.toString(), leftMargin, y, { align: 'left' });    
+                   doc.setDrawColor(200);
+                   doc.line(leftMargin, y + 3, rightMargin, y + 3); 
+                   y += rowHeight;
+                };
+
+                drawRow("اسم العامل", emp.name); 
+                drawRow("القسم", sectionName);
+                drawRow("التفاصيل", grant.description);
+
+                y += 10;
+                doc.setFillColor(0, 0, 0);
+                doc.rect(leftMargin, y - 5, (rightMargin - leftMargin), 16, 'F');
+                
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(12);
+                doc.text("المبلغ المستحق", rightMargin - 2, y + 1, { align: 'right' });
+                doc.text(`${formatBase(grant.amount)} ${config.mainSymbol || 'ل.س'}`, leftMargin + 2, y + 1, { align: 'left' });
+
+                doc.setTextColor(200, 200, 200); 
+                doc.setFontSize(9);
+                doc.text("يعادل", rightMargin - 2, y + 8, { align: 'right' });
+                doc.text(`${formatSec(grant.amount, config)} ${config.secSymbol || '$'}`, leftMargin + 2, y + 8, { align: 'left' });
+
+                doc.setTextColor(0); 
+            });
+            
+            doc.save(`Support_Aid_${targetDate}.pdf`);
+        } catch (error) {
+            alert("Unable to generate PDF. Error: " + error.message);
+        }
     };
 
     const generateSingleResignationSlip = async (emp, settlementData, config) => {
@@ -1146,7 +1235,7 @@
       );
     };
 
-    const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, attendance, employees, bonuses, addBonus, deleteBonus, users, addUser, updateUser, deleteUser, currentUser, lang, t, sections, advances, overtime, transportation, loans }) => {
+    const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, attendance, employees, bonuses, addBonus, deleteBonus, grants, addGrant, deleteGrant, users, addUser, updateUser, deleteUser, currentUser, lang, t, sections, advances, overtime, transportation, loans }) => {
       const [activeOwnerTab, setActiveOwnerTab] = React.useState('logic');
       const [tempConfig, setTempConfig] = React.useState(config);
       const [newUserFormData, setNewUserFormData] = React.useState({ username: '', password: '', role: 'hr' });
@@ -1164,6 +1253,14 @@
       const [localDict, setLocalDict] = React.useState({});
       const [totalsData, setTotalsData] = React.useState(null);
       
+      const [grantType, setGrantType] = React.useState('fixed');
+      const [grantTarget, setGrantTarget] = React.useState('individual');
+      const [selectedGrantEmp, setSelectedGrantEmp] = React.useState('');
+      const [grantValue, setGrantValue] = React.useState('');
+      const [grantDesc, setGrantDesc] = React.useState('');
+      const [grantDate, setGrantDate] = React.useState(new Date().toISOString().split('T')[0]);
+      const [printGrantDate, setPrintGrantDate] = React.useState(new Date().toISOString().split('T')[0]);
+
       const inputClass = "w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl font-bold text-black outline-none focus:border-indigo-600 transition-all";
       const handleSave = () => { setConfig(tempConfig); alert(t('logicSync')); };
       
@@ -1215,22 +1312,64 @@
           const date = new Date().toISOString().split('T')[0]; 
           const val = parseFloat(bonusValue); 
           if (!val || !bonusDesc) return; 
+
+          const getPeriodWage = (emp) => {
+              const basePlusNight = (parseFloat(emp.monthlyWage) || 0) * (emp.shift === 'night' ? (config.nightShiftMultiplier || 1.0) : 1.0);
+              const p1Amt = parseFloat(emp.period1Amount) || 0;
+              if (bonusPeriod === '1') return Math.min(basePlusNight, p1Amt);
+              if (bonusPeriod === '2') return Math.max(0, basePlusNight - p1Amt);
+              return basePlusNight;
+          };
+
           if (bonusTarget === 'all') { 
               const activeEmps = employees.filter(e => !e.isResigned); 
-              activeEmps.forEach(emp => { const amount = bonusType === 'percent' ? (emp.monthlyWage * val / 100) : val; addBonus(emp.id, amount, date, bonusDesc, bonusPeriod); }); 
+              activeEmps.forEach(emp => { 
+                  const targetWage = getPeriodWage(emp);
+                  const amount = bonusType === 'percent' ? (targetWage * val / 100) : val; 
+                  addBonus(emp.id, amount, date, bonusDesc, bonusPeriod); 
+              }); 
               alert(`Distributed bonus to ${activeEmps.length} employees.`); 
           } else { 
               if(!selectedBonusEmp) return; 
               const emp = employees.find(e => e.id === selectedBonusEmp); 
-              if(emp) { const amount = bonusType === 'percent' ? (emp.monthlyWage * val / 100) : val; addBonus(emp.id, amount, date, bonusDesc, bonusPeriod); } 
+              if(emp) { 
+                  const targetWage = getPeriodWage(emp);
+                  const amount = bonusType === 'percent' ? (targetWage * val / 100) : val; 
+                  addBonus(emp.id, amount, date, bonusDesc, bonusPeriod); 
+              } 
           } 
           setBonusValue(''); setBonusDesc(''); 
+      };
+
+      const handleDistributeGrant = (e) => {
+          e.preventDefault(); 
+          const val = parseFloat(grantValue); 
+          if (!val || !grantDesc || !grantDate) return; 
+
+          if (grantTarget === 'all') { 
+              const activeEmps = employees.filter(e => !e.isResigned); 
+              activeEmps.forEach(emp => { 
+                  const fullWage = parseFloat(emp.monthlyWage) || 0;
+                  const amount = grantType === 'percent' ? (fullWage * val / 100) : val; 
+                  addGrant(emp.id, amount, grantDate, grantDesc); 
+              }); 
+              alert(`Distributed support to ${activeEmps.length} employees.`); 
+          } else { 
+              if(!selectedGrantEmp) return; 
+              const emp = employees.find(e => e.id === selectedGrantEmp); 
+              if(emp) { 
+                  const fullWage = parseFloat(emp.monthlyWage) || 0;
+                  const amount = grantType === 'percent' ? (fullWage * val / 100) : val; 
+                  addGrant(emp.id, amount, grantDate, grantDesc); 
+              } 
+          } 
+          setGrantValue(''); setGrantDesc(''); 
       };
       
       const saveDictionary = () => { db.collection('meta').doc('translations').set(localDict, { merge: true }); alert(t('logicSync')); };
 
       const handleBackupJSON = async () => {
-          const collections = ['users', 'employees', 'sections', 'attendance', 'advances', 'bonuses', 'overtime', 'transportation', 'loans', 'meta'];
+          const collections = ['users', 'employees', 'sections', 'attendance', 'advances', 'bonuses', 'grants', 'overtime', 'transportation', 'loans', 'meta'];
           const backup = {};
           for (const col of collections) { const snap = await db.collection(col).get(); backup[col] = snap.docs.map(d => ({ _id: d.id, ...d.data() })); }
           const blob = new Blob([JSON.stringify(backup, null, 2)], {type : 'application/json'});
@@ -1240,7 +1379,7 @@
       const handleExcelBackup = async () => {
           try {
             const wb = XLSX.utils.book_new();
-            const collections = ['employees', 'attendance', 'advances', 'overtime', 'bonuses', 'loans', 'users'];
+            const collections = ['employees', 'attendance', 'advances', 'overtime', 'bonuses', 'grants', 'loans', 'users'];
             for (const colName of collections) {
                 const snap = await db.collection(colName).get();
                 let data = snap.docs.map(doc => { let d = doc.data(); if(d.absentEmployeeIds && Array.isArray(d.absentEmployeeIds)) { d.absentEmployeeIds = d.absentEmployeeIds.join(", "); } return { ID: doc.id, ...d }; });
@@ -1268,9 +1407,9 @@
               <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-gray-100 flex-wrap items-center gap-2">
                  <button onClick={handleExcelBackup} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-green-600 text-white hover:bg-green-700 transition-colors shadow-lg">📊 Download Excel</button>
                  <button onClick={handleBackupJSON} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors border border-orange-200">{t('backupData')} (JSON)</button>
-                 {['logic','periods','bonuses','users', 'dictionary', 'reset'].map(tab => (
+                 {['logic','periods','bonuses','grants','users', 'dictionary', 'reset'].map(tab => (
                     <button key={tab} onClick={() => setActiveOwnerTab(tab)} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeOwnerTab === tab ? 'bg-indigo-600 text-white shadow-lg' : 'text-black'}`}>
-                        {tab === 'reset' ? 'Data Maintenance' : t(tab === 'logic' ? 'systemLogic' : tab === 'users' ? 'userAccess' : tab === 'bonuses' ? 'bonusCenter' : tab)}
+                        {tab === 'reset' ? 'Data Maintenance' : t(tab === 'logic' ? 'systemLogic' : tab === 'users' ? 'userAccess' : tab === 'bonuses' ? 'bonusCenter' : tab === 'grants' ? 'supportAid' : tab)}
                     </button>
                  ))}
               </div>
@@ -1287,6 +1426,7 @@
                     <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40"><div><h4 className="font-black text-black">Financial: Advances</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all cash advance records.</p></div><button onClick={() => handleSpecificReset('advances', 'ADVANCES')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Advances</button></div>
                     <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40"><div><h4 className="font-black text-black">Financial: Overtime</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all overtime hour logs.</p></div><button onClick={() => handleSpecificReset('overtime', 'OVERTIME')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Overtime</button></div>
                     <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40"><div><h4 className="font-black text-black">Financial: Bonuses</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all bonus distributions.</p></div><button onClick={() => handleSpecificReset('bonuses', 'BONUSES')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Bonuses</button></div>
+                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40"><div><h4 className="font-black text-black">Financial: Support/Aid</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all Aid distributions.</p></div><button onClick={() => handleSpecificReset('grants', 'GRANTS')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">{t('wipeGrants')}</button></div>
                     <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40"><div><h4 className="font-black text-black">Financial: Transport</h4><p className="text-[10px] text-gray-500 mt-1">Deletes extra transport logs.</p></div><button onClick={() => handleSpecificReset('transportation', 'TRANSPORT')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Transport</button></div>
                  </div>
               </div>
@@ -1296,7 +1436,6 @@
               <div className="bg-white rounded-[2rem] shadow-xl border border-gray-50 p-8 space-y-6">
                  <h3 className="text-xl font-black text-black uppercase tracking-tight">{t('systemVariables')}</h3>
                  
-                 {/* DUAL CURRENCY ENGINE */}
                  <div className="col-span-2 bg-indigo-50 p-6 rounded-2xl border border-indigo-100 mb-6 space-y-4">
                      <h4 className="font-black text-indigo-800 uppercase tracking-widest text-xs mb-2">Dual Currency Engine</h4>
                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -1386,7 +1525,11 @@
                        </div>
                        <div>
                           <label className="block text-[10px] font-black uppercase mb-2">Pay Period</label>
-                          <select className={inputClass} value={bonusPeriod} onChange={e=>setBonusPeriod(e.target.value)}><option value="1">Period 1 (1st-15th)</option><option value="2">Period 2 (16th-End)</option></select>
+                          <select className={inputClass} value={bonusPeriod} onChange={e=>setBonusPeriod(e.target.value)}>
+                              <option value="1">{t('period1')}</option>
+                              <option value="2">{t('period2')}</option>
+                              <option value="full">{t('fullMonth')}</option>
+                          </select>
                        </div>
                        {bonusTarget === 'individual' && (
                           <select className={inputClass} value={selectedBonusEmp} onChange={e=>setSelectedBonusEmp(e.target.value)} required={bonusTarget==='individual'}>
@@ -1406,11 +1549,73 @@
                        <div key={b.id} className="flex justify-between items-center p-3 border-b hover:bg-gray-50 transition-colors">
                           <div>
                               <p className="font-black">{employees.find(e=>e.id===b.employeeId)?.name || 'Unknown'}</p>
-                              <p className="text-[10px] font-bold text-gray-400 uppercase">{b.description} • {b.amount.toLocaleString()} {config.mainCurrency || 'SYP'} (P{b.period||'?'})</p>
+                              <p className="text-[10px] font-bold text-gray-400 uppercase">{b.description} • {b.amount.toLocaleString()} {config.mainSymbol || 'SYP'} ({b.period === 'full' ? t('fullMonth') : `P${b.period||'?'}`})</p>
                           </div>
                           <button onClick={()=>deleteBonus(b.id)} className="text-red-500 font-black text-[10px] uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button>
                        </div>
                     ))}
+                 </div>
+              </div>
+           )}
+
+           {activeOwnerTab === 'grants' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                 <div className="bg-white rounded-[2rem] shadow-xl p-8">
+                    <h3 className="text-xl font-black text-teal-600 uppercase mb-6">{t('supportAid')} Engine</h3>
+                    <form onSubmit={handleDistributeGrant} className="space-y-4">
+                       <div>
+                          <label className="block text-[10px] font-black uppercase mb-2">{t('target')}</label>
+                          <div className="flex bg-gray-100 p-1 rounded-xl">
+                              <button type="button" onClick={()=>setGrantTarget('individual')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantTarget==='individual'?'bg-white shadow text-black':'text-gray-400'}`}>{t('individual')}</button>
+                              <button type="button" onClick={()=>setGrantTarget('all')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantTarget==='all'?'bg-white shadow text-teal-600':'text-gray-400'}`}>{t('allActive')}</button>
+                          </div>
+                       </div>
+                       <div>
+                          <label className="block text-[10px] font-black uppercase mb-2">{t('distType')}</label>
+                          <div className="flex bg-gray-100 p-1 rounded-xl">
+                              <button type="button" onClick={()=>setGrantType('fixed')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantType==='fixed'?'bg-white shadow text-black':'text-gray-400'}`}>{t('fixedAmount')}</button>
+                              <button type="button" onClick={()=>setGrantType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantType==='percent'?'bg-white shadow text-teal-600':'text-gray-400'}`}>% of Full Wage</button>
+                          </div>
+                       </div>
+                       <div>
+                          <label className="block text-[10px] font-black uppercase mb-2">Event Date</label>
+                          <input type="date" className={inputClass} value={grantDate} onChange={e=>setGrantDate(e.target.value)} required />
+                       </div>
+                       {grantTarget === 'individual' && (
+                          <select className={inputClass} value={selectedGrantEmp} onChange={e=>setSelectedGrantEmp(e.target.value)} required={grantTarget==='individual'}>
+                             <option value="">Select Employee</option>
+                             {employees.filter(e=>!e.isResigned).map(e=><option key={e.id} value={e.id}>{e.name}</option>)}
+                          </select>
+                       )}
+                       <input className={inputClass} type="number" placeholder={grantType === 'fixed' ? `Amount (${config.mainCurrency || 'SYP'})` : 'Percentage (%)'} value={grantValue} onChange={e=>setGrantValue(e.target.value)} required />
+                       <input className={inputClass} placeholder="Reason (e.g., Eid Al-Fitr)" value={grantDesc} onChange={e=>setGrantDesc(e.target.value)} required />
+                       <button className="w-full bg-teal-600 text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-teal-700 transition-all">Distribute Aid</button>
+                    </form>
+                 </div>
+                 <div className="bg-white rounded-[2rem] shadow-xl p-8 h-fit">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-xl font-black uppercase">{t('grantsLogs')}</h3>
+                    </div>
+                    <div className="bg-teal-50 border border-teal-100 rounded-xl p-4 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+                        <p className="text-xs font-black text-teal-800 uppercase w-full md:w-auto">Print Instant Slips</p>
+                        <div className="flex gap-2 w-full md:w-auto">
+                            <input type="date" className="px-3 py-2 border border-teal-200 rounded text-xs font-bold w-full md:w-auto" value={printGrantDate} onChange={e=>setPrintGrantDate(e.target.value)} />
+                            <button onClick={() => generateAidPayslips(printGrantDate, employees, grants, config, sections)} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded text-[10px] uppercase font-black tracking-widest transition-all">Print</button>
+                        </div>
+                    </div>
+                    
+                    <div className="max-h-[300px] overflow-y-auto divide-y">
+                        {grants.length === 0 && <p className="text-center text-gray-400 font-bold text-xs py-10">No records found.</p>}
+                        {grants.map(g => (
+                           <div key={g.id} className="flex justify-between items-center py-3 hover:bg-gray-50 transition-colors">
+                              <div>
+                                  <p className="font-black text-sm">{employees.find(e=>e.id===g.employeeId)?.name || 'Unknown'}</p>
+                                  <p className="text-[10px] font-bold text-teal-600 uppercase">{g.description} • {g.amount.toLocaleString()} {config.mainSymbol || 'SYP'} ({g.date})</p>
+                              </div>
+                              <button onClick={()=>deleteGrant(g.id)} className="text-red-500 font-black text-[10px] uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button>
+                           </div>
+                        ))}
+                    </div>
                  </div>
               </div>
            )}
@@ -1542,6 +1747,7 @@
       const [attendance, setAttendance] = React.useState([]); 
       const [advances, setAdvances] = React.useState([]); 
       const [bonuses, setBonuses] = React.useState([]); 
+      const [grants, setGrants] = React.useState([]); 
       const [overtime, setOvertime] = React.useState([]); 
       const [transportation, setTransportation] = React.useState([]); 
       const [loans, setLoans] = React.useState([]); 
@@ -1565,6 +1771,7 @@
           db.collection('attendance').onSnapshot(s => setAttendance(s.docs.map(d => ({id:d.id, ...d.data()})))),
           db.collection('advances').onSnapshot(s => setAdvances(s.docs.map(d => ({id:d.id, ...d.data()})))),
           db.collection('bonuses').onSnapshot(s => setBonuses(s.docs.map(d => ({id:d.id, ...d.data()})))),
+          db.collection('grants').onSnapshot(s => setGrants(s.docs.map(d => ({id:d.id, ...d.data()})))),
           db.collection('overtime').onSnapshot(s => setOvertime(s.docs.map(d => ({id:d.id, ...d.data()})))),
           db.collection('transportation').onSnapshot(s => setTransportation(s.docs.map(d => ({id:d.id, ...d.data()})))),
           db.collection('loans').onSnapshot(s => setLoans(s.docs.map(d => ({id:d.id, ...d.data()})))),
@@ -1591,9 +1798,9 @@
       const handleToggleMonthLock = (lockKey) => { const newLocks = lockedMonths.includes(lockKey) ? lockedMonths.filter(x => x !== lockKey) : [...lockedMonths, lockKey]; db.collection('meta').doc('locks').set({months: newLocks}); };
 
       const renderDashboard = () => {
-          const props = { employees, sections, attendance, advances, bonuses, overtime, transportation, loans, pdfConfig, config: pdfConfig, lockedMonths, lang, t, toggleMonthLock: handleToggleMonthLock };
+          const props = { employees, sections, attendance, advances, bonuses, grants, overtime, transportation, loans, pdfConfig, config: pdfConfig, lockedMonths, lang, t, toggleMonthLock: handleToggleMonthLock };
           
-          if (currentUser.role === 'owner') return <OwnerDashboard {...props} currentUser={currentUser} users={users} setConfig={(c)=>db.collection('meta').doc('config').set(c)} addUser={(u)=>db.collection('users').add(u)} updateUser={(id, u)=>db.collection('users').doc(id).update(u)} deleteUser={(id)=>db.collection('users').doc(id).delete()} addBonus={(eid, amt, date, desc, period) => db.collection('bonuses').add({employeeId: eid, amount: amt, date, description: desc, period: period})} deleteBonus={(id) => db.collection('bonuses').doc(id).delete()} />;
+          if (currentUser.role === 'owner') return <OwnerDashboard {...props} currentUser={currentUser} users={users} setConfig={(c)=>db.collection('meta').doc('config').set(c)} addUser={(u)=>db.collection('users').add(u)} updateUser={(id, u)=>db.collection('users').doc(id).update(u)} deleteUser={(id)=>db.collection('users').doc(id).delete()} addBonus={(eid, amt, date, desc, period) => db.collection('bonuses').add({employeeId: eid, amount: amt, date, description: desc, period: period})} deleteBonus={(id) => db.collection('bonuses').doc(id).delete()} addGrant={(eid, amt, date, desc) => db.collection('grants').add({employeeId: eid, amount: amt, date, description: desc})} deleteGrant={(id) => db.collection('grants').doc(id).delete()} />;
           if (currentUser.role === 'hr') return <HRDashboard {...props} lockPeriod={handleToggleMonthLock} setPdfConfig={(c)=>db.collection('meta').doc('config').set(c)} addEmployee={(d)=>db.collection('employees').add(d)} updateEmployee={(id,d)=>db.collection('employees').doc(id).update(d)} deleteEmployee={(id)=>db.collection('employees').doc(id).delete()} addSection={(n)=>db.collection('sections').add({name:n})} deleteSection={(id)=>db.collection('sections').doc(id).delete()} resignEmployee={(id)=>db.collection('employees').doc(id).update({isResigned:true})} />;
           if (currentUser.role === 'manager' || currentUser.role === 'data_entry') return <ManagerDashboard {...props} canEdit={currentUser.role === 'manager'} updateAttendance={(d, ids) => { const r = attendance.find(a=>a.date===d); if(r) db.collection('attendance').doc(r.id).update({absentEmployeeIds:ids}); else db.collection('attendance').add({date:d, absentEmployeeIds:ids}); }} addAdvance={(eid, amt, d)=>db.collection('advances').add({employeeId:eid, amount:amt, date:d})} addOvertime={(eid, hrs, d)=>db.collection('overtime').add({employeeId:eid, hours:hrs, date:d})} updateAdvance={(id, val)=>db.collection('advances').doc(id).update({amount:val})} updateOvertime={(id, val)=>db.collection('overtime').doc(id).update({hours:val})} deleteAdvance={(id)=>db.collection('advances').doc(id).delete()} deleteOvertime={(id)=>db.collection('overtime').doc(id).delete()} />;
           if (currentUser.role === 'finance') return <FinanceDashboard {...props} updateLoan={(eid, tot, pct) => { const l = loans.find(x=>x.employeeId===eid); if(tot<=0 && l) db.collection('loans').doc(l.id).delete(); else if(l) db.collection('loans').doc(l.id).update({totalAmount:tot, deductionPercentage:pct}); else db.collection('loans').add({employeeId:eid, totalAmount:tot, deductionPercentage:pct}); }} />;
