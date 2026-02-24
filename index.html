@@ -910,7 +910,7 @@
     };
 
     const HRDashboard = ({ employees, sections, addEmployee, updateEmployee, resignEmployee, deleteEmployee, addSection, deleteSection, attendance, advances, overtime, transportation, loans, pdfConfig, bonuses, grants, lockedMonths, toggleMonthLock, lang, t }) => {
-      const [formData, setFormData] = React.useState({ name: '', wage: '', transportAllowance: '0', shift: 'day', joinDate: new Date().toISOString().split('T')[0], nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '', dateOfBirth: '', sectionId: '' });
+      const [formData, setFormData] = React.useState({ name: '', wage: '', transportAllowance: '0', shift: 'day', joinDate: new Date().toISOString().split('T')[0], nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '', dateOfBirth: '', sectionId: '', period1Amount: '', period2Amount: '' });
       const [isGenerating, setIsGenerating] = React.useState(false); 
       const [searchQuery, setSearchQuery] = React.useState(''); 
       const [viewResigned, setViewResigned] = React.useState(false); 
@@ -950,8 +950,25 @@
 
       const handleAdd = (e) => { 
           e.preventDefault(); 
-          addEmployee({ ...formData, monthlyWage: parseFloat(formData.wage), transportationAllowance: parseFloat(formData.transportAllowance) || 0, sectionId: formData.sectionId || undefined }); 
-          setFormData({ ...formData, name: '', wage: '', nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '' }); 
+          
+          let finalWage = parseFloat(formData.wage) || 0;
+          let p1Amt = parseFloat(formData.period1Amount) || 0;
+          let p2Amt = parseFloat(formData.period2Amount) || 0;
+          
+          // DYNAMIC AUTO CALCULATION LOGIC
+          if (finalWage === 0 && p1Amt > 0 && p2Amt > 0) {
+              finalWage = p1Amt + p2Amt;
+          }
+
+          addEmployee({ 
+              ...formData, 
+              monthlyWage: finalWage, 
+              period1Amount: p1Amt,
+              transportationAllowance: parseFloat(formData.transportAllowance) || 0, 
+              sectionId: formData.sectionId || undefined 
+          }); 
+          
+          setFormData({ ...formData, name: '', wage: '', period1Amount: '', period2Amount: '', nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '' }); 
           alert("Worker Added Successfully!"); 
       };
       
@@ -983,8 +1000,24 @@
          setIsGenerating(false); setReportType(null); 
       };
 
-      const downloadTemplate = () => { const isAr = lang === 'ar'; const headers = isAr ? ['الاسم', 'الراتب', 'المواصلات', 'الوردية', 'مبلغ الفترة الأولى', 'فترة المواصلات', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] : ['Name', 'Wage', 'Transport', 'Shift', 'Period 1 Amount', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name']; const sample = isAr ? ['أحمد', '500000', '50000', 'صباحي', '250000', '2', '010101010', '123456', 'محمود', 'فاطمة'] : ['John Doe', '500000', '50000', 'day', '250000', '2', '010101010', '123456', 'Robert', 'Mary']; const ws = XLSX.utils.aoa_to_sheet([headers, sample]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Template"); XLSX.writeFile(wb, "Employee_Import_Template.xlsx"); };
+      // NEW: EXCEL TEMPLATE DOWNLOAD
+      const downloadTemplate = () => { 
+          const isAr = lang === 'ar'; 
+          const headers = isAr ? 
+             ['الاسم', 'الراتب', 'مبلغ الفترة الأولى', 'مبلغ الفترة الثانية', 'المواصلات', 'الوردية', 'فترة المواصلات', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] : 
+             ['Name', 'Wage', 'Period 1 Amount', 'Period 2 Amount', 'Transport', 'Shift', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name']; 
+          
+          const sample = isAr ? 
+             ['أحمد', '', '250000', '250000', '50000', 'صباحي', '2', '010101010', '123456', 'محمود', 'فاطمة'] : 
+             ['John Doe', '', '250000', '250000', '50000', 'day', '2', '010101010', '123456', 'Robert', 'Mary']; 
+          
+          const ws = XLSX.utils.aoa_to_sheet([headers, sample]); 
+          const wb = XLSX.utils.book_new(); 
+          XLSX.utils.book_append_sheet(wb, ws, "Template"); 
+          XLSX.writeFile(wb, "Employee_Import_Template.xlsx"); 
+      };
       
+      // NEW: EXCEL UPLOAD WITH AUTO-CALCULATION
       const handleExcelUpload = async (e) => { 
           const file = e.target.files[0]; 
           if (!file) return; 
@@ -996,16 +1029,46 @@
               const ws = wb.Sheets[wb.SheetNames[0]]; 
               const data = XLSX.utils.sheet_to_json(ws); 
               let count = 0; 
+              
               data.forEach(row => { 
                   const name = row['Name'] || row['الاسم']; 
-                  const wage = row['Wage'] || row['الراتب']; 
-                  if (!name || !wage) return; 
+                  if (!name) return; 
+                  
+                  let p1 = parseFloat(row['Period 1 Amount'] || row['مبلغ الفترة الأولى']) || 0;
+                  let p2 = parseFloat(row['Period 2 Amount'] || row['مبلغ الفترة الثانية']) || 0;
+                  let wage = parseFloat(row['Wage'] || row['الراتب']) || 0;
+                  
+                  // Auto Calculate Wage if it's missing but P1 and P2 exist
+                  if (wage === 0 && p1 > 0 && p2 > 0) {
+                      wage = p1 + p2;
+                  }
+                  
+                  if (wage === 0 && p1 === 0) return; // Ignore completely blank salary rows
+
                   const rawShift = (row['Shift'] || row['الوردية'] || '').toString().toLowerCase(); 
                   const shiftVal = (rawShift.includes('night') || rawShift.includes('مساء') || rawShift.includes('ليل')) ? 'night' : 'day'; 
+                  
                   const rawTPeriod = (row['Transport Period'] || row['فترة المواصلات'] || '2').toString().toLowerCase(); 
                   const tPeriod = rawTPeriod.includes('1') ? '1' : (rawTPeriod.includes('split') || rawTPeriod.includes('تقسيم') ? 'split' : '2'); 
-                  const newEmp = { name: name.toString(), monthlyWage: parseFloat(wage) || 0, transportationAllowance: parseFloat(row['Transport'] || row['المواصلات']) || 0, shift: shiftVal, joinDate: new Date().toISOString().split('T')[0], nationalId: (row['National ID'] || row['الرقم الوطني'] || '').toString(), socialInsuranceId: (row['Insurance ID'] || row['رقم التأمين'] || '').toString(), fatherName: (row['Father Name'] || row['اسم الأب'] || '').toString(), motherName: (row['Mother Name'] || row['اسم الأم'] || '').toString(), sectionId: '', period1Amount: parseFloat(row['Period 1 Amount'] || row['مبلغ الفترة الأولى']) || 0, transportPeriod: tPeriod, isResigned: false }; 
-                  addEmployee(newEmp); count++; 
+                  
+                  const newEmp = { 
+                      name: name.toString(), 
+                      monthlyWage: wage, 
+                      transportationAllowance: parseFloat(row['Transport'] || row['المواصلات']) || 0, 
+                      shift: shiftVal, 
+                      joinDate: new Date().toISOString().split('T')[0], 
+                      nationalId: (row['National ID'] || row['الرقم الوطني'] || '').toString(), 
+                      socialInsuranceId: (row['Insurance ID'] || row['رقم التأمين'] || '').toString(), 
+                      fatherName: (row['Father Name'] || row['اسم الأب'] || '').toString(), 
+                      motherName: (row['Mother Name'] || row['اسم الأم'] || '').toString(), 
+                      sectionId: '', 
+                      period1Amount: p1, 
+                      transportPeriod: tPeriod, 
+                      isResigned: false 
+                  }; 
+                  
+                  addEmployee(newEmp); 
+                  count++; 
               }); 
               alert(`Successfully imported ${count} employees!`); 
               e.target.value = null; 
@@ -1128,25 +1191,46 @@
               </section>
               <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8">
                 <h3 className="font-black text-black text-xl uppercase tracking-tight mb-8 flex items-center gap-3"><div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 text-2xl">+</div> {t('add')} {t('workers')} (Individual)</h3>
+                
+                {/* NEW INDIVIDUAL FORM LOGIC */}
                 <form onSubmit={handleAdd} className="space-y-6">
                   <input type="text" required className={inputClass} placeholder={t('name')} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <input type="text" className={inputClass} placeholder={t('fatherName')} value={formData.fatherName} onChange={e => setFormData({...formData, fatherName: e.target.value})} />
                       <input type="text" className={inputClass} placeholder={t('motherName')} value={formData.motherName} onChange={e => setFormData({...formData, motherName: e.target.value})} />
                   </div>
+                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <input type="text" className={inputClass} placeholder={t('nationalId')} value={formData.nationalId} onChange={e => setFormData({...formData, nationalId: e.target.value})} />
                       <input type="text" className={inputClass} placeholder={t('insuranceId')} value={formData.socialInsuranceId} onChange={e => setFormData({...formData, socialInsuranceId: e.target.value})} />
                   </div>
+                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <MoneyInput required className={inputClass} placeholder={t('wage')} value={formData.wage} onChange={e => setFormData({...formData, wage: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
+                      <MoneyInput className={inputClass} placeholder={t('wage')} value={formData.wage} onChange={e => setFormData({...formData, wage: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
                       <MoneyInput required className={inputClass} placeholder={t('transport')} value={formData.transportAllowance} onChange={e => setFormData({...formData, transportAllowance: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
                       <p className="col-span-full text-xs font-black uppercase text-gray-500 tracking-widest">{t('paymentSettings')}</p>
-                      <div><label className="block text-[10px] font-bold mb-2">{t('period1Amount')}</label><MoneyInput className={inputClass} placeholder="Amount" value={formData.period1Amount || ''} onChange={e => setFormData({...formData, period1Amount: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} /></div>
-                      <div><label className="block text-[10px] font-bold mb-2">{t('transPeriod')}</label><select className={inputClass} value={formData.transportPeriod || '2'} onChange={e => setFormData({...formData, transportPeriod: e.target.value})}><option value="1">{t('period1')}</option><option value="2">{t('period2')}</option><option value="split">{t('split')}</option></select></div>
+                      <div>
+                          <label className="block text-[10px] font-bold mb-2">{t('period1Amount')}</label>
+                          <MoneyInput className={inputClass} placeholder="Amount" value={formData.period1Amount || ''} onChange={e => setFormData({...formData, period1Amount: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
+                      </div>
+                      <div>
+                          <label className="block text-[10px] font-bold mb-2">Period 2 Amount</label>
+                          <MoneyInput className={inputClass} placeholder="Amount" value={formData.period2Amount || ''} onChange={e => setFormData({...formData, period2Amount: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
+                      </div>
+                      <div>
+                          <label className="block text-[10px] font-bold mb-2">{t('transPeriod')}</label>
+                          <select className={inputClass} value={formData.transportPeriod || '2'} onChange={e => setFormData({...formData, transportPeriod: e.target.value})}>
+                              <option value="1">{t('period1')}</option>
+                              <option value="2">{t('period2')}</option>
+                              <option value="split">{t('split')}</option>
+                          </select>
+                      </div>
                   </div>
+                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <select className={inputClass} value={formData.shift} onChange={e => setFormData({...formData, shift: e.target.value})}><option value="day">{t('day')}</option><option value="night">{t('night')}</option></select>
                       <select className={inputClass} value={formData.sectionId} onChange={e => setFormData({...formData, sectionId: e.target.value})}><option value="">{t('unassigned')}</option>{sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
@@ -2071,8 +2155,8 @@
                           <div className="flex justify-between items-center mb-1">
                               <span className="text-xs font-black uppercase text-gray-400">Period 1</span>
                               <div className="text-right">
-                                  <span className="font-black text-lg block">{formatBase(totalsData.p1.grandTotal)} {config.mainSymbol || 'SYP'}</span>
-                                  <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.p1.grandTotal, config)} {config.secSymbol || '$'}</span>
+                                  <span className="font-black text-lg block">{formatBase(totalsData.p1.grandTotal)} {pdfConfig.mainSymbol || 'SYP'}</span>
+                                  <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.p1.grandTotal, pdfConfig)} {pdfConfig.secSymbol || '$'}</span>
                               </div>
                           </div>
                           <p className="text-[10px] text-gray-400 font-bold text-right">{totalsData.p1.count} Employees</p>
@@ -2081,8 +2165,8 @@
                           <div className="flex justify-between items-center mb-1">
                               <span className="text-xs font-black uppercase text-gray-400">Period 2</span>
                               <div className="text-right">
-                                  <span className="font-black text-lg block">{formatBase(totalsData.p2.grandTotal)} {config.mainSymbol || 'SYP'}</span>
-                                  <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.p2.grandTotal, config)} {config.secSymbol || '$'}</span>
+                                  <span className="font-black text-lg block">{formatBase(totalsData.p2.grandTotal)} {pdfConfig.mainSymbol || 'SYP'}</span>
+                                  <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.p2.grandTotal, pdfConfig)} {pdfConfig.secSymbol || '$'}</span>
                               </div>
                           </div>
                           <p className="text-[10px] text-gray-400 font-bold text-right">{totalsData.p2.count} Employees</p>
@@ -2091,8 +2175,8 @@
                           <div className="flex justify-between items-center mb-1">
                               <span className="text-xs font-black uppercase text-gray-400">Full Month</span>
                               <div className="text-right">
-                                  <span className="font-black text-lg text-white block">{formatBase(totalsData.full.grandTotal)} {config.mainSymbol || 'SYP'}</span>
-                                  <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.full.grandTotal, config)} {config.secSymbol || '$'}</span>
+                                  <span className="font-black text-lg text-white block">{formatBase(totalsData.full.grandTotal)} {pdfConfig.mainSymbol || 'SYP'}</span>
+                                  <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.full.grandTotal, pdfConfig)} {pdfConfig.secSymbol || '$'}</span>
                               </div>
                           </div>
                           <p className="text-[10px] text-gray-400 font-bold text-right text-white opacity-50">Total Paid</p>
