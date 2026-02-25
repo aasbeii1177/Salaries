@@ -332,7 +332,7 @@
         }
     };
 
-    const generateAllPayslips = async (targetMonth, targetPeriod, employees, attendance, advances, overtime, loans, transportation, config, sections, bonuses) => {
+    const generateAllPayslips = async (targetMonth, targetPeriod, employees, attendance, advances, overtime, loans, transportation, config, sections, bonuses, action = 'save') => {
       try {
         const { jsPDF } = window.jspdf;
         const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf';
@@ -424,13 +424,22 @@
           doc.setTextColor(0); 
         });
         
-        doc.save(`Payslips_DL_${targetMonth}.pdf`);
+        if (action === 'print') {
+            doc.autoPrint();
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = doc.output('bloburl');
+            document.body.appendChild(iframe);
+            setTimeout(() => document.body.removeChild(iframe), 10000); // Cleans up after 10 seconds
+        } else {
+            doc.save(`Payslips_DL_${targetMonth}.pdf`);
+        }
       } catch (error) {
         alert("Unable to generate PDF. Error: " + error.message);
       }
     };
 
-    const generateAidPayslips = async (targetDate, employees, grants, config, sections) => {
+    const generateAidPayslips = async (targetDate, employees, grants, config, sections, action = 'save') => {
         try {
             const { jsPDF } = window.jspdf;
             const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf';
@@ -507,7 +516,16 @@
                 doc.setTextColor(0); 
             });
             
-            doc.save(`Support_Aid_${targetDate}.pdf`);
+            if (action === 'print') {
+                doc.autoPrint();
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = doc.output('bloburl');
+                document.body.appendChild(iframe);
+                setTimeout(() => document.body.removeChild(iframe), 10000);
+            } else {
+                doc.save(`Support_Aid_${targetDate}.pdf`);
+            }
         } catch (error) {
             alert("Unable to generate PDF. Error: " + error.message);
         }
@@ -723,12 +741,10 @@
             try {
                 if (['period1', 'period2', 'fullMonth'].includes(log.type)) {
                     const pMap = { period1: 'p1', period2: 'p2', fullMonth: 'full' };
-                    // Re-use global generator but pass only the single employee in the array
-                    await generateAllPayslips(log.targetMonth || log.date.substring(0,7), pMap[log.type], [emp], attendance, advances, overtime, loans, transportation, config, sections, bonuses);
+                    await generateAllPayslips(log.targetMonth || log.date.substring(0,7), pMap[log.type], [emp], attendance, advances, overtime, loans, transportation, config, sections, bonuses, 'print');
                 } else if (log.type === 'supportAid') {
-                    await generateAidPayslips(log.date, [emp], grants, config, sections);
+                    await generateAidPayslips(log.date, [emp], grants, config, sections, 'print');
                 } else if (log.type === 'bonus') {
-                    // Small quick local generator for standalone bonus
                     const { jsPDF } = window.jspdf;
                     const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf';
                     const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
@@ -738,13 +754,11 @@
 
                     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [110, 220] });
                     doc.addFileToVFS('Amiri-Regular.ttf', base64Font);
-                    doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
-                    doc.setFont('Amiri', 'normal'); 
+                    doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal'); doc.setFont('Amiri', 'normal'); 
                     
                     const sectionName = sections.find(s => s.id === emp.sectionId)?.name || 'القسم العام';
 
-                    doc.setFillColor(79, 70, 229); 
-                    doc.rect(0, 0, 110, 25, 'F');
+                    doc.setFillColor(79, 70, 229); doc.rect(0, 0, 110, 25, 'F');
                     doc.setFontSize(14); doc.setTextColor(255, 255, 255); doc.text("إيصال صرف مكافأة", 100, 15, { align: 'right' }); 
                     doc.setFontSize(10); doc.text(log.date, 10, 15, { align: 'left' }); 
 
@@ -758,7 +772,13 @@
                     doc.setTextColor(255, 255, 255); doc.setFontSize(12); doc.text("المبلغ المستحق", 98, y + 1, { align: 'right' }); doc.text(`${formatBase(log.amount)} ${config.mainSymbol || 'ل.س'}`, 12, y + 1, { align: 'left' });
                     doc.setTextColor(200, 200, 200); doc.setFontSize(9); doc.text("يعادل", 98, y + 8, { align: 'right' }); doc.text(`${formatSec(log.amount, config)} ${config.secSymbol || '$'}`, 12, y + 8, { align: 'left' });
 
-                    doc.save(`Bonus_${emp.name}_${log.date}.pdf`);
+                    // Auto-print logic for standalone Bonus
+                    doc.autoPrint();
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = doc.output('bloburl');
+                    document.body.appendChild(iframe);
+                    setTimeout(() => document.body.removeChild(iframe), 10000);
                 }
             } catch (err) { alert("Error printing slip: " + err.message); }
             setIsExporting(false);
