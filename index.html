@@ -643,24 +643,31 @@
 
     // --- CASHIER DASHBOARD WITH PDF EXPORT & AUTO-MATH ---
     // --- CASHIER DASHBOARD WITH STRICT AUTHORIZATION ENGINE ---
-    const CashierDashboard = ({ employees, payoutLogs, cashRegisters, addPayout, deletePayout, updateCashRegister, lang, t, config, attendance, advances, overtime, loans, transportation, bonuses, grants, sections, lockedMonths }) => {
+    // --- REPLACE IT WITH THIS ---
+    // --- CASHIER DASHBOARD WITH STRICT AUTHORIZATION ENGINE & ZONES ---
+    const CashierDashboard = ({ employees, payoutLogs, cashRegisters, addPayout, deletePayout, updateCashRegister, lang, t, config, attendance, advances, overtime, loans, transportation, bonuses, grants, sections, lockedMonths, currentUser }) => {
+        const myZone = (currentUser?.cashierZone || '1').toString();
+
         const [selectedDate, setSelectedDate] = React.useState(new Date().toISOString().split('T')[0]);
         const [targetMonth, setTargetMonth] = React.useState(new Date().toISOString().substring(0,7));
         const [selectedEmp, setSelectedEmp] = React.useState('');
         const [amount, setAmount] = React.useState('');
-        const [payType, setPayType] = React.useState(''); // Starts blank
+        const [payType, setPayType] = React.useState(''); 
         const [startingCashInput, setStartingCashInput] = React.useState('');
         const [isExporting, setIsExporting] = React.useState(false);
         const [isEditingBalance, setIsEditingBalance] = React.useState(false);
 
         const inputClass = "w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl font-bold text-black outline-none focus:border-indigo-600 transition-all";
 
-        const todaysLogs = payoutLogs.filter(p => p.date === selectedDate).sort((a,b) => b.timestamp - a.timestamp);
-        const todaysRegister = cashRegisters.find(c => c.id === selectedDate); 
+        // Zone Filters
+        const todaysLogs = payoutLogs.filter(p => p.date === selectedDate && (p.cashierZone || '1').toString() === myZone).sort((a,b) => b.timestamp - a.timestamp);
+        const registerId = `${selectedDate}_Z${myZone}`;
+        const todaysRegister = cashRegisters.find(c => c.id === registerId); 
 
         const totalPaid = todaysLogs.reduce((sum, log) => sum + parseFloat(log.amount), 0);
         const startingCash = todaysRegister ? parseFloat(todaysRegister.startingBalance) : 0;
         const remainingCash = startingCash - totalPaid;
+
 
         // --- STRICT AUTHORIZATION LOGIC ---
         const isP1Locked = lockedMonths?.includes(`${targetMonth}-p1`) || lockedMonths?.includes(targetMonth);
@@ -701,7 +708,7 @@
             }
         }).map(l => l.employeeId);
 
-        const availableEmployees = employees.filter(e => !e.isResigned && !alreadyPaidIds.includes(e.id));
+        const availableEmployees = employees.filter(e => !e.isResigned && !alreadyPaidIds.includes(e.id) && (e.cashierZone || '1').toString() === myZone);
 
         React.useEffect(() => {
             if (!selectedEmp || !payType) {
@@ -732,7 +739,7 @@
         const handleSetBalance = (e) => {
             e.preventDefault();
             const val = parseFloat(startingCashInput);
-            if(val >= 0) { updateCashRegister(selectedDate, val); setStartingCashInput(''); setIsEditingBalance(false); }
+            if(val >= 0) { updateCashRegister(registerId, val); setStartingCashInput(''); setIsEditingBalance(false); }
         };
 
         const handleLogPayout = (e) => {
@@ -749,6 +756,7 @@
                 employeeName: empName,
                 amount: val,
                 type: payType,
+                cashierZone: myZone,
                 timestamp: Date.now()
             });
             
@@ -1072,12 +1080,12 @@
       const downloadTemplate = () => { 
           const isAr = lang === 'ar'; 
           const headers = isAr ? 
-             ['الاسم', 'القسم', 'الراتب', 'مبلغ الفترة الأولى', 'مبلغ الفترة الثانية', 'المواصلات', 'الوردية', 'فترة المواصلات', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] : 
-             ['Name', 'Section', 'Wage', 'Period 1 Amount', 'Period 2 Amount', 'Transport', 'Shift', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name']; 
+             ['الاسم', 'القسم', 'رقم الصندوق', 'الراتب', 'مبلغ الفترة الأولى', 'مبلغ الفترة الثانية', 'المواصلات', 'الوردية', 'فترة المواصلات', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] : 
+             ['Name', 'Section', 'Cashier Zone', 'Wage', 'Period 1 Amount', 'Period 2 Amount', 'Transport', 'Shift', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name']; 
           
           const sample = isAr ? 
-             ['أحمد', 'القسم العام', '', '250000', '250000', '50000', 'صباحي', '2', '010101010', '123456', 'محمود', 'فاطمة'] : 
-             ['John Doe', 'General', '', '250000', '250000', '50000', 'day', '2', '010101010', '123456', 'Robert', 'Mary']; 
+             ['أحمد', 'القسم العام', '1', '', '250000', '250000', '50000', 'صباحي', '2', '010101010', '123456', 'محمود', 'فاطمة'] : 
+             ['John Doe', 'General', '1', '', '250000', '250000', '50000', 'day', '2', '010101010', '123456', 'Robert', 'Mary'];  
           
           const ws = XLSX.utils.aoa_to_sheet([headers, sample]); 
           const wb = XLSX.utils.book_new(); 
@@ -1141,6 +1149,7 @@
                       sectionId: matchedSectionId, 
                       period1Amount: p1, 
                       transportPeriod: tPeriod, 
+                      cashierZone: (row['Cashier Zone'] || row['رقم الصندوق'] || '1').toString(),
                       isResigned: false 
                   }; 
                   
@@ -1749,7 +1758,7 @@
     const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, attendance, employees, bonuses, addBonus, deleteBonus, grants, addGrant, deleteGrant, users, addUser, updateUser, deleteUser, currentUser, lang, t, sections, advances, overtime, transportation, loans, cashRegisters, updateCashRegister }) => {
       const [activeOwnerTab, setActiveOwnerTab] = React.useState('logic');
       const [tempConfig, setTempConfig] = React.useState(config);
-      const [newUserFormData, setNewUserFormData] = React.useState({ username: '', password: '', role: 'hr' });
+      const [newUserFormData, setNewUserFormData] = React.useState({ username: '', password: '', role: 'hr', cashierZone: '1' });
       const [editingUserId, setEditingUserId] = React.useState(null);
       const [reportType, setReportType] = React.useState(null);
       const [targetReportMonth, setTargetReportMonth] = React.useState(null);
@@ -1827,8 +1836,8 @@
           setNewUserFormData({ username: '', password: '', role: 'hr' }); 
       };
       
-      const startEditUser = (user) => { setEditingUserId(user.id); setNewUserFormData({ username: user.username, password: user.password, role: user.role }); };
-      const cancelEditUser = () => { setEditingUserId(null); setNewUserFormData({ username: '', password: '', role: 'hr' }); };
+      const startEditUser = (user) => { setEditingUserId(user.id); setNewUserFormData({ username: user.username, password: user.password, role: user.role, cashierZone: user.cashierZone || '1' }); };
+      const cancelEditUser = () => { setEditingUserId(null); setNewUserFormData({ username: '', password: '', role: 'hr', cashierZone: '1' }); };
       
       const handleDistributeBonus = (e) => {
           e.preventDefault(); 
@@ -2256,6 +2265,9 @@
                            <option value="cashier">Cashier</option>
                            <option value="owner">Owner</option>
                        </select>
+                       {newUserFormData.role === 'cashier' && (
+                           <input className={inputClass} placeholder="Cashier Zone (e.g. 1 or 2)" value={newUserFormData.cashierZone} onChange={e=>setNewUserFormData({...newUserFormData, cashierZone:e.target.value})} required />
+                       )}
                        <div className="flex gap-2">
                           {editingUserId && <button type="button" onClick={cancelEditUser} className="flex-1 bg-gray-200 text-black p-4 rounded-xl font-black uppercase text-xs tracking-widest">{t('cancel')}</button>}
                           <button className="flex-1 bg-black text-white p-4 rounded-xl font-black uppercase text-xs tracking-widest">{editingUserId ? t('commit') : t('authorizeIdentity')}</button>
@@ -2422,7 +2434,7 @@
           
           if (currentUser.role === 'finance') return <FinanceDashboard {...props} updateLoan={(eid, tot, pct) => { const l = loans.find(x=>x.employeeId===eid); if(tot<=0 && l) db.collection('loans').doc(l.id).delete(); else if(l) db.collection('loans').doc(l.id).update({totalAmount:tot, deductionPercentage:pct}); else db.collection('loans').add({employeeId:eid, totalAmount:tot, deductionPercentage:pct}); }} />;
           
-          if (currentUser.role === 'cashier') return <CashierDashboard employees={employees} payoutLogs={payoutLogs} cashRegisters={cashRegisters} addPayout={(data) => db.collection('payout_logs').add(data)} deletePayout={(id) => db.collection('payout_logs').doc(id).delete()} updateCashRegister={(date, balance) => db.collection('cash_registers').doc(date).set({startingBalance: balance})} lang={lang} t={t} config={pdfConfig} attendance={attendance} advances={advances} overtime={overtime} loans={loans} transportation={transportation} bonuses={bonuses} grants={grants} sections={sections} lockedMonths={lockedMonths} />;
+          if (currentUser.role === 'cashier') return <CashierDashboard currentUser={currentUser} employees={employees} payoutLogs={payoutLogs} cashRegisters={cashRegisters} addPayout={(data) => db.collection('payout_logs').add(data)} deletePayout={(id) => db.collection('payout_logs').doc(id).delete()} updateCashRegister={(id, balance) => db.collection('cash_registers').doc(id).set({startingBalance: balance})} lang={lang} t={t} config={pdfConfig} attendance={attendance} advances={advances} overtime={overtime} loans={loans} transportation={transportation} bonuses={bonuses} grants={grants} sections={sections} lockedMonths={lockedMonths} />;
 
           return <div className="text-center p-10 font-black text-red-600">{t('unauthorized')}</div>;
       };
