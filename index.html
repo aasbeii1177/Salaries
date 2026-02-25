@@ -624,6 +624,8 @@
     };
 
     // --- CASHIER DASHBOARD WITH PDF EXPORT & AUTO-MATH ---
+   // --- REPLACE IT WITH THIS ---
+    // --- CASHIER DASHBOARD WITH PDF EXPORT, AUTO-MATH, SMART HIDE & INDIVIDUAL SLIP PRINTING ---
     const CashierDashboard = ({ employees, payoutLogs, cashRegisters, addPayout, deletePayout, updateCashRegister, lang, t, config, attendance, advances, overtime, loans, transportation, bonuses, grants, sections }) => {
         const [selectedDate, setSelectedDate] = React.useState(new Date().toISOString().split('T')[0]);
         const [targetMonth, setTargetMonth] = React.useState(new Date().toISOString().substring(0,7));
@@ -642,28 +644,23 @@
         const startingCash = todaysRegister ? parseFloat(todaysRegister.startingBalance) : 0;
         const remainingCash = startingCash - totalPaid;
 
-        // Reset employee selection when criteria changes to avoid bugs
         React.useEffect(() => {
             setSelectedEmp('');
             setAmount('');
         }, [payType, targetMonth, selectedDate]);
 
-        // Smart Filter: Remove employees who have already been paid for this exact combination
         const alreadyPaidIds = payoutLogs.filter(log => {
             if (log.type !== payType) return false;
-            // For salaries, check if they were already paid for this specific month
             if (['period1', 'period2', 'fullMonth'].includes(payType)) {
                 const logMonth = log.targetMonth || log.date.substring(0,7);
                 return logMonth === targetMonth; 
             } else {
-                // For Aid or standalone Bonus, check if they were already paid on this specific date
                 return log.date === selectedDate; 
             }
         }).map(l => l.employeeId);
 
         const availableEmployees = employees.filter(e => !e.isResigned && !alreadyPaidIds.includes(e.id));
 
-        // Auto-Calculate Math when Employee or Type changes
         React.useEffect(() => {
             if (!selectedEmp) {
                 setAmount('');
@@ -685,20 +682,15 @@
                 calc = bonuses.filter(b => b.employeeId === emp.id && b.date === selectedDate).reduce((s, c) => s + parseFloat(c.amount || 0), 0);
             }
             
-            // SMART ROUNDING UP TO NEAREST 500 SYP
             const finalAmount = Math.ceil(calc / 500) * 500;
             setAmount(finalAmount > 0 ? finalAmount : '');
 
         }, [selectedEmp, payType, selectedDate, targetMonth, employees, attendance, advances, overtime, loans, transportation, config, bonuses, grants]);
 
-
         const handleSetBalance = (e) => {
             e.preventDefault();
             const val = parseFloat(startingCashInput);
-            if(val >= 0) {
-                updateCashRegister(selectedDate, val);
-                setStartingCashInput('');
-            }
+            if(val >= 0) { updateCashRegister(selectedDate, val); setStartingCashInput(''); }
         };
 
         const handleLogPayout = (e) => {
@@ -710,7 +702,7 @@
             
             addPayout({
                 date: selectedDate,
-                targetMonth: targetMonth, // Saving the target month to prevent double-paying
+                targetMonth: targetMonth, 
                 employeeId: selectedEmp,
                 employeeName: empName,
                 amount: val,
@@ -722,86 +714,99 @@
             setAmount('');
         };
 
+        // NEW: PRINT INDIVIDUAL SLIP
+        const handlePrintSlip = async (log) => {
+            const emp = employees.find(e => e.id === log.employeeId);
+            if (!emp) return alert("Worker not found.");
+
+            setIsExporting(true);
+            try {
+                if (['period1', 'period2', 'fullMonth'].includes(log.type)) {
+                    const pMap = { period1: 'p1', period2: 'p2', fullMonth: 'full' };
+                    // Re-use global generator but pass only the single employee in the array
+                    await generateAllPayslips(log.targetMonth || log.date.substring(0,7), pMap[log.type], [emp], attendance, advances, overtime, loans, transportation, config, sections, bonuses);
+                } else if (log.type === 'supportAid') {
+                    await generateAidPayslips(log.date, [emp], grants, config, sections);
+                } else if (log.type === 'bonus') {
+                    // Small quick local generator for standalone bonus
+                    const { jsPDF } = window.jspdf;
+                    const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf';
+                    const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+                    let binary = ''; const bytes = new Uint8Array(fontBytes);
+                    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+                    const base64Font = window.btoa(binary);
+
+                    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [110, 220] });
+                    doc.addFileToVFS('Amiri-Regular.ttf', base64Font);
+                    doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
+                    doc.setFont('Amiri', 'normal'); 
+                    
+                    const sectionName = sections.find(s => s.id === emp.sectionId)?.name || 'القسم العام';
+
+                    doc.setFillColor(79, 70, 229); 
+                    doc.rect(0, 0, 110, 25, 'F');
+                    doc.setFontSize(14); doc.setTextColor(255, 255, 255); doc.text("إيصال صرف مكافأة", 100, 15, { align: 'right' }); 
+                    doc.setFontSize(10); doc.text(log.date, 10, 15, { align: 'left' }); 
+
+                    let y = 45; doc.setTextColor(0, 0, 0);
+                    const drawRow = (label, value) => {
+                       doc.setFontSize(10); doc.text(label, 100, y, { align: 'right' }); doc.text(value.toString(), 10, y, { align: 'left' }); doc.setDrawColor(200); doc.line(10, y + 3, 100, y + 3); y += 10;
+                    };
+                    drawRow("اسم العامل", emp.name); drawRow("القسم", sectionName);
+                    
+                    y += 10; doc.setFillColor(0, 0, 0); doc.rect(10, y - 5, 90, 16, 'F');
+                    doc.setTextColor(255, 255, 255); doc.setFontSize(12); doc.text("المبلغ المستحق", 98, y + 1, { align: 'right' }); doc.text(`${formatBase(log.amount)} ${config.mainSymbol || 'ل.س'}`, 12, y + 1, { align: 'left' });
+                    doc.setTextColor(200, 200, 200); doc.setFontSize(9); doc.text("يعادل", 98, y + 8, { align: 'right' }); doc.text(`${formatSec(log.amount, config)} ${config.secSymbol || '$'}`, 12, y + 8, { align: 'left' });
+
+                    doc.save(`Bonus_${emp.name}_${log.date}.pdf`);
+                }
+            } catch (err) { alert("Error printing slip: " + err.message); }
+            setIsExporting(false);
+        };
+
         const exportDailyCashierReport = async () => {
-            if (todaysLogs.length === 0 && !todaysRegister) {
-                return alert("No records found for this date.");
-            }
+            if (todaysLogs.length === 0 && !todaysRegister) return alert("No records found for this date.");
             setIsExporting(true);
             try {
                 const { jsPDF } = window.jspdf;
                 const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf';
                 const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
-                let binary = '';
-                const bytes = new Uint8Array(fontBytes);
+                let binary = ''; const bytes = new Uint8Array(fontBytes);
                 for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
                 const base64Font = window.btoa(binary);
 
                 const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
                 doc.addFileToVFS('Amiri-Regular.ttf', base64Font);
-                doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
-                doc.setFont('Amiri', 'normal'); 
+                doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal'); doc.setFont('Amiri', 'normal'); 
                 
-                // Header
-                doc.setFontSize(22);
-                doc.text("تقرير حركة الصندوق اليومي", 105, 20, { align: 'center' });
-                
-                doc.setFontSize(12);
-                doc.text(`التاريخ: ${selectedDate}`, 190, 35, { align: 'right' });
+                doc.setFontSize(22); doc.text("تقرير حركة الصندوق اليومي", 105, 20, { align: 'center' });
+                doc.setFontSize(12); doc.text(`التاريخ: ${selectedDate}`, 190, 35, { align: 'right' });
 
-                // Summary Block
-                doc.setFillColor(245, 245, 245);
-                doc.rect(20, 45, 170, 30, 'F');
-                doc.setFontSize(14);
-                doc.text(`الرصيد الافتتاحي: ${formatBase(startingCash)} ${config.mainSymbol || 'SYP'}`, 185, 53, { align: 'right' });
+                doc.setFillColor(245, 245, 245); doc.rect(20, 45, 170, 30, 'F');
+                doc.setFontSize(14); doc.text(`الرصيد الافتتاحي: ${formatBase(startingCash)} ${config.mainSymbol || 'SYP'}`, 185, 53, { align: 'right' });
                 doc.text(`إجمالي المدفوعات: ${formatBase(totalPaid)} ${config.mainSymbol || 'SYP'}`, 185, 63, { align: 'right' });
-                doc.setFontSize(16);
-                doc.setTextColor(remainingCash >= 0 ? 0 : 255, 0, 0); 
+                doc.setFontSize(16); doc.setTextColor(remainingCash >= 0 ? 0 : 255, 0, 0); 
                 doc.text(`الرصيد المتبقي: ${formatBase(remainingCash)} ${config.mainSymbol || 'SYP'}`, 185, 73, { align: 'right' });
                 doc.setTextColor(0, 0, 0);
 
-                // Table Headers
-                let y = 90;
-                doc.setFontSize(11);
-                doc.setFillColor(200, 200, 200);
-                doc.rect(20, y - 6, 170, 8, 'F');
-                
-                doc.text("المبلغ", 40, y, { align: 'right' });
-                doc.text("النوع", 80, y, { align: 'right' });
-                doc.text("اسم العامل", 140, y, { align: 'right' });
-                doc.text("الوقت", 185, y, { align: 'right' });
-                
+                let y = 90; doc.setFontSize(11); doc.setFillColor(200, 200, 200); doc.rect(20, y - 6, 170, 8, 'F');
+                doc.text("المبلغ", 40, y, { align: 'right' }); doc.text("النوع", 80, y, { align: 'right' });
+                doc.text("اسم العامل", 140, y, { align: 'right' }); doc.text("الوقت", 185, y, { align: 'right' });
                 y += 8;
 
-                // Table Rows
                 todaysLogs.forEach(log => {
-                    if (y > 260) {
-                        doc.addPage();
-                        y = 20;
-                    }
+                    if (y > 260) { doc.addPage(); y = 20; }
                     const timeStr = new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    doc.setFontSize(10);
-                    doc.text(`${formatBase(log.amount)}`, 40, y, { align: 'right' });
-                    doc.text(t(log.type), 80, y, { align: 'right' });
-                    doc.text(log.employeeName, 140, y, { align: 'right' });
-                    doc.text(timeStr, 185, y, { align: 'right' });
-                    
-                    doc.setDrawColor(220);
-                    doc.line(20, y + 2, 190, y + 2);
-                    y += 8;
+                    doc.setFontSize(10); doc.text(`${formatBase(log.amount)}`, 40, y, { align: 'right' });
+                    doc.text(t(log.type), 80, y, { align: 'right' }); doc.text(log.employeeName, 140, y, { align: 'right' }); doc.text(timeStr, 185, y, { align: 'right' });
+                    doc.setDrawColor(220); doc.line(20, y + 2, 190, y + 2); y += 8;
                 });
 
-                // Signatures
-                y = Math.max(y + 30, 250); 
-                if (y > 280) { doc.addPage(); y = 40; }
-                
-                doc.setFontSize(12);
-                doc.text("توقيع أمين الصندوق: ___________________", 180, y, { align: 'right' });
-                doc.text("توقيع المراجعة / الإدارة: ___________________", 80, y, { align: 'right' });
+                y = Math.max(y + 30, 250); if (y > 280) { doc.addPage(); y = 40; }
+                doc.setFontSize(12); doc.text("توقيع أمين الصندوق: ___________________", 180, y, { align: 'right' }); doc.text("توقيع المراجعة / الإدارة: ___________________", 80, y, { align: 'right' });
 
                 doc.save(`Cashier_EOD_${selectedDate}.pdf`);
-            } catch (err) {
-                alert("Error generating PDF: " + err.message);
-            }
+            } catch (err) { alert("Error generating PDF: " + err.message); }
             setIsExporting(false);
         };
 
@@ -813,11 +818,7 @@
                         <p className="text-sm text-gray-500 font-bold">{t('recordingFor')} <span className="text-indigo-600">{selectedDate}</span></p>
                     </div>
                     <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                        <button 
-                            onClick={exportDailyCashierReport} 
-                            disabled={isExporting} 
-                            className="bg-gray-800 text-white px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-black transition-all"
-                        >
+                        <button onClick={exportDailyCashierReport} disabled={isExporting} className="bg-gray-800 text-white px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-black transition-all">
                             {isExporting ? 'Generating...' : t('printEodReport')}
                         </button>
                         <input type="date" className={inputClass + " md:w-auto"} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
@@ -836,12 +837,10 @@
                             </form>
                         )}
                     </div>
-                    
                     <div className="bg-red-50 rounded-[2rem] p-6 border border-red-100 flex flex-col justify-center">
                         <p className="text-[10px] font-black uppercase tracking-widest text-red-800 mb-2">{t('totalPaid')}</p>
                         <h3 className="text-3xl font-black text-red-900">{formatBase(totalPaid)} <span className="text-sm opacity-50">{config.mainSymbol || 'SYP'}</span></h3>
                     </div>
-
                     <div className={`rounded-[2rem] p-6 border flex flex-col justify-center ${remainingCash >= 0 ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
                         <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${remainingCash >= 0 ? 'text-green-800' : 'text-red-800'}`}>{t('remainingCash')}</p>
                         <h3 className={`text-3xl font-black ${remainingCash >= 0 ? 'text-green-900' : 'text-red-900'}`}>{formatBase(remainingCash)} <span className="text-sm opacity-50">{config.mainSymbol || 'SYP'}</span></h3>
@@ -852,15 +851,9 @@
                     <div className="lg:col-span-1 bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 h-fit">
                         <h3 className="text-xl font-black uppercase mb-6">{t('recordPayout')}</h3>
                         <form onSubmit={handleLogPayout} className="space-y-5">
-                            
-                            {/* Target Month Selector for Salaries */}
                             {['period1', 'period2', 'fullMonth'].includes(payType) && (
-                                <div>
-                                    <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Target Payroll Month</label>
-                                    <input type="month" className={inputClass} value={targetMonth} onChange={e=>setTargetMonth(e.target.value)} required />
-                                </div>
+                                <div><label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Target Payroll Month</label><input type="month" className={inputClass} value={targetMonth} onChange={e=>setTargetMonth(e.target.value)} required /></div>
                             )}
-
                             <div>
                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('paymentType')}</label>
                                 <select className={inputClass} value={payType} onChange={e=>setPayType(e.target.value)} required>
@@ -871,7 +864,6 @@
                                     <option value="bonus">{t('bonus')}</option>
                                 </select>
                             </div>
-
                             <div>
                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('name')}</label>
                                 <select className={inputClass} value={selectedEmp} onChange={e=>setSelectedEmp(e.target.value)} required>
@@ -880,23 +872,11 @@
                                     {availableEmployees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                                 </select>
                             </div>
-                            
-                            {/* LOCKED AMOUNT INPUT */}
                             <div>
                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Amount</label>
-                                <MoneyInput 
-                                    required 
-                                    className={`${inputClass} bg-gray-100 cursor-not-allowed opacity-70`} 
-                                    placeholder="0" 
-                                    min="1" 
-                                    value={amount} 
-                                    onChange={()=>{}} 
-                                    currency={config.mainSymbol || 'SYP'} 
-                                    readOnly={true}
-                                />
+                                <MoneyInput required className={`${inputClass} bg-gray-100 cursor-not-allowed opacity-70`} placeholder="0" min="1" value={amount} onChange={()=>{}} currency={config.mainSymbol || 'SYP'} readOnly={true} />
                                 <p className="text-[8px] text-gray-400 mt-1 uppercase font-bold text-right">Auto-calculated & rounded up to nearest 500</p>
                             </div>
-                            
                             <button type="submit" className={`w-full font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl transition-all ${amount > 0 ? 'bg-black text-white hover:bg-gray-800' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`} disabled={!amount}>
                                 {amount ? `PAY ${parseFloat(amount).toLocaleString()}` : t('confirm')}
                             </button>
@@ -910,7 +890,7 @@
                             <table className="w-full text-left">
                                 <tbody className="divide-y divide-gray-50">
                                     {todaysLogs.map(log => (
-                                        <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                                        <tr key={log.id} className="hover:bg-gray-50 transition-colors group">
                                             <td className="py-4 px-2">
                                                 <p className="font-black text-black">{log.employeeName}</p>
                                                 <p className="text-[10px] font-bold text-gray-400 uppercase">{t(log.type)} • {new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
@@ -918,8 +898,16 @@
                                             <td className="py-4 px-2 text-right font-black text-red-600">
                                                 -{formatBase(log.amount)} <span className="text-[10px] opacity-50">{config.mainSymbol || 'SYP'}</span>
                                             </td>
-                                            <td className="py-4 px-2 text-right w-10">
-                                                <button onClick={()=>deletePayout(log.id)} className="text-red-300 hover:text-red-600 font-black px-2 py-1 rounded">X</button>
+                                            <td className="py-4 px-2 text-right w-24">
+                                                <div className="flex justify-end items-center gap-2">
+                                                    {/* NEW PRINT BUTTON IN THE LOGS */}
+                                                    <button onClick={()=>handlePrintSlip(log)} disabled={isExporting} className="text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-xl text-xs transition-colors" title="Print Slip">
+                                                        🖨️
+                                                    </button>
+                                                    <button onClick={()=>deletePayout(log.id)} className="text-red-400 hover:text-red-600 hover:bg-red-50 font-black px-3 py-2 rounded-xl transition-colors" title="Delete">
+                                                        X
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
