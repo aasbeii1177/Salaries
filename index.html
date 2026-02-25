@@ -926,6 +926,7 @@
       const [reportType, setReportType] = React.useState(null); 
       const [targetReportMonth, setTargetReportMonth] = React.useState(null); 
       const [totalsData, setTotalsData] = React.useState(null);
+      const [printGrantDate, setPrintGrantDate] = React.useState(new Date().toISOString().split('T')[0]);
       
       const inputClass = "w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl font-bold bg-white text-black outline-none focus:border-indigo-600 transition-all";
 
