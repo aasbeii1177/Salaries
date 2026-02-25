@@ -642,16 +642,16 @@
     };
 
     // --- CASHIER DASHBOARD WITH PDF EXPORT & AUTO-MATH ---
-   // --- REPLACE IT WITH THIS ---
-    // --- CASHIER DASHBOARD WITH PDF EXPORT, AUTO-MATH, SMART HIDE & INDIVIDUAL SLIP PRINTING ---
-    const CashierDashboard = ({ employees, payoutLogs, cashRegisters, addPayout, deletePayout, updateCashRegister, lang, t, config, attendance, advances, overtime, loans, transportation, bonuses, grants, sections }) => {
+    // --- CASHIER DASHBOARD WITH STRICT AUTHORIZATION ENGINE ---
+    const CashierDashboard = ({ employees, payoutLogs, cashRegisters, addPayout, deletePayout, updateCashRegister, lang, t, config, attendance, advances, overtime, loans, transportation, bonuses, grants, sections, lockedMonths }) => {
         const [selectedDate, setSelectedDate] = React.useState(new Date().toISOString().split('T')[0]);
         const [targetMonth, setTargetMonth] = React.useState(new Date().toISOString().substring(0,7));
         const [selectedEmp, setSelectedEmp] = React.useState('');
         const [amount, setAmount] = React.useState('');
-        const [payType, setPayType] = React.useState('period1');
+        const [payType, setPayType] = React.useState(''); // Starts blank
         const [startingCashInput, setStartingCashInput] = React.useState('');
         const [isExporting, setIsExporting] = React.useState(false);
+        const [isEditingBalance, setIsEditingBalance] = React.useState(false);
 
         const inputClass = "w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl font-bold text-black outline-none focus:border-indigo-600 transition-all";
 
@@ -662,10 +662,34 @@
         const startingCash = todaysRegister ? parseFloat(todaysRegister.startingBalance) : 0;
         const remainingCash = startingCash - totalPaid;
 
+        // --- STRICT AUTHORIZATION LOGIC ---
+        const isP1Locked = lockedMonths?.includes(`${targetMonth}-p1`) || lockedMonths?.includes(targetMonth);
+        const isP2Locked = lockedMonths?.includes(`${targetMonth}-p2`) || lockedMonths?.includes(targetMonth);
+        const isFullLocked = lockedMonths?.includes(targetMonth) || (isP1Locked && isP2Locked);
+        
+        const hasGrantsToday = grants?.some(g => g.date === selectedDate);
+        const hasBonusesToday = bonuses?.some(b => b.date === selectedDate);
+
+        const availableTypes = [];
+        if (isP1Locked) availableTypes.push({ id: 'period1', label: t('period1') });
+        if (isP2Locked) availableTypes.push({ id: 'period2', label: t('period2') });
+        if (isFullLocked) availableTypes.push({ id: 'fullMonth', label: t('fullMonth') });
+        if (hasGrantsToday) availableTypes.push({ id: 'supportAid', label: t('supportAid') });
+        if (hasBonusesToday) availableTypes.push({ id: 'bonus', label: t('bonus') });
+
         React.useEffect(() => {
+            if (availableTypes.length > 0) {
+                if (!availableTypes.find(t => t.id === payType)) {
+                    setPayType(availableTypes[0].id); // Auto-select first authorized option
+                }
+            } else {
+                setPayType(''); // Lock the dropdown if nothing is authorized
+            }
             setSelectedEmp('');
             setAmount('');
-        }, [payType, targetMonth, selectedDate]);
+            setIsEditingBalance(false);
+        }, [targetMonth, selectedDate, lockedMonths, grants, bonuses]);
+        // ----------------------------------
 
         const alreadyPaidIds = payoutLogs.filter(log => {
             if (log.type !== payType) return false;
@@ -680,7 +704,7 @@
         const availableEmployees = employees.filter(e => !e.isResigned && !alreadyPaidIds.includes(e.id));
 
         React.useEffect(() => {
-            if (!selectedEmp) {
+            if (!selectedEmp || !payType) {
                 setAmount('');
                 return;
             }
@@ -708,7 +732,7 @@
         const handleSetBalance = (e) => {
             e.preventDefault();
             const val = parseFloat(startingCashInput);
-            if(val >= 0) { updateCashRegister(selectedDate, val); setStartingCashInput(''); }
+            if(val >= 0) { updateCashRegister(selectedDate, val); setStartingCashInput(''); setIsEditingBalance(false); }
         };
 
         const handleLogPayout = (e) => {
@@ -732,7 +756,6 @@
             setAmount('');
         };
 
-        // NEW: PRINT INDIVIDUAL SLIP
         const handlePrintSlip = async (log) => {
             const emp = employees.find(e => e.id === log.employeeId);
             if (!emp) return alert("Worker not found.");
@@ -772,7 +795,6 @@
                     doc.setTextColor(255, 255, 255); doc.setFontSize(12); doc.text("المبلغ المستحق", 98, y + 1, { align: 'right' }); doc.text(`${formatBase(log.amount)} ${config.mainSymbol || 'ل.س'}`, 12, y + 1, { align: 'left' });
                     doc.setTextColor(200, 200, 200); doc.setFontSize(9); doc.text("يعادل", 98, y + 8, { align: 'right' }); doc.text(`${formatSec(log.amount, config)} ${config.secSymbol || '$'}`, 12, y + 8, { align: 'left' });
 
-                    // Auto-print logic for standalone Bonus
                     doc.autoPrint();
                     const iframe = document.createElement('iframe');
                     iframe.style.display = 'none';
@@ -846,14 +868,18 @@
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-blue-50 rounded-[2rem] p-6 border border-blue-100 flex flex-col justify-center">
+                    <div className="bg-blue-50 rounded-[2rem] p-6 border border-blue-100 flex flex-col justify-center relative">
                         <p className="text-[10px] font-black uppercase tracking-widest text-blue-800 mb-2">{t('startingBalance')}</p>
-                        {todaysRegister ? (
-                            <h3 className="text-3xl font-black text-blue-900">{formatBase(startingCash)} <span className="text-sm opacity-50">{config.mainSymbol || 'SYP'}</span></h3>
+                        {todaysRegister && !isEditingBalance ? (
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-3xl font-black text-blue-900">{formatBase(startingCash)} <span className="text-sm opacity-50">{config.mainSymbol || 'SYP'}</span></h3>
+                            </div>
                         ) : (
-                            <form onSubmit={handleSetBalance} className="flex gap-2">
-                                <input type="number" min="0" required placeholder="0" className="w-full px-3 py-2 rounded-lg font-bold border border-blue-200" value={startingCashInput} onChange={e=>setStartingCashInput(e.target.value)} />
-                                <button type="submit" className="bg-blue-600 text-white px-4 rounded-lg font-black text-[10px] uppercase">{t('save')}</button>
+                            <form onSubmit={handleSetBalance} className="flex flex-col gap-2">
+                                <div className="flex gap-2">
+                                    <input type="number" min="0" required placeholder="0" className="w-full px-3 py-2 rounded-lg font-bold border border-blue-200" value={startingCashInput} onChange={e=>setStartingCashInput(e.target.value)} />
+                                    <button type="submit" className="bg-blue-600 text-white px-4 rounded-lg font-black text-[10px] uppercase">{t('save')}</button>
+                                </div>
                             </form>
                         )}
                     </div>
@@ -871,32 +897,43 @@
                     <div className="lg:col-span-1 bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 h-fit">
                         <h3 className="text-xl font-black uppercase mb-6">{t('recordPayout')}</h3>
                         <form onSubmit={handleLogPayout} className="space-y-5">
-                            {['period1', 'period2', 'fullMonth'].includes(payType) && (
-                                <div><label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Target Payroll Month</label><input type="month" className={inputClass} value={targetMonth} onChange={e=>setTargetMonth(e.target.value)} required /></div>
-                            )}
+                            
+                            <div>
+                                <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Target Payroll Month</label>
+                                <input type="month" className={inputClass} value={targetMonth} onChange={e=>setTargetMonth(e.target.value)} required />
+                                <p className="text-[8px] text-gray-400 mt-1 uppercase font-bold text-right">Change to unlock past month salaries</p>
+                            </div>
+                            
                             <div>
                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('paymentType')}</label>
-                                <select className={inputClass} value={payType} onChange={e=>setPayType(e.target.value)} required>
-                                    <option value="period1">{t('period1')}</option>
-                                    <option value="period2">{t('period2')}</option>
-                                    <option value="fullMonth">{t('fullMonth')}</option>
-                                    <option value="supportAid">{t('supportAid')}</option>
-                                    <option value="bonus">{t('bonus')}</option>
-                                </select>
+                                {availableTypes.length === 0 ? (
+                                    <div className="px-4 py-3 bg-red-50 text-red-600 border border-red-200 rounded-xl font-black text-xs uppercase text-center tracking-widest shadow-inner">
+                                        No Authorized Payments
+                                    </div>
+                                ) : (
+                                    <select className={inputClass} value={payType} onChange={e=>setPayType(e.target.value)} required>
+                                        {availableTypes.map(type => (
+                                            <option key={type.id} value={type.id}>{type.label}</option>
+                                        ))}
+                                    </select>
+                                )}
                             </div>
+
                             <div>
                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('name')}</label>
-                                <select className={inputClass} value={selectedEmp} onChange={e=>setSelectedEmp(e.target.value)} required>
+                                <select className={inputClass} value={selectedEmp} onChange={e=>setSelectedEmp(e.target.value)} disabled={availableTypes.length === 0} required>
                                     <option value="">Select Employee</option>
-                                    {availableEmployees.length === 0 && <option value="" disabled>All workers paid for this selection.</option>}
+                                    {availableEmployees.length === 0 && payType && <option value="" disabled>All workers paid for this selection.</option>}
                                     {availableEmployees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                                 </select>
                             </div>
+                            
                             <div>
                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Amount</label>
                                 <MoneyInput required className={`${inputClass} bg-gray-100 cursor-not-allowed opacity-70`} placeholder="0" min="1" value={amount} onChange={()=>{}} currency={config.mainSymbol || 'SYP'} readOnly={true} />
                                 <p className="text-[8px] text-gray-400 mt-1 uppercase font-bold text-right">Auto-calculated & rounded up to nearest 500</p>
                             </div>
+                            
                             <button type="submit" className={`w-full font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl transition-all ${amount > 0 ? 'bg-black text-white hover:bg-gray-800' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`} disabled={!amount}>
                                 {amount ? `PAY ${parseFloat(amount).toLocaleString()}` : t('confirm')}
                             </button>
@@ -920,7 +957,6 @@
                                             </td>
                                             <td className="py-4 px-2 text-right w-24">
                                                 <div className="flex justify-end items-center gap-2">
-                                                    {/* NEW PRINT BUTTON IN THE LOGS */}
                                                     <button onClick={()=>handlePrintSlip(log)} disabled={isExporting} className="text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-xl text-xs transition-colors" title="Print Slip">
                                                         🖨️
                                                     </button>
@@ -939,6 +975,7 @@
             </div>
         );
     };
+// --------------
     const HRDashboard = ({ employees, sections, addEmployee, updateEmployee, resignEmployee, deleteEmployee, addSection, deleteSection, attendance, advances, overtime, transportation, loans, pdfConfig, bonuses, grants, lockedMonths, toggleMonthLock, lang, t }) => {
       const [formData, setFormData] = React.useState({ name: '', wage: '', transportAllowance: '0', shift: 'day', joinDate: new Date().toISOString().split('T')[0], nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '', dateOfBirth: '', sectionId: '', period1Amount: '', period2Amount: '' });
       const [isGenerating, setIsGenerating] = React.useState(false); 
@@ -2385,7 +2422,7 @@
           
           if (currentUser.role === 'finance') return <FinanceDashboard {...props} updateLoan={(eid, tot, pct) => { const l = loans.find(x=>x.employeeId===eid); if(tot<=0 && l) db.collection('loans').doc(l.id).delete(); else if(l) db.collection('loans').doc(l.id).update({totalAmount:tot, deductionPercentage:pct}); else db.collection('loans').add({employeeId:eid, totalAmount:tot, deductionPercentage:pct}); }} />;
           
-          if (currentUser.role === 'cashier') return <CashierDashboard employees={employees} payoutLogs={payoutLogs} cashRegisters={cashRegisters} addPayout={(data) => db.collection('payout_logs').add(data)} deletePayout={(id) => db.collection('payout_logs').doc(id).delete()} updateCashRegister={(date, balance) => db.collection('cash_registers').doc(date).set({startingBalance: balance})} lang={lang} t={t} config={pdfConfig} attendance={attendance} advances={advances} overtime={overtime} loans={loans} transportation={transportation} bonuses={bonuses} grants={grants} sections={sections} />;
+          if (currentUser.role === 'cashier') return <CashierDashboard employees={employees} payoutLogs={payoutLogs} cashRegisters={cashRegisters} addPayout={(data) => db.collection('payout_logs').add(data)} deletePayout={(id) => db.collection('payout_logs').doc(id).delete()} updateCashRegister={(date, balance) => db.collection('cash_registers').doc(date).set({startingBalance: balance})} lang={lang} t={t} config={pdfConfig} attendance={attendance} advances={advances} overtime={overtime} loans={loans} transportation={transportation} bonuses={bonuses} grants={grants} sections={sections} lockedMonths={lockedMonths} />;
 
           return <div className="text-center p-10 font-black text-red-600">{t('unauthorized')}</div>;
       };
