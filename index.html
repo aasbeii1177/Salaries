@@ -642,10 +642,31 @@
         const startingCash = todaysRegister ? parseFloat(todaysRegister.startingBalance) : 0;
         const remainingCash = startingCash - totalPaid;
 
+        // Reset employee selection when criteria changes to avoid bugs
+        React.useEffect(() => {
+            setSelectedEmp('');
+            setAmount('');
+        }, [payType, targetMonth, selectedDate]);
+
+        // Smart Filter: Remove employees who have already been paid for this exact combination
+        const alreadyPaidIds = payoutLogs.filter(log => {
+            if (log.type !== payType) return false;
+            // For salaries, check if they were already paid for this specific month
+            if (['period1', 'period2', 'fullMonth'].includes(payType)) {
+                const logMonth = log.targetMonth || log.date.substring(0,7);
+                return logMonth === targetMonth; 
+            } else {
+                // For Aid or standalone Bonus, check if they were already paid on this specific date
+                return log.date === selectedDate; 
+            }
+        }).map(l => l.employeeId);
+
+        const availableEmployees = employees.filter(e => !e.isResigned && !alreadyPaidIds.includes(e.id));
+
         // Auto-Calculate Math when Employee or Type changes
         React.useEffect(() => {
-            if (!selectedEmp || payType === 'advance') {
-                if (payType === 'advance') setAmount('');
+            if (!selectedEmp) {
+                setAmount('');
                 return;
             }
             const emp = employees.find(e => e.id === selectedEmp);
@@ -660,6 +681,8 @@
                 calc = calculateEmployeePayroll(emp, targetMonth, 'full', attendance, advances, overtime, loans, transportation, config, bonuses).netSalary;
             } else if (payType === 'supportAid') {
                 calc = grants.filter(g => g.employeeId === emp.id && g.date === selectedDate).reduce((s, c) => s + parseFloat(c.amount || 0), 0);
+            } else if (payType === 'bonus') {
+                calc = bonuses.filter(b => b.employeeId === emp.id && b.date === selectedDate).reduce((s, c) => s + parseFloat(c.amount || 0), 0);
             }
             
             // SMART ROUNDING UP TO NEAREST 500 SYP
@@ -681,12 +704,13 @@
         const handleLogPayout = (e) => {
             e.preventDefault();
             const val = parseFloat(amount);
-            if (!selectedEmp || val <= 0) return alert(t('mustBePositive'));
+            if (!selectedEmp || val <= 0) return alert("Nothing to pay for this worker.");
             
             const empName = employees.find(emp => emp.id === selectedEmp)?.name || 'Unknown';
             
             addPayout({
                 date: selectedDate,
+                targetMonth: targetMonth, // Saving the target month to prevent double-paying
                 employeeId: selectedEmp,
                 employeeName: empName,
                 amount: val,
@@ -695,7 +719,7 @@
             });
             
             setSelectedEmp('');
-            if (payType === 'advance') setAmount('');
+            setAmount('');
         };
 
         const exportDailyCashierReport = async () => {
@@ -829,7 +853,7 @@
                         <h3 className="text-xl font-black uppercase mb-6">{t('recordPayout')}</h3>
                         <form onSubmit={handleLogPayout} className="space-y-5">
                             
-                            {/* NEW: Target Month Selector for Salaries */}
+                            {/* Target Month Selector for Salaries */}
                             {['period1', 'period2', 'fullMonth'].includes(payType) && (
                                 <div>
                                     <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Target Payroll Month</label>
@@ -838,44 +862,43 @@
                             )}
 
                             <div>
-                                <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('name')}</label>
-                                <select className={inputClass} value={selectedEmp} onChange={e=>setSelectedEmp(e.target.value)} required>
-                                    <option value="">Select Employee</option>
-                                    {employees.filter(e=>!e.isResigned).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                                </select>
-                            </div>
-                            
-                            <div>
                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('paymentType')}</label>
                                 <select className={inputClass} value={payType} onChange={e=>setPayType(e.target.value)} required>
                                     <option value="period1">{t('period1')}</option>
                                     <option value="period2">{t('period2')}</option>
                                     <option value="fullMonth">{t('fullMonth')}</option>
-                                    <option value="advance">{t('advance')}</option>
                                     <option value="supportAid">{t('supportAid')}</option>
+                                    <option value="bonus">{t('bonus')}</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('name')}</label>
+                                <select className={inputClass} value={selectedEmp} onChange={e=>setSelectedEmp(e.target.value)} required>
+                                    <option value="">Select Employee</option>
+                                    {availableEmployees.length === 0 && <option value="" disabled>All workers paid for this selection.</option>}
+                                    {availableEmployees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                                 </select>
                             </div>
                             
-                            {/* DYNAMIC AMOUNT INPUT */}
+                            {/* LOCKED AMOUNT INPUT */}
                             <div>
                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Amount</label>
                                 <MoneyInput 
                                     required 
-                                    className={`${inputClass} ${payType !== 'advance' ? 'bg-gray-100 cursor-not-allowed opacity-70' : ''}`} 
+                                    className={`${inputClass} bg-gray-100 cursor-not-allowed opacity-70`} 
                                     placeholder="0" 
                                     min="1" 
                                     value={amount} 
-                                    onChange={e=> { if(payType === 'advance') setAmount(e.target.value) }} 
+                                    onChange={()=>{}} 
                                     currency={config.mainSymbol || 'SYP'} 
-                                    readOnly={payType !== 'advance'}
+                                    readOnly={true}
                                 />
-                                {payType !== 'advance' && (
-                                    <p className="text-[8px] text-gray-400 mt-1 uppercase font-bold text-right">Auto-calculated & rounded up to nearest 500</p>
-                                )}
+                                <p className="text-[8px] text-gray-400 mt-1 uppercase font-bold text-right">Auto-calculated & rounded up to nearest 500</p>
                             </div>
                             
-                            <button type="submit" className="w-full bg-black text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-gray-800 transition-all">
-                                {payType !== 'advance' && amount ? `PAY ${parseFloat(amount).toLocaleString()}` : t('confirm')}
+                            <button type="submit" className={`w-full font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl transition-all ${amount > 0 ? 'bg-black text-white hover:bg-gray-800' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`} disabled={!amount}>
+                                {amount ? `PAY ${parseFloat(amount).toLocaleString()}` : t('confirm')}
                             </button>
                         </form>
                     </div>
@@ -908,7 +931,6 @@
             </div>
         );
     };
-
     const HRDashboard = ({ employees, sections, addEmployee, updateEmployee, resignEmployee, deleteEmployee, addSection, deleteSection, attendance, advances, overtime, transportation, loans, pdfConfig, bonuses, grants, lockedMonths, toggleMonthLock, lang, t }) => {
       const [formData, setFormData] = React.useState({ name: '', wage: '', transportAllowance: '0', shift: 'day', joinDate: new Date().toISOString().split('T')[0], nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '', dateOfBirth: '', sectionId: '', period1Amount: '', period2Amount: '' });
       const [isGenerating, setIsGenerating] = React.useState(false); 
