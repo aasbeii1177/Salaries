@@ -1005,12 +1005,12 @@
       const downloadTemplate = () => { 
           const isAr = lang === 'ar'; 
           const headers = isAr ? 
-             ['الاسم', 'الراتب', 'مبلغ الفترة الأولى', 'مبلغ الفترة الثانية', 'المواصلات', 'الوردية', 'فترة المواصلات', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] : 
-             ['Name', 'Wage', 'Period 1 Amount', 'Period 2 Amount', 'Transport', 'Shift', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name']; 
+             ['الاسم', 'القسم', 'الراتب', 'مبلغ الفترة الأولى', 'مبلغ الفترة الثانية', 'المواصلات', 'الوردية', 'فترة المواصلات', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] : 
+             ['Name', 'Section', 'Wage', 'Period 1 Amount', 'Period 2 Amount', 'Transport', 'Shift', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name']; 
           
           const sample = isAr ? 
-             ['أحمد', '', '250000', '250000', '50000', 'صباحي', '2', '010101010', '123456', 'محمود', 'فاطمة'] : 
-             ['John Doe', '', '250000', '250000', '50000', 'day', '2', '010101010', '123456', 'Robert', 'Mary']; 
+             ['أحمد', 'القسم العام', '', '250000', '250000', '50000', 'صباحي', '2', '010101010', '123456', 'محمود', 'فاطمة'] : 
+             ['John Doe', 'General', '', '250000', '250000', '50000', 'day', '2', '010101010', '123456', 'Robert', 'Mary']; 
           
           const ws = XLSX.utils.aoa_to_sheet([headers, sample]); 
           const wb = XLSX.utils.book_new(); 
@@ -1018,7 +1018,6 @@
           XLSX.writeFile(wb, "Employee_Import_Template.xlsx"); 
       };
       
-      // NEW: EXCEL UPLOAD WITH AUTO-CALCULATION
       const handleExcelUpload = async (e) => { 
           const file = e.target.files[0]; 
           if (!file) return; 
@@ -1052,6 +1051,16 @@
                   const rawTPeriod = (row['Transport Period'] || row['فترة المواصلات'] || '2').toString().toLowerCase(); 
                   const tPeriod = rawTPeriod.includes('1') ? '1' : (rawTPeriod.includes('split') || rawTPeriod.includes('تقسيم') ? 'split' : '2'); 
                   
+                  // Match Section
+                  const sectionNameInput = (row['Section'] || row['القسم'] || '').toString().trim();
+                  let matchedSectionId = '';
+                  if (sectionNameInput) {
+                      const foundSection = sections.find(s => s.name.toLowerCase() === sectionNameInput.toLowerCase());
+                      if (foundSection) {
+                          matchedSectionId = foundSection.id;
+                      }
+                  }
+
                   const newEmp = { 
                       name: name.toString(), 
                       monthlyWage: wage, 
@@ -1062,7 +1071,7 @@
                       socialInsuranceId: (row['Insurance ID'] || row['رقم التأمين'] || '').toString(), 
                       fatherName: (row['Father Name'] || row['اسم الأب'] || '').toString(), 
                       motherName: (row['Mother Name'] || row['اسم الأم'] || '').toString(), 
-                      sectionId: '', 
+                      sectionId: matchedSectionId, 
                       period1Amount: p1, 
                       transportPeriod: tPeriod, 
                       isResigned: false 
