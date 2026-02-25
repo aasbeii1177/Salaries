@@ -1709,7 +1709,7 @@
       );
     };
 
-    const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, attendance, employees, bonuses, addBonus, deleteBonus, grants, addGrant, deleteGrant, users, addUser, updateUser, deleteUser, currentUser, lang, t, sections, advances, overtime, transportation, loans }) => {
+    const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, attendance, employees, bonuses, addBonus, deleteBonus, grants, addGrant, deleteGrant, users, addUser, updateUser, deleteUser, currentUser, lang, t, sections, advances, overtime, transportation, loans, cashRegisters, updateCashRegister }) => {
       const [activeOwnerTab, setActiveOwnerTab] = React.useState('logic');
       const [tempConfig, setTempConfig] = React.useState(config);
       const [newUserFormData, setNewUserFormData] = React.useState({ username: '', password: '', role: 'hr' });
@@ -1737,6 +1737,9 @@
       const [grantDesc, setGrantDesc] = React.useState('');
       const [grantDate, setGrantDate] = React.useState(new Date().toISOString().split('T')[0]);
       const [printGrantDate, setPrintGrantDate] = React.useState(new Date().toISOString().split('T')[0]);
+
+      const [editingRegDate, setEditingRegDate] = React.useState(null);
+      const [editingRegBal, setEditingRegBal] = React.useState('');
 
       const inputClass = "w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl font-bold text-black outline-none focus:border-indigo-600 transition-all";
       const handleSave = () => { setConfig(tempConfig); alert(t('logicSync')); };
@@ -1898,13 +1901,48 @@
               <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-gray-100 flex-wrap items-center gap-2">
                  <button onClick={handleExcelBackup} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-green-600 text-white hover:bg-green-700 transition-colors shadow-lg">📊 Download Excel</button>
                  <button onClick={handleBackupJSON} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors border border-orange-200">{t('backupData')} (JSON)</button>
-                 {['logic','periods','bonuses','grants','users', 'dictionary', 'reset'].map(tab => (
+                 {['logic','periods','bonuses','grants','registers','users', 'dictionary', 'reset'].map(tab => (
                     <button key={tab} onClick={() => setActiveOwnerTab(tab)} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeOwnerTab === tab ? 'bg-indigo-600 text-white shadow-lg' : 'text-black'}`}>
-                        {tab === 'reset' ? 'Data Maintenance' : t(tab === 'logic' ? 'systemLogic' : tab === 'users' ? 'userAccess' : tab === 'bonuses' ? 'bonusCenter' : tab === 'grants' ? 'supportAid' : tab)}
+                        {tab === 'reset' ? 'Data Maintenance' : tab === 'registers' ? 'Cashier Audit' : t(tab === 'logic' ? 'systemLogic' : tab === 'users' ? 'userAccess' : tab === 'bonuses' ? 'bonusCenter' : tab === 'grants' ? 'supportAid' : tab)}
                     </button>
                  ))}
               </div>
            </header>
+
+           {activeOwnerTab === 'registers' && (
+              <div className="bg-white rounded-[2rem] shadow-xl border border-gray-50 p-8 animate-in fade-in">
+                 <h3 className="text-xl font-black uppercase mb-2 text-indigo-600">Cash Register Audit</h3>
+                 <p className="text-xs font-bold text-gray-500 mb-6">Override and correct the daily starting cash entered by cashiers. This instantly fixes their End of Day PDF math.</p>
+                 
+                 <div className="max-h-[500px] overflow-y-auto border border-gray-100 rounded-xl divide-y divide-gray-50">
+                    {cashRegisters.length === 0 && <p className="text-center text-gray-400 font-bold py-10">No cash registers recorded yet.</p>}
+                    {cashRegisters.slice().sort((a,b) => b.id.localeCompare(a.id)).map(reg => (
+                        <div key={reg.id} className="p-4 flex flex-col md:flex-row justify-between md:items-center gap-4 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black text-lg shadow-inner">💰</div>
+                                <div>
+                                    <p className="font-black text-black">{reg.id}</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Starting Cash</p>
+                                </div>
+                            </div>
+                            
+                            {editingRegDate === reg.id ? (
+                                <div className="flex gap-2 w-full md:w-auto">
+                                    <input type="number" className="px-4 py-2 border-2 border-indigo-600 rounded-lg font-black text-black outline-none w-full md:w-48 shadow-sm" value={editingRegBal} onChange={e => setEditingRegBal(e.target.value)} />
+                                    <button onClick={() => { updateCashRegister(reg.id, parseFloat(editingRegBal)); setEditingRegDate(null); }} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-lg uppercase text-xs transition-colors shadow">Save</button>
+                                    <button onClick={() => setEditingRegDate(null)} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-600 font-black rounded-lg uppercase text-xs transition-colors">Cancel</button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+                                    <span className="font-black text-xl text-black">{parseFloat(reg.startingBalance).toLocaleString()} <span className="text-xs opacity-50">{config.mainSymbol || 'SYP'}</span></span>
+                                    <button onClick={() => { setEditingRegDate(reg.id); setEditingRegBal(reg.startingBalance.toString()); }} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black font-black rounded-lg uppercase text-[10px] tracking-widest transition-colors shadow-sm border border-gray-200">Override</button>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                 </div>
+              </div>
+           )}
            
            {activeOwnerTab === 'reset' && (
               <div className="bg-red-50 rounded-[2rem] shadow-xl border-2 border-red-100 p-8">
@@ -2339,7 +2377,7 @@
       const renderDashboard = () => {
           const props = { employees, sections, attendance, advances, bonuses, grants, overtime, transportation, loans, pdfConfig, config: pdfConfig, lockedMonths, lang, t, toggleMonthLock: handleToggleMonthLock };
           
-          if (currentUser.role === 'owner') return <OwnerDashboard {...props} currentUser={currentUser} users={users} setConfig={(c)=>db.collection('meta').doc('config').set(c)} addUser={(u)=>db.collection('users').add(u)} updateUser={(id, u)=>db.collection('users').doc(id).update(u)} deleteUser={(id)=>db.collection('users').doc(id).delete()} addBonus={(eid, amt, date, desc, period) => db.collection('bonuses').add({employeeId: eid, amount: amt, date, description: desc, period: period})} deleteBonus={(id) => db.collection('bonuses').doc(id).delete()} addGrant={(eid, amt, date, desc) => db.collection('grants').add({employeeId: eid, amount: amt, date, description: desc})} deleteGrant={(id) => db.collection('grants').doc(id).delete()} />;
+          if (currentUser.role === 'owner') return <OwnerDashboard {...props} currentUser={currentUser} users={users} cashRegisters={cashRegisters} updateCashRegister={(date, balance) => db.collection('cash_registers').doc(date).set({startingBalance: balance})} setConfig={(c)=>db.collection('meta').doc('config').set(c)} addUser={(u)=>db.collection('users').add(u)} updateUser={(id, u)=>db.collection('users').doc(id).update(u)} deleteUser={(id)=>db.collection('users').doc(id).delete()} addBonus={(eid, amt, date, desc, period) => db.collection('bonuses').add({employeeId: eid, amount: amt, date, description: desc, period: period})} deleteBonus={(id) => db.collection('bonuses').doc(id).delete()} addGrant={(eid, amt, date, desc) => db.collection('grants').add({employeeId: eid, amount: amt, date, description: desc})} deleteGrant={(id) => db.collection('grants').doc(id).delete()} />;
           
           if (currentUser.role === 'hr') return <HRDashboard {...props} lockPeriod={handleToggleMonthLock} setPdfConfig={(c)=>db.collection('meta').doc('config').set(c)} addEmployee={(d)=>db.collection('employees').add(d)} updateEmployee={(id,d)=>db.collection('employees').doc(id).update(d)} deleteEmployee={(id)=>db.collection('employees').doc(id).delete()} addSection={(n)=>db.collection('sections').add({name:n})} deleteSection={(id)=>db.collection('sections').doc(id).delete()} resignEmployee={(id)=>db.collection('employees').doc(id).update({isResigned:true})} />;
           
