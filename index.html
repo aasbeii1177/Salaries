@@ -1293,21 +1293,42 @@
                 
                 {/* NEW INDIVIDUAL FORM LOGIC */}
                 <form onSubmit={handleAdd} className="space-y-6">
-                  <input type="text" required className={inputClass} placeholder={t('name')} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <input type="text" className={inputClass} placeholder={t('fatherName')} value={formData.fatherName} onChange={e => setFormData({...formData, fatherName: e.target.value})} />
-                      <input type="text" className={inputClass} placeholder={t('motherName')} value={formData.motherName} onChange={e => setFormData({...formData, motherName: e.target.value})} />
+                  <div>
+                      <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('name')}</label>
+                      <input type="text" required className={inputClass} placeholder="Full Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <input type="text" className={inputClass} placeholder={t('nationalId')} value={formData.nationalId} onChange={e => setFormData({...formData, nationalId: e.target.value})} />
-                      <input type="text" className={inputClass} placeholder={t('insuranceId')} value={formData.socialInsuranceId} onChange={e => setFormData({...formData, socialInsuranceId: e.target.value})} />
+                      <div>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Father's Name</label>
+                          <input type="text" className={inputClass} placeholder="Optional" value={formData.fatherName} onChange={e => setFormData({...formData, fatherName: e.target.value})} />
+                      </div>
+                      <div>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Mother's Name</label>
+                          <input type="text" className={inputClass} placeholder="Optional" value={formData.motherName} onChange={e => setFormData({...formData, motherName: e.target.value})} />
+                      </div>
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <MoneyInput className={inputClass} placeholder={t('wage')} value={formData.wage} onChange={e => setFormData({...formData, wage: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
-                      <MoneyInput required className={inputClass} placeholder={t('transport')} value={formData.transportAllowance} onChange={e => setFormData({...formData, transportAllowance: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
+                      <div>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">National ID</label>
+                          <input type="text" className={inputClass} placeholder="Optional" value={formData.nationalId} onChange={e => setFormData({...formData, nationalId: e.target.value})} />
+                      </div>
+                      <div>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Insurance ID</label>
+                          <input type="text" className={inputClass} placeholder="Optional" value={formData.socialInsuranceId} onChange={e => setFormData({...formData, socialInsuranceId: e.target.value})} />
+                      </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('wage')}</label>
+                          <MoneyInput className={inputClass} placeholder="0" value={formData.wage} onChange={e => setFormData({...formData, wage: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
+                      </div>
+                      <div>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('transport')}</label>
+                          <MoneyInput required className={inputClass} placeholder="0" value={formData.transportAllowance} onChange={e => setFormData({...formData, transportAllowance: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
+                      </div>
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
@@ -1331,9 +1352,18 @@
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <select className={inputClass} value={formData.shift} onChange={e => setFormData({...formData, shift: e.target.value})}><option value="day">{t('day')}</option><option value="night">{t('night')}</option></select>
-                      <select className={inputClass} value={formData.sectionId} onChange={e => setFormData({...formData, sectionId: e.target.value})}><option value="">{t('unassigned')}</option>{sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
-                      <input type="number" min="1" className={inputClass} placeholder="Cashier Zone (e.g. 1 or 2)" value={formData.cashierZone || '1'} onChange={e => setFormData({...formData, cashierZone: e.target.value})} required />
+                      <div>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Shift</label>
+                          <select className={inputClass} value={formData.shift} onChange={e => setFormData({...formData, shift: e.target.value})}><option value="day">{t('day')}</option><option value="night">{t('night')}</option></select>
+                      </div>
+                      <div>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Section</label>
+                          <select className={inputClass} value={formData.sectionId} onChange={e => setFormData({...formData, sectionId: e.target.value})}><option value="">{t('unassigned')}</option>{sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
+                      </div>
+                      <div>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Cashier Zone</label>
+                          <input type="number" min="1" className={inputClass} placeholder="e.g. 1 or 2" value={formData.cashierZone || '1'} onChange={e => setFormData({...formData, cashierZone: e.target.value})} required />
+                      </div>
                   </div>
                   <button type="submit" className="w-full bg-black text-white font-black py-5 rounded-xl shadow-xl hover:bg-gray-800 transition-all uppercase tracking-widest text-sm mt-6">{t('confirm')}</button>
                 </form>
