@@ -184,9 +184,19 @@
       paymentType: { en: "Payment Type", ar: "نوع الدفعة" },
       dailyLogs: { en: "Daily Ledger", ar: "السجل اليومي" },
       wipePayouts: { en: "Wipe Cashier Logs", ar: "مسح سجلات الصندوق" },
-      printEodReport: { en: "Print EOD Report (PDF)", ar: "طباعة تقرير الإغلاق (PDF)" }
+      printEodReport: { en: "Print EOD Report (PDF)", ar: "طباعة تقرير الإغلاق (PDF)" },
+      cashierZone: { en: "Cashier Zone", ar: "رقم الصندوق" },
+      optional: { en: "Optional", ar: "اختياري" },
+      amount: { en: "Amount", ar: "المبلغ" },
+      shift: { en: "Shift", ar: "الوردية" },
+      section: { en: "Section", ar: "القسم" },
+      targetPayrollMonth: { en: "Target Payroll Month", ar: "شهر الرواتب المستهدف" },
+      unlockPastMonths: { en: "Change to unlock past month salaries", ar: "قم بالتغيير لفتح رواتب الأشهر السابقة" },
+      selectEmployee: { en: "Select Employee", ar: "اختر العامل" },
+      autoCalc: { en: "Auto-calculated & rounded up to nearest 500", ar: "محسوب تلقائياً ومقرب لأقرب 500" },
+      period2Amount: { en: "Period 2 Amount", ar: "راتب الفترة الثانية" }
     };
-
+    
     // --- 3. UI COMPONENTS ---
     const MoneyInput = ({ value, onChange, placeholder, min, className, type="number", currency="", readOnly=false }) => {
       const formatted = value ? parseFloat(value).toLocaleString() : '';
@@ -907,16 +917,16 @@
                         <form onSubmit={handleLogPayout} className="space-y-5">
                             
                             <div>
-                                <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Target Payroll Month</label>
+                                <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('targetPayrollMonth')}</label>
                                 <input type="month" className={inputClass} value={targetMonth} onChange={e=>setTargetMonth(e.target.value)} required />
-                                <p className="text-[8px] text-gray-400 mt-1 uppercase font-bold text-right">Change to unlock past month salaries</p>
+                                <p className="text-[8px] text-gray-400 mt-1 uppercase font-bold text-right">{t('unlockPastMonths')}</p>
                             </div>
                             
                             <div>
                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('paymentType')}</label>
                                 {availableTypes.length === 0 ? (
                                     <div className="px-4 py-3 bg-red-50 text-red-600 border border-red-200 rounded-xl font-black text-xs uppercase text-center tracking-widest shadow-inner">
-                                        No Authorized Payments
+                                        {t('unauthorized')}
                                     </div>
                                 ) : (
                                     <select className={inputClass} value={payType} onChange={e=>setPayType(e.target.value)} required>
@@ -930,16 +940,16 @@
                             <div>
                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('name')}</label>
                                 <select className={inputClass} value={selectedEmp} onChange={e=>setSelectedEmp(e.target.value)} disabled={availableTypes.length === 0} required>
-                                    <option value="">Select Employee</option>
-                                    {availableEmployees.length === 0 && payType && <option value="" disabled>All workers paid for this selection.</option>}
+                                    <option value="">{t('selectEmployee')}</option>
+                                    {availableEmployees.length === 0 && payType && <option value="" disabled>---</option>}
                                     {availableEmployees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                                 </select>
                             </div>
                             
                             <div>
-                                <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Amount</label>
+                                <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('amount')}</label>
                                 <MoneyInput required className={`${inputClass} bg-gray-100 cursor-not-allowed opacity-70`} placeholder="0" min="1" value={amount} onChange={()=>{}} currency={config.mainSymbol || 'SYP'} readOnly={true} />
-                                <p className="text-[8px] text-gray-400 mt-1 uppercase font-bold text-right">Auto-calculated & rounded up to nearest 500</p>
+                                <p className="text-[8px] text-gray-400 mt-1 uppercase font-bold text-right">{t('autoCalc')}</p>
                             </div>
                             
                             <button type="submit" className={`w-full font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl transition-all ${amount > 0 ? 'bg-black text-white hover:bg-gray-800' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`} disabled={!amount}>
@@ -1295,28 +1305,28 @@
                 <form onSubmit={handleAdd} className="space-y-6">
                   <div>
                       <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('name')}</label>
-                      <input type="text" required className={inputClass} placeholder="Full Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                      <input type="text" required className={inputClass} placeholder={t('name')} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Father's Name</label>
-                          <input type="text" className={inputClass} placeholder="Optional" value={formData.fatherName} onChange={e => setFormData({...formData, fatherName: e.target.value})} />
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('fatherName')}</label>
+                          <input type="text" className={inputClass} placeholder={t('optional')} value={formData.fatherName} onChange={e => setFormData({...formData, fatherName: e.target.value})} />
                       </div>
                       <div>
-                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Mother's Name</label>
-                          <input type="text" className={inputClass} placeholder="Optional" value={formData.motherName} onChange={e => setFormData({...formData, motherName: e.target.value})} />
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('motherName')}</label>
+                          <input type="text" className={inputClass} placeholder={t('optional')} value={formData.motherName} onChange={e => setFormData({...formData, motherName: e.target.value})} />
                       </div>
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">National ID</label>
-                          <input type="text" className={inputClass} placeholder="Optional" value={formData.nationalId} onChange={e => setFormData({...formData, nationalId: e.target.value})} />
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('nationalId')}</label>
+                          <input type="text" className={inputClass} placeholder={t('optional')} value={formData.nationalId} onChange={e => setFormData({...formData, nationalId: e.target.value})} />
                       </div>
                       <div>
-                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Insurance ID</label>
-                          <input type="text" className={inputClass} placeholder="Optional" value={formData.socialInsuranceId} onChange={e => setFormData({...formData, socialInsuranceId: e.target.value})} />
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('insuranceId')}</label>
+                          <input type="text" className={inputClass} placeholder={t('optional')} value={formData.socialInsuranceId} onChange={e => setFormData({...formData, socialInsuranceId: e.target.value})} />
                       </div>
                   </div>
                   
@@ -1335,11 +1345,11 @@
                       <p className="col-span-full text-xs font-black uppercase text-gray-500 tracking-widest">{t('paymentSettings')}</p>
                       <div>
                           <label className="block text-[10px] font-bold mb-2">{t('period1Amount')}</label>
-                          <MoneyInput className={inputClass} placeholder="Amount" value={formData.period1Amount || ''} onChange={e => setFormData({...formData, period1Amount: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
+                          <MoneyInput className={inputClass} placeholder={t('amount')} value={formData.period1Amount || ''} onChange={e => setFormData({...formData, period1Amount: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
                       </div>
                       <div>
-                          <label className="block text-[10px] font-bold mb-2">Period 2 Amount</label>
-                          <MoneyInput className={inputClass} placeholder="Amount" value={formData.period2Amount || ''} onChange={e => setFormData({...formData, period2Amount: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
+                          <label className="block text-[10px] font-bold mb-2">{t('period2Amount')}</label>
+                          <MoneyInput className={inputClass} placeholder={t('amount')} value={formData.period2Amount || ''} onChange={e => setFormData({...formData, period2Amount: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
                       </div>
                       <div>
                           <label className="block text-[10px] font-bold mb-2">{t('transPeriod')}</label>
@@ -1353,15 +1363,15 @@
                   
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
-                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Shift</label>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('shift')}</label>
                           <select className={inputClass} value={formData.shift} onChange={e => setFormData({...formData, shift: e.target.value})}><option value="day">{t('day')}</option><option value="night">{t('night')}</option></select>
                       </div>
                       <div>
-                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Section</label>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('section')}</label>
                           <select className={inputClass} value={formData.sectionId} onChange={e => setFormData({...formData, sectionId: e.target.value})}><option value="">{t('unassigned')}</option>{sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
                       </div>
                       <div>
-                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Cashier Zone</label>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('cashierZone')}</label>
                           <input type="number" min="1" className={inputClass} placeholder="e.g. 1 or 2" value={formData.cashierZone || '1'} onChange={e => setFormData({...formData, cashierZone: e.target.value})} required />
                       </div>
                   </div>
