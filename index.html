@@ -194,7 +194,21 @@
       unlockPastMonths: { en: "Change to unlock past month salaries", ar: "قم بالتغيير لفتح رواتب الأشهر السابقة" },
       selectEmployee: { en: "Select Employee", ar: "اختر العامل" },
       autoCalc: { en: "Auto-calculated & rounded up to nearest 500", ar: "محسوب تلقائياً ومقرب لأقرب 500" },
-      period2Amount: { en: "Period 2 Amount", ar: "راتب الفترة الثانية" }
+      period2Amount: { en: "Period 2 Amount", ar: "راتب الفترة الثانية" },
+      downloadExcel: { en: "Download Excel", ar: "تحميل إكسل" },
+      dataMaintenance: { en: "Data Maintenance", ar: "صيانة البيانات" },
+      cashierAudit: { en: "Cashier Audit", ar: "تدقيق الصندوق" },
+      userAccess: { en: "User Access", ar: "صلاحيات المستخدمين" },
+      engine: { en: "Engine", ar: "محرك" },
+      printInstantSlips: { en: "Print Instant Slips", ar: "طباعة إيصالات فورية" },
+      printBtn: { en: "Print", ar: "طباعة" },
+      percentage: { en: "Percentage (%)", ar: "نسبة مئوية (%)" },
+      eventDate: { en: "Event Date", ar: "تاريخ الحدث" },
+      payPeriod: { en: "Pay Period", ar: "فترة الدفع" },
+      reasonAid: { en: "Reason (e.g., Eid Al-Fitr)", ar: "السبب (مثال: عيد الفطر)" },
+      reasonBonus: { en: "Reason / Description", ar: "السبب / الوصف" },
+      distributeAid: { en: "Distribute Aid", ar: "توزيع المساعدة" },
+      calcPercentFrom: { en: "Calculate % From:", ar: "احتساب النسبة من:" }
     };
     
     // --- 3. UI COMPONENTS ---
@@ -1988,12 +2002,12 @@
         <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <h2 className="text-4xl font-black text-black uppercase">{t('strategicControl')}</h2>
-              <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-gray-100 flex-wrap items-center gap-2">
-                 <button onClick={handleExcelBackup} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-green-600 text-white hover:bg-green-700 transition-colors shadow-lg">📊 Download Excel</button>
+             <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-gray-100 flex-wrap items-center gap-2">
+                 <button onClick={handleExcelBackup} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-green-600 text-white hover:bg-green-700 transition-colors shadow-lg">📊 {t('downloadExcel')}</button>
                  <button onClick={handleBackupJSON} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors border border-orange-200">{t('backupData')} (JSON)</button>
                  {['logic','periods','bonuses','grants','registers','users', 'dictionary', 'reset'].map(tab => (
                     <button key={tab} onClick={() => setActiveOwnerTab(tab)} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeOwnerTab === tab ? 'bg-indigo-600 text-white shadow-lg' : 'text-black'}`}>
-                        {tab === 'reset' ? 'Data Maintenance' : tab === 'registers' ? 'Cashier Audit' : t(tab === 'logic' ? 'systemLogic' : tab === 'users' ? 'userAccess' : tab === 'bonuses' ? 'bonusCenter' : tab === 'grants' ? 'supportAid' : tab)}
+                        {tab === 'reset' ? t('dataMaintenance') : tab === 'registers' ? t('cashierAudit') : t(tab === 'logic' ? 'systemLogic' : tab === 'users' ? 'userAccess' : tab === 'bonuses' ? 'bonusCenter' : tab === 'grants' ? 'supportAid' : tab)}
                     </button>
                  ))}
               </div>
@@ -2167,11 +2181,11 @@
                           <label className="block text-[10px] font-black uppercase mb-2">{t('distType')}</label>
                           <div className="flex bg-gray-100 p-1 rounded-xl">
                               <button type="button" onClick={()=>setBonusType('fixed')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='fixed'?'bg-white shadow text-black':'text-gray-400'}`}>{t('fixedAmount')}</button>
-                              <button type="button" onClick={()=>setBonusType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='percent'?'bg-white shadow text-indigo-600':'text-gray-400'}`}>{t('percentWage')}</button>
+                              <button type="button" onClick={()=>setBonusType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='percent'?'bg-white shadow text-indigo-600':'text-gray-400'}`}>{t('percentage')}</button>
                           </div>
                        </div>
                        <div>
-                          <label className="block text-[10px] font-black uppercase mb-2">Pay Period</label>
+                          <label className="block text-[10px] font-black uppercase mb-2">{t('payPeriod')}</label>
                           <select className={inputClass} value={bonusPeriod} onChange={e=>setBonusPeriod(e.target.value)}>
                               <option value="1">{t('period1')}</option>
                               <option value="2">{t('period2')}</option>
@@ -2180,12 +2194,12 @@
                        </div>
                        {bonusTarget === 'individual' && (
                           <select className={inputClass} value={selectedBonusEmp} onChange={e=>setSelectedBonusEmp(e.target.value)} required={bonusTarget==='individual'}>
-                             <option value="">Select Employee</option>
+                             <option value="">{t('selectEmployee')}</option>
                              {employees.filter(e=>!e.isResigned).map(e=><option key={e.id} value={e.id}>{e.name}</option>)}
                           </select>
                        )}
-                       <input className={inputClass} type="number" placeholder={bonusType === 'fixed' ? `Amount (${config.mainCurrency || 'SYP'})` : 'Percentage (%)'} value={bonusValue} onChange={e=>setBonusValue(e.target.value)} required />
-                       <input className={inputClass} placeholder="Reason / Description" value={bonusDesc} onChange={e=>setBonusDesc(e.target.value)} required />
+                       <input className={inputClass} type="number" placeholder={bonusType === 'fixed' ? `${t('amount')} (${config.mainCurrency || 'SYP'})` : t('percentage')} value={bonusValue} onChange={e=>setBonusValue(e.target.value)} required />
+                       <input className={inputClass} placeholder={t('reasonBonus')} value={bonusDesc} onChange={e=>setBonusDesc(e.target.value)} required />
                        <button className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-indigo-700 transition-all">{t('distributeCapital')}</button>
                     </form>
                  </div>
@@ -2209,7 +2223,7 @@
            {activeOwnerTab === 'grants' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                  <div className="bg-white rounded-[2rem] shadow-xl p-8">
-                    <h3 className="text-xl font-black text-teal-600 uppercase mb-6">{t('supportAid')} Engine</h3>
+                    <h3 className="text-xl font-black text-teal-600 uppercase mb-6">{t('supportAid')} {t('engine')}</h3>
                     <form onSubmit={handleDistributeGrant} className="space-y-4">
                        <div>
                           <label className="block text-[10px] font-black uppercase mb-2">{t('target')}</label>
@@ -2222,14 +2236,13 @@
                           <label className="block text-[10px] font-black uppercase mb-2">{t('distType')}</label>
                           <div className="flex bg-gray-100 p-1 rounded-xl">
                               <button type="button" onClick={()=>setGrantType('fixed')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantType==='fixed'?'bg-white shadow text-black':'text-gray-400'}`}>{t('fixedAmount')}</button>
-                              <button type="button" onClick={()=>setGrantType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantType==='percent'?'bg-white shadow text-teal-600':'text-gray-400'}`}>Percentage (%)</button>
+                              <button type="button" onClick={()=>setGrantType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantType==='percent'?'bg-white shadow text-teal-600':'text-gray-400'}`}>{t('percentage')}</button>
                           </div>
                        </div>
                        
-                       {/* NEW: PERCENTAGE BASIS FOR GRANTS */}
                        {grantType === 'percent' && (
                           <div>
-                              <label className="block text-[10px] font-black uppercase mb-2 text-teal-700">Calculate % From:</label>
+                              <label className="block text-[10px] font-black uppercase mb-2 text-teal-700">{t('calcPercentFrom')}</label>
                               <div className="flex bg-teal-50 p-1 rounded-xl border border-teal-100">
                                   <button type="button" onClick={()=>setGrantBasis('full')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='full'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('fullMonth')}</button>
                                   <button type="button" onClick={()=>setGrantBasis('1')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='1'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('period1')}</button>
@@ -2239,18 +2252,18 @@
                        )}
 
                        <div>
-                          <label className="block text-[10px] font-black uppercase mb-2">Event Date</label>
+                          <label className="block text-[10px] font-black uppercase mb-2">{t('eventDate')}</label>
                           <input type="date" className={inputClass} value={grantDate} onChange={e=>setGrantDate(e.target.value)} required />
                        </div>
                        {grantTarget === 'individual' && (
                           <select className={inputClass} value={selectedGrantEmp} onChange={e=>setSelectedGrantEmp(e.target.value)} required={grantTarget==='individual'}>
-                             <option value="">Select Employee</option>
+                             <option value="">{t('selectEmployee')}</option>
                              {employees.filter(e=>!e.isResigned).map(e=><option key={e.id} value={e.id}>{e.name}</option>)}
                           </select>
                        )}
-                       <input className={inputClass} type="number" placeholder={grantType === 'fixed' ? `Amount (${config.mainCurrency || 'SYP'})` : 'Percentage (%)'} value={grantValue} onChange={e=>setGrantValue(e.target.value)} required />
-                       <input className={inputClass} placeholder="Reason (e.g., Eid Al-Fitr)" value={grantDesc} onChange={e=>setGrantDesc(e.target.value)} required />
-                       <button className="w-full bg-teal-600 text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-teal-700 transition-all">Distribute Aid</button>
+                       <input className={inputClass} type="number" placeholder={grantType === 'fixed' ? `${t('amount')} (${config.mainCurrency || 'SYP'})` : t('percentage')} value={grantValue} onChange={e=>setGrantValue(e.target.value)} required />
+                       <input className={inputClass} placeholder={t('reasonAid')} value={grantDesc} onChange={e=>setGrantDesc(e.target.value)} required />
+                       <button className="w-full bg-teal-600 text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-teal-700 transition-all">{t('distributeAid')}</button>
                     </form>
                  </div>
                  
@@ -2259,10 +2272,10 @@
                         <h3 className="text-xl font-black uppercase">{t('grantsLogs')}</h3>
                     </div>
                     <div className="bg-teal-50 border border-teal-100 rounded-xl p-4 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
-                        <p className="text-xs font-black text-teal-800 uppercase w-full md:w-auto">Print Instant Slips</p>
+                        <p className="text-xs font-black text-teal-800 uppercase w-full md:w-auto">{t('printInstantSlips')}</p>
                         <div className="flex gap-2 w-full md:w-auto">
                             <input type="date" className="px-3 py-2 border border-teal-200 rounded text-xs font-bold w-full md:w-auto" value={printGrantDate} onChange={e=>setPrintGrantDate(e.target.value)} />
-                            <button onClick={() => generateAidPayslips(printGrantDate, employees, grants, config, sections)} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded text-[10px] uppercase font-black tracking-widest transition-all">Print</button>
+                            <button onClick={() => generateAidPayslips(printGrantDate, employees, grants, config, sections)} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded text-[10px] uppercase font-black tracking-widest transition-all">{t('printBtn')}</button>
                         </div>
                     </div>
                     
@@ -2334,13 +2347,13 @@
                        // 1. Define the Sections here
                        const groups = {
                           "General & App": ["appTitle", "subTitle", "signOut", "save", "edit", "delete", "add", "cancel", "confirm", "search", "total", "optional", "amount", "name", "actions", "logged", "mustBePositive", "missing", "locked", "unauthorized", "equivalent"],
-                          "Login & Roles": ["username", "password", "login", "loginTitle", "owner", "hr", "manager", "finance", "data_entry", "cashier"],
+                          "Login & Roles": ["username", "password", "login", "loginTitle", "owner", "hr", "manager", "finance", "data_entry", "cashier", "userAccess"],
                           "HR Dashboard": ["workers", "sections", "attendance", "periods", "resetData", "resigned", "active", "unassigned", "workerDetails", "employeeInfo", "downloadTemplate", "importExcel", "bulkImport", "shift", "section", "wage", "transport", "transPeriod", "period1Amount", "period2Amount", "period1", "period2", "fullMonth", "split", "saveAll"],
                           "Manager Operations": ["opsHub", "recordingFor", "verified", "notLogged", "verifiedSub", "notLoggedSub", "verifyLog", "updateLog", "present", "absent", "advance", "advances", "overtime", "editEntries"],
                           "Finance & Loans": ["liabilityOversight", "remainingDebt", "issueLoan", "editContract", "liabilityContract", "managingProfile", "discard", "saveContract", "recoveryVelocity"],
-                          "Owner Controls": ["systemVariables", "strategicControl", "systemLogic", "bonusCenter", "credentialManagement", "dictionary", "saveDictionary", "logicSync", "daysPerMonth", "hoursPerDay", "otFactor", "absencePenalty", "nightMultiplier", "commitLogic", "overtimePeriod", "absencePeriod", "paymentSettings", "dangerZone", "wipeAllWorkers", "wipeAllAttendance", "wipeConfirm", "backupData", "distType", "target", "individual", "allActive", "bonusEngine", "distributeCapital", "distributionLogs", "fixedAmount", "percentWage", "wipeGrants", "wipePayouts", "selectReport"],
+                          "Owner Controls": ["systemVariables", "strategicControl", "systemLogic", "bonusCenter", "credentialManagement", "dictionary", "saveDictionary", "logicSync", "daysPerMonth", "hoursPerDay", "otFactor", "absencePenalty", "nightMultiplier", "commitLogic", "overtimePeriod", "absencePeriod", "paymentSettings", "dangerZone", "wipeAllWorkers", "wipeAllAttendance", "wipeConfirm", "backupData", "distType", "target", "individual", "allActive", "bonusEngine", "distributeCapital", "distributionLogs", "fixedAmount", "percentWage", "wipeGrants", "wipePayouts", "selectReport", "downloadExcel", "dataMaintenance", "cashierAudit", "engine", "percentage", "eventDate", "payPeriod", "reasonAid", "reasonBonus", "distributeAid", "calcPercentFrom"],
                           "Cashier Dashboard": ["cashRegister", "startingBalance", "setBalance", "recordPayout", "totalPaid", "remainingCash", "paymentType", "dailyLogs", "printEodReport", "cashierZone", "targetPayrollMonth", "unlockPastMonths", "selectEmployee", "autoCalc"],
-                          "Reports & PDFs": ["generatePdf", "exportCsv", "viewTotals", "estimatedPayout", "activitySummary", "historyProtected", "bonus", "supportAid", "grantsLogs"]
+                          "Reports & PDFs": ["generatePdf", "exportCsv", "viewTotals", "estimatedPayout", "activitySummary", "historyProtected", "bonus", "supportAid", "grantsLogs", "printInstantSlips", "printBtn"]
                        };
                        
                        // 2. Catch any missing or future words automatically
