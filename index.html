@@ -2321,24 +2321,58 @@
               </div>
            )}
            
+           // --- REPLACE IT WITH THIS ---
            {activeOwnerTab === 'dictionary' && (
               <div className="bg-white rounded-[2rem] shadow-xl p-8">
                  <div className="flex justify-between items-center mb-6">
                     <h3 className="text-xl font-black uppercase">{t('dictionary')}</h3>
-                    <button onClick={saveDictionary} className="px-6 py-2 bg-black text-white rounded-lg font-black uppercase text-xs tracking-widest">{t('saveDictionary')}</button>
+                    <button onClick={saveDictionary} className="px-6 py-3 bg-black hover:bg-gray-800 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-lg transition-all">{t('saveDictionary')}</button>
                  </div>
-                 <input className="w-full mb-6 px-4 py-3 border-2 border-gray-300 rounded-xl font-bold text-black outline-none" placeholder={t('search')} value={dictionarySearch} onChange={e=>setDictionarySearch(e.target.value)} />
-                 <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                    {Object.keys(translations).filter(k => k.toLowerCase().includes(dictionarySearch.toLowerCase()) || translations[k]?.en?.toLowerCase()?.includes(dictionarySearch.toLowerCase())).map(key => {
-                       const currentVal = localDict[key] || translations[key];
-                       return (
-                          <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-xl bg-gray-50">
-                             <div className="flex items-center"><span className="font-mono text-xs font-bold text-gray-500">{key}</span></div>
-                             <input className="px-3 py-2 rounded-lg border font-bold text-sm" value={currentVal.en} onChange={e=>setLocalDict({...localDict, [key]: {...currentVal, en: e.target.value}})} placeholder="English" />
-                             <input className="px-3 py-2 rounded-lg border font-bold text-sm text-right" value={currentVal.ar} onChange={e=>setLocalDict({...localDict, [key]: {...currentVal, ar: e.target.value}})} placeholder="Arabic" />
-                          </div>
-                       );
-                    })}
+                 <input className="w-full mb-6 px-5 py-4 border-2 border-gray-200 focus:border-indigo-600 rounded-2xl font-bold text-black outline-none transition-all shadow-sm" placeholder={t('search')} value={dictionarySearch} onChange={e=>setDictionarySearch(e.target.value)} />
+                 
+                 <div className="space-y-8 max-h-[65vh] overflow-y-auto pr-2 pb-10">
+                    {(() => {
+                       // 1. Define the Sections here
+                       const groups = {
+                          "General & App": ["appTitle", "subTitle", "signOut", "save", "edit", "delete", "add", "cancel", "confirm", "search", "total", "optional", "amount", "name", "actions", "logged", "mustBePositive", "missing", "locked", "unauthorized", "equivalent"],
+                          "Login & Roles": ["username", "password", "login", "loginTitle", "owner", "hr", "manager", "finance", "data_entry", "cashier"],
+                          "HR Dashboard": ["workers", "sections", "attendance", "periods", "resetData", "resigned", "active", "unassigned", "workerDetails", "employeeInfo", "downloadTemplate", "importExcel", "bulkImport", "shift", "section", "wage", "transport", "transPeriod", "period1Amount", "period2Amount", "period1", "period2", "fullMonth", "split", "saveAll"],
+                          "Manager Operations": ["opsHub", "recordingFor", "verified", "notLogged", "verifiedSub", "notLoggedSub", "verifyLog", "updateLog", "present", "absent", "advance", "advances", "overtime", "editEntries"],
+                          "Finance & Loans": ["liabilityOversight", "remainingDebt", "issueLoan", "editContract", "liabilityContract", "managingProfile", "discard", "saveContract", "recoveryVelocity"],
+                          "Owner Controls": ["systemVariables", "strategicControl", "systemLogic", "bonusCenter", "credentialManagement", "dictionary", "saveDictionary", "logicSync", "daysPerMonth", "hoursPerDay", "otFactor", "absencePenalty", "nightMultiplier", "commitLogic", "overtimePeriod", "absencePeriod", "paymentSettings", "dangerZone", "wipeAllWorkers", "wipeAllAttendance", "wipeConfirm", "backupData", "distType", "target", "individual", "allActive", "bonusEngine", "distributeCapital", "distributionLogs", "fixedAmount", "percentWage", "wipeGrants", "wipePayouts", "selectReport"],
+                          "Cashier Dashboard": ["cashRegister", "startingBalance", "setBalance", "recordPayout", "totalPaid", "remainingCash", "paymentType", "dailyLogs", "printEodReport", "cashierZone", "targetPayrollMonth", "unlockPastMonths", "selectEmployee", "autoCalc"],
+                          "Reports & PDFs": ["generatePdf", "exportCsv", "viewTotals", "estimatedPayout", "activitySummary", "historyProtected", "bonus", "supportAid", "grantsLogs"]
+                       };
+                       
+                       // 2. Catch any missing or future words automatically
+                       const allCat = Object.values(groups).flat();
+                       const uncat = Object.keys(translations).filter(k => !allCat.includes(k));
+                       if (uncat.length > 0) groups["Other / Uncategorized"] = uncat;
+
+                       // 3. Render the Sections
+                       return Object.entries(groups).map(([groupName, keys]) => {
+                           const filteredKeys = keys.filter(k => k.toLowerCase().includes(dictionarySearch.toLowerCase()) || translations[k]?.en?.toLowerCase()?.includes(dictionarySearch.toLowerCase()) || translations[k]?.ar?.includes(dictionarySearch));
+                           if (filteredKeys.length === 0) return null; // Hide empty sections while searching
+                           
+                           return (
+                              <div key={groupName} className="mb-8">
+                                 <h4 className="text-sm font-black text-indigo-600 uppercase tracking-widest mb-4 border-b-2 border-indigo-50 pb-2">{groupName}</h4>
+                                 <div className="space-y-3">
+                                    {filteredKeys.map(key => {
+                                       const currentVal = localDict[key] || translations[key];
+                                       return (
+                                          <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border border-gray-100 rounded-2xl bg-gray-50/50 hover:bg-white transition-colors shadow-sm items-center">
+                                             <div className="flex items-center"><span className="font-mono text-[10px] font-bold text-gray-500 bg-gray-200/50 px-3 py-1.5 rounded-lg border border-gray-200">{key}</span></div>
+                                             <input className="px-4 py-3 rounded-xl border-2 border-gray-200 outline-none focus:border-indigo-500 font-bold text-sm text-black" value={currentVal.en} onChange={e=>setLocalDict({...localDict, [key]: {...currentVal, en: e.target.value}})} placeholder="English" />
+                                             <input className="px-4 py-3 rounded-xl border-2 border-gray-200 outline-none focus:border-indigo-500 font-bold text-sm text-black text-right" value={currentVal.ar} onChange={e=>setLocalDict({...localDict, [key]: {...currentVal, ar: e.target.value}})} placeholder="Arabic" dir="rtl" />
+                                          </div>
+                                       );
+                                    })}
+                                 </div>
+                              </div>
+                           );
+                       });
+                    })()}
                  </div>
               </div>
            )}
