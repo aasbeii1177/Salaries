@@ -185,11 +185,72 @@
       dailyLogs: { en: "Daily Ledger", ar: "السجل اليومي" },
       wipePayouts: { en: "Wipe Cashier Logs", ar: "مسح سجلات الصندوق" },
       printEodReport: { en: "Print EOD Report (PDF)", ar: "طباعة تقرير الإغلاق (PDF)" },
-      cashierZone: { en: "Cashier Zone", ar: "رقم الصندوق" },
-      optional: { en: "Optional", ar: "اختياري" },
-      amount: { en: "Amount", ar: "المبلغ" },
-      shift: { en: "Shift", ar: "الوردية" },
-      section: { en: "Section", ar: "القسم" },
+      printInstantSlipsSub: { en: "Select the date to generate the PDF receipts.", ar: "اختر التاريخ لإنشاء إيصالات PDF." },
+      noRecordsFound: { en: "No records found.", ar: "لم يتم العثور على سجلات." },
+      dataMaintenanceReset: { en: "Data Maintenance & Reset", ar: "صيانة وتصفير البيانات" },
+      resetSubtext: { en: "Select a specific category to permanently delete all its records. This action cannot be undone.", ar: "اختر فئة محددة لحذف جميع سجلاتها نهائياً. لا يمكن التراجع عن هذا الإجراء." },
+      financialLoans: { en: "Financial: Loans", ar: "المالية: القروض" },
+      delLoans: { en: "Deletes all loan contracts.", ar: "حذف جميع عقود القروض." },
+      wipeLoans: { en: "Wipe Loans", ar: "مسح القروض" },
+      attendanceLogs: { en: "Attendance Logs", ar: "سجلات الحضور" },
+      delAttendance: { en: "Deletes all daily attendance history.", ar: "حذف جميع سجلات الحضور اليومية." },
+      workersEmployees: { en: "Workers / Employees", ar: "العمال / الموظفين" },
+      delWorkers: { en: "Deletes all worker profiles.", ar: "حذف جميع ملفات العمال." },
+      financialBonuses: { en: "Financial: Bonuses", ar: "المالية: المكافآت" },
+      delBonuses: { en: "Deletes all bonus distributions.", ar: "حذف جميع سجلات المكافآت." },
+      wipeBonuses: { en: "Wipe Bonuses", ar: "مسح المكافآت" },
+      financialOvertime: { en: "Financial: Overtime", ar: "المالية: الإضافي" },
+      delOvertime: { en: "Deletes all overtime hour logs.", ar: "حذف جميع سجلات الساعات الإضافية." },
+      wipeOvertime: { en: "Wipe Overtime", ar: "مسح الإضافي" },
+      financialAdvances: { en: "Financial: Advances", ar: "المالية: السلف" },
+      delAdvances: { en: "Deletes all cash advance records.", ar: "حذف جميع سجلات السلف النقدية." },
+      wipeAdvances: { en: "Wipe Advances", ar: "مسح السلف" },
+      cashierLogs: { en: "Cashier Logs", ar: "سجلات الصندوق" },
+      delCashierLogs: { en: "Deletes all payout records.", ar: "حذف جميع سجلات المدفوعات." },
+      financialTransport: { en: "Financial: Transport", ar: "المالية: المواصلات" },
+      delTransport: { en: "Deletes extra transport logs.", ar: "حذف سجلات المواصلات الإضافية." },
+      wipeTransport: { en: "Wipe Transport", ar: "مسح المواصلات" },
+      financialSupport: { en: "Financial: Support/Aid", ar: "المالية: المنح والمساعدات" },
+      delSupport: { en: "Deletes all Aid distributions.", ar: "حذف جميع سجلات المنح." },
+      auditSubtext: { en: "Override and correct the daily starting cash entered by cashiers. This instantly fixes their End of Day PDF math.", ar: "تجاوز وتصحيح الرصيد الافتتاحي اليومي المدخل من قبل أمناء الصندوق. هذا يصحح فوراً حسابات تقرير الإغلاق (PDF)." },
+      overrideBtn: { en: "Override", ar: "تجاوز / تعديل" },
+      createAccess: { en: "Create Access", ar: "إنشاء حساب" },
+      updateIdentity: { en: "Update Identity", ar: "تحديث الحساب" },
+      authorizeIdentity: { en: "Authorize Identity", ar: "اعتماد الحساب" },
+      commit: { en: "Commit", ar: "تثبيت التعديل" },
+      secretKey: { en: "Secret Key", ar: "الرمز السري" },
+      dualCurrencyEngine: { en: "Dual Currency Engine", ar: "محرك العملات المزدوج" },
+      mainName: { en: "Main Name", ar: "الاسم الأساسي" },
+      mainSymbol: { en: "Main Symbol", ar: "الرمز الأساسي" },
+      secName: { en: "Sec Name", ar: "الاسم الثانوي" },
+      secSymbol: { en: "Sec Symbol", ar: "الرمز الثانوي" },
+      exchangeRate: { en: "Exchange Rate", ar: "سعر الصرف" },
+      preview: { en: "Preview", ar: "معاينة" },
+      payrollPeriods: { en: "Payroll Periods", ar: "فترات الرواتب" },
+      lockP1: { en: "Lock P1 (Days 1-15)", ar: "إغلاق الفترة 1 (أيام 1-15)" },
+      lockP2: { en: "Lock P2 (Days 16-31)", ar: "إغلاق الفترة 2 (أيام 16-31)" },
+      p1Locked: { en: "P1 Locked 🔒 (Tap to Unlock)", ar: "الفترة 1 مغلقة 🔒 (انقر للفتح)" },
+      p2Locked: { en: "P2 Locked 🔒 (Tap to Unlock)", ar: "الفترة 2 مغلقة 🔒 (انقر للفتح)" },
+      p1LockedHR: { en: "P1 Locked 🔒", ar: "الفترة 1 مغلقة 🔒" },
+      p2LockedHR: { en: "P2 Locked 🔒", ar: "الفترة 2 مغلقة 🔒" },
+      resignBtn: { en: "Resign", ar: "استقالة" },
+      zone: { en: "Zone", ar: "الصندوق" },
+      bulkImportSub: { en: "Download template, fill workers, and upload.", ar: "قم بتحميل القالب، املأ بيانات العمال، ثم ارفعه." },
+      individualAdd: { en: "Individual", ar: "فردي" },
+      fatherName: { en: "Father's Name", ar: "اسم الأب" },
+      motherName: { en: "Mother's Name", ar: "اسم الأم" },
+      nationalId: { en: "National ID", ar: "الرقم الوطني" },
+      insuranceId: { en: "Insurance ID", ar: "رقم التأمين" },
+      printInstantAidSlips: { en: "Print Instant Aid Slips", ar: "طباعة إيصالات المنح الفورية" },
+      printInstantSlips: { en: "Print Instant Slips", ar: "طباعة إيصالات فورية" },
+      printBtn: { en: "Print", ar: "طباعة" },
+      percentage: { en: "Percentage (%)", ar: "نسبة مئوية (%)" },
+      eventDate: { en: "Event Date", ar: "تاريخ الحدث" },
+      payPeriod: { en: "Pay Period", ar: "فترة الدفع" },
+      reasonAid: { en: "Reason (e.g., Eid Al-Fitr)", ar: "السبب (مثال: عيد الفطر)" },
+      reasonBonus: { en: "Reason / Description", ar: "السبب / الوصف" },
+      distributeAid: { en: "Distribute Aid", ar: "توزيع المساعدة" },
+      calcPercentFrom: { en: "Calculate % From:", ar: "احتساب النسبة من:" },
       targetPayrollMonth: { en: "Target Payroll Month", ar: "شهر الرواتب المستهدف" },
       unlockPastMonths: { en: "Change to unlock past month salaries", ar: "قم بالتغيير لفتح رواتب الأشهر السابقة" },
       selectEmployee: { en: "Select Employee", ar: "اختر العامل" },
@@ -199,16 +260,7 @@
       dataMaintenance: { en: "Data Maintenance", ar: "صيانة البيانات" },
       cashierAudit: { en: "Cashier Audit", ar: "تدقيق الصندوق" },
       userAccess: { en: "User Access", ar: "صلاحيات المستخدمين" },
-      engine: { en: "Engine", ar: "محرك" },
-      printInstantSlips: { en: "Print Instant Slips", ar: "طباعة إيصالات فورية" },
-      printBtn: { en: "Print", ar: "طباعة" },
-      percentage: { en: "Percentage (%)", ar: "نسبة مئوية (%)" },
-      eventDate: { en: "Event Date", ar: "تاريخ الحدث" },
-      payPeriod: { en: "Pay Period", ar: "فترة الدفع" },
-      reasonAid: { en: "Reason (e.g., Eid Al-Fitr)", ar: "السبب (مثال: عيد الفطر)" },
-      reasonBonus: { en: "Reason / Description", ar: "السبب / الوصف" },
-      distributeAid: { en: "Distribute Aid", ar: "توزيع المساعدة" },
-      calcPercentFrom: { en: "Calculate % From:", ar: "احتساب النسبة من:" }
+      engine: { en: "Engine", ar: "محرك" }
     };
     
     // --- 3. UI COMPONENTS ---
@@ -1244,7 +1296,7 @@
                                           <tr>
                                               <th className="px-4 py-3 w-10"></th>
                                               <th className="px-6 py-3">{t('name')}</th>
-                                              <th className="px-6 py-3 text-center">ZONE</th>
+                                              <th className="px-6 py-3 text-center">{t('zone')}</th>
                                               <th className="px-6 py-3 text-center">{t('wage')}</th>
                                               <th className="px-6 py-3 text-center">{t('transport')}</th>
                                               <th className="px-6 py-3 text-right">{t('actions')}</th>
@@ -1261,20 +1313,20 @@
                                                       <td className="px-6 py-4 text-center font-black text-black">{emp.transportationAllowance > 0 ? <span className="text-green-600">{emp.transportationAllowance.toLocaleString()}</span> : <span className="text-red-500 bg-red-50 px-2 py-1 rounded text-[10px] uppercase">{t('missing')}</span>}</td>
                                                       <td className="px-6 py-4 text-right flex gap-1 justify-end">
                                                           {!viewResigned && <button onClick={() => startEditing(emp)} className="text-indigo-600 font-black px-2 text-[10px] uppercase">{t('edit')}</button>}
-                                                          {!viewResigned && <button onClick={() => handleResign(emp)} className="bg-amber-100 text-amber-700 font-black px-2 py-1 rounded text-[10px] uppercase hover:bg-amber-200">RESIGN</button>}
+                                                          {!viewResigned && <button onClick={() => handleResign(emp)} className="bg-amber-100 text-amber-700 font-black px-2 py-1 rounded text-[10px] uppercase hover:bg-amber-200">{t('resignBtn')}</button>}
                                                           <button onClick={() => { setEmployeeTarget(emp); setShowDeleteModal(true); }} className="text-red-600 font-black px-2 text-[10px] uppercase">{t('delete')}</button>
                                                       </td>
                                                   </tr>
                                                   {(expandedId === emp.id || editingId === emp.id) && (
                                                       <tr className="bg-gray-50/80">
-                                                          <td colSpan={5} className="px-8 py-6">
+                                                          <td colSpan={6} className="px-8 py-6">
                                                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('name')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.name} onChange={e=>setEditFormData({...editFormData, name:e.target.value})} /> : <p className="font-black">{emp.name}</p>}</div>
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('wage')}</label>{editingId === emp.id ? <MoneyInput className={inputClass} value={editFormData.wage} onChange={e=>setEditFormData({...editFormData, wage:e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} /> : <p className="font-black">{emp.monthlyWage}</p>}</div>
                                                                   <div className="col-span-full border-t border-gray-200 mt-2 pt-2">
                                                                       <p className="text-[10px] font-black uppercase text-indigo-600 mb-2">{t('paymentSettings')}</p>
                                                                       <div className="grid grid-cols-2 gap-4">
-                                                                          <div><label className="block text-[10px] font-black text-gray-500 uppercase mb-1">{t('period1Amount')}</label><MoneyInput className={inputClass} value={editFormData.period1Amount || ''} onChange={e=>setEditFormData({...editFormData, period1Amount:e.target.value})} placeholder="Fixed Amount" currency={pdfConfig.mainSymbol || 'SYP'} /></div>
+                                                                          <div><label className="block text-[10px] font-black text-gray-500 uppercase mb-1">{t('period1Amount')}</label><MoneyInput className={inputClass} value={editFormData.period1Amount || ''} onChange={e=>setEditFormData({...editFormData, period1Amount:e.target.value})} placeholder={t('amount')} currency={pdfConfig.mainSymbol || 'SYP'} /></div>
                                                                           <div><label className="block text-[10px] font-black text-gray-500 uppercase mb-1">{t('transPeriod')}</label><select className={inputClass} value={editFormData.transportPeriod || '2'} onChange={e=>setEditFormData({...editFormData, transportPeriod:e.target.value})}><option value="1">{t('period1')}</option><option value="2">{t('period2')}</option><option value="split">{t('split')}</option></select></div>
                                                                       </div>
                                                                   </div>
@@ -1303,7 +1355,7 @@
           {activeTab === 'add' && (
             <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in">
               <section className="bg-indigo-600 rounded-[2rem] shadow-xl border border-indigo-700 p-8 flex flex-col md:flex-row justify-between items-center gap-6 text-white">
-                <div><h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3"><span className="text-3xl">📊</span> {t('bulkImport')}</h3><p className="text-sm font-bold opacity-80 mt-2">Download template, fill workers, and upload.</p></div>
+                <div><h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3"><span className="text-3xl">📊</span> {t('bulkImport')}</h3><p className="text-sm font-bold opacity-80 mt-2">{t('bulkImportSub')}</p></div>
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                   <button onClick={downloadTemplate} className="w-full sm:w-auto px-6 py-4 bg-white/20 hover:bg-white/30 text-white font-black rounded-xl uppercase text-[10px] tracking-widest transition-all text-center">{t('downloadTemplate')}</button>
                   <div className="relative w-full sm:w-auto">
@@ -1313,15 +1365,13 @@
                 </div>
               </section>
               <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8">
-                <h3 className="font-black text-black text-xl uppercase tracking-tight mb-8 flex items-center gap-3"><div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 text-2xl">+</div> {t('add')} {t('workers')} (Individual)</h3>
+                <h3 className="font-black text-black text-xl uppercase tracking-tight mb-8 flex items-center gap-3"><div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 text-2xl">+</div> {t('add')} {t('workers')} ({t('individualAdd')})</h3>
                 
-                {/* NEW INDIVIDUAL FORM LOGIC */}
                 <form onSubmit={handleAdd} className="space-y-6">
                   <div>
                       <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('name')}</label>
                       <input type="text" required className={inputClass} placeholder={t('name')} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                   </div>
-                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                           <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('fatherName')}</label>
@@ -1332,7 +1382,6 @@
                           <input type="text" className={inputClass} placeholder={t('optional')} value={formData.motherName} onChange={e => setFormData({...formData, motherName: e.target.value})} />
                       </div>
                   </div>
-                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                           <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('nationalId')}</label>
@@ -1343,7 +1392,6 @@
                           <input type="text" className={inputClass} placeholder={t('optional')} value={formData.socialInsuranceId} onChange={e => setFormData({...formData, socialInsuranceId: e.target.value})} />
                       </div>
                   </div>
-                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                           <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('wage')}</label>
@@ -1413,7 +1461,6 @@
             </section>
           )}
 
-          {/* HR PERIODS: ONLY ALLOW LOCKING, NOT UNLOCKING */}
           {activeTab === 'periods' && (
              <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 animate-in fade-in">
                 <h3 className="text-xl font-black text-black uppercase mb-6">{t('payrollPeriods')}</h3>
@@ -1432,8 +1479,8 @@
                                </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-200 pt-4">
-                               <button onClick={() => { if(!isP1Locked) toggleMonthLock(`${month}-p1`); }} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP1Locked ? 'bg-gray-200 text-gray-500 shadow-inner cursor-not-allowed' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>{isP1Locked ? 'P1 Locked 🔒' : 'Lock P1 (Days 1-15)'}</button>
-                               <button onClick={() => { if(!isP2Locked) toggleMonthLock(`${month}-p2`); }} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP2Locked ? 'bg-gray-200 text-gray-500 shadow-inner cursor-not-allowed' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>{isP2Locked ? 'P2 Locked 🔒' : 'Lock P2 (Days 16-31)'}</button>
+                               <button onClick={() => { if(!isP1Locked) toggleMonthLock(`${month}-p1`); }} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP1Locked ? 'bg-gray-200 text-gray-500 shadow-inner cursor-not-allowed' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>{isP1Locked ? t('p1LockedHR') : t('lockP1')}</button>
+                               <button onClick={() => { if(!isP2Locked) toggleMonthLock(`${month}-p2`); }} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP2Locked ? 'bg-gray-200 text-gray-500 shadow-inner cursor-not-allowed' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>{isP2Locked ? t('p2LockedHR') : t('lockP2')}</button>
                             </div>
                          </div>
                       );
@@ -1450,17 +1497,17 @@
                 
                 <div className="bg-teal-50 border border-teal-100 rounded-xl p-6 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
                     <div>
-                        <p className="text-sm font-black text-teal-800 uppercase">Print Instant Aid Slips</p>
-                        <p className="text-xs font-bold text-teal-600 mt-1">Select the date to generate the PDF receipts.</p>
+                        <p className="text-sm font-black text-teal-800 uppercase">{t('printInstantAidSlips')}</p>
+                        <p className="text-xs font-bold text-teal-600 mt-1">{t('printInstantSlipsSub')}</p>
                     </div>
                     <div className="flex gap-2 w-full md:w-auto">
                         <input type="date" className="px-4 py-3 border border-teal-200 rounded-xl text-sm font-bold w-full md:w-auto outline-none focus:border-teal-500" value={printGrantDate} onChange={e=>setPrintGrantDate(e.target.value)} />
-                        <button onClick={() => generateAidPayslips(printGrantDate, employees, grants, pdfConfig, sections)} className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-xl text-xs uppercase font-black tracking-widest transition-all shadow-lg shadow-teal-500/30">Print</button>
+                        <button onClick={() => generateAidPayslips(printGrantDate, employees, grants, pdfConfig, sections)} className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-xl text-xs uppercase font-black tracking-widest transition-all shadow-lg shadow-teal-500/30">{t('printBtn')}</button>
                     </div>
                 </div>
 
                 <div className="max-h-[400px] overflow-y-auto divide-y divide-gray-100 border-t pt-4">
-                    {grants.length === 0 && <p className="text-center text-gray-400 font-bold text-xs py-10">No records found.</p>}
+                    {grants.length === 0 && <p className="text-center text-gray-400 font-bold text-xs py-10">{t('noRecordsFound')}</p>}
                     {grants.slice().sort((a, b) => new Date(b.date) - new Date(a.date)).map(g => (
                        <div key={g.id} className="flex justify-between items-center py-4 hover:bg-gray-50 transition-colors px-2 rounded-lg">
                           <div>
@@ -1547,7 +1594,7 @@
                   <div className="space-y-4 text-left">
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                           <div className="flex justify-between items-center mb-1">
-                              <span className="text-xs font-black uppercase text-gray-400">Period 1</span>
+                              <span className="text-xs font-black uppercase text-gray-400">{t('period1')}</span>
                               <div className="text-right">
                                   <span className="font-black text-lg block">{formatBase(totalsData.p1.grandTotal)} {pdfConfig.mainSymbol || 'SYP'}</span>
                                   <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.p1.grandTotal, pdfConfig)} {pdfConfig.secSymbol || '$'}</span>
@@ -1557,7 +1604,7 @@
                       </div>
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                           <div className="flex justify-between items-center mb-1">
-                              <span className="text-xs font-black uppercase text-gray-400">Period 2</span>
+                              <span className="text-xs font-black uppercase text-gray-400">{t('period2')}</span>
                               <div className="text-right">
                                   <span className="font-black text-lg block">{formatBase(totalsData.p2.grandTotal)} {pdfConfig.mainSymbol || 'SYP'}</span>
                                   <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.p2.grandTotal, pdfConfig)} {pdfConfig.secSymbol || '$'}</span>
@@ -1567,7 +1614,7 @@
                       </div>
                       <div className="bg-black p-4 rounded-xl shadow-lg">
                           <div className="flex justify-between items-center mb-1">
-                              <span className="text-xs font-black uppercase text-gray-400">Full Month</span>
+                              <span className="text-xs font-black uppercase text-gray-400">{t('fullMonth')}</span>
                               <div className="text-right">
                                   <span className="font-black text-lg text-white block">{formatBase(totalsData.full.grandTotal)} {pdfConfig.mainSymbol || 'SYP'}</span>
                                   <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.full.grandTotal, pdfConfig)} {pdfConfig.secSymbol || '$'}</span>
@@ -1582,7 +1629,6 @@
           )}
         </div>
       );
-    };
 
     const ManagerDashboard = ({ employees, sections, attendance, advances, overtime, updateAttendance, addAdvance, addOvertime, lockedMonths, lang, t, canEdit, updateAdvance, updateOvertime, deleteAdvance, deleteOvertime, config }) => {
       const [selectedDate, setSelectedDate] = React.useState(new Date().toISOString().split('T')[0]);
@@ -2002,7 +2048,7 @@
         <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <h2 className="text-4xl font-black text-black uppercase">{t('strategicControl')}</h2>
-             <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-gray-100 flex-wrap items-center gap-2">
+              <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-gray-100 flex-wrap items-center gap-2">
                  <button onClick={handleExcelBackup} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-green-600 text-white hover:bg-green-700 transition-colors shadow-lg">📊 {t('downloadExcel')}</button>
                  <button onClick={handleBackupJSON} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors border border-orange-200">{t('backupData')} (JSON)</button>
                  {['logic','periods','bonuses','grants','registers','users', 'dictionary', 'reset'].map(tab => (
@@ -2015,31 +2061,31 @@
 
            {activeOwnerTab === 'registers' && (
               <div className="bg-white rounded-[2rem] shadow-xl border border-gray-50 p-8 animate-in fade-in">
-                 <h3 className="text-xl font-black uppercase mb-2 text-indigo-600">Cash Register Audit</h3>
-                 <p className="text-xs font-bold text-gray-500 mb-6">Override and correct the daily starting cash entered by cashiers. This instantly fixes their End of Day PDF math.</p>
+                 <h3 className="text-xl font-black uppercase mb-2 text-indigo-600">{t('cashierAudit')}</h3>
+                 <p className="text-xs font-bold text-gray-500 mb-6">{t('auditSubtext')}</p>
                  
                  <div className="max-h-[500px] overflow-y-auto border border-gray-100 rounded-xl divide-y divide-gray-50">
-                    {cashRegisters.length === 0 && <p className="text-center text-gray-400 font-bold py-10">No cash registers recorded yet.</p>}
+                    {cashRegisters.length === 0 && <p className="text-center text-gray-400 font-bold py-10">{t('noRecordsFound')}</p>}
                     {cashRegisters.slice().sort((a,b) => b.id.localeCompare(a.id)).map(reg => (
                         <div key={reg.id} className="p-4 flex flex-col md:flex-row justify-between md:items-center gap-4 hover:bg-gray-50 transition-colors">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black text-lg shadow-inner">💰</div>
                                 <div>
                                     <p className="font-black text-black">{reg.id}</p>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Starting Cash</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('startingBalance')}</p>
                                 </div>
                             </div>
                             
                             {editingRegDate === reg.id ? (
                                 <div className="flex gap-2 w-full md:w-auto">
                                     <input type="number" className="px-4 py-2 border-2 border-indigo-600 rounded-lg font-black text-black outline-none w-full md:w-48 shadow-sm" value={editingRegBal} onChange={e => setEditingRegBal(e.target.value)} />
-                                    <button onClick={() => { updateCashRegister(reg.id, parseFloat(editingRegBal)); setEditingRegDate(null); }} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-lg uppercase text-xs transition-colors shadow">Save</button>
-                                    <button onClick={() => setEditingRegDate(null)} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-600 font-black rounded-lg uppercase text-xs transition-colors">Cancel</button>
+                                    <button onClick={() => { updateCashRegister(reg.id, parseFloat(editingRegBal)); setEditingRegDate(null); }} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-lg uppercase text-xs transition-colors shadow">{t('save')}</button>
+                                    <button onClick={() => setEditingRegDate(null)} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-600 font-black rounded-lg uppercase text-xs transition-colors">{t('cancel')}</button>
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
                                     <span className="font-black text-xl text-black">{parseFloat(reg.startingBalance).toLocaleString()} <span className="text-xs opacity-50">{config.mainSymbol || 'SYP'}</span></span>
-                                    <button onClick={() => { setEditingRegDate(reg.id); setEditingRegBal(reg.startingBalance.toString()); }} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black font-black rounded-lg uppercase text-[10px] tracking-widest transition-colors shadow-sm border border-gray-200">Override</button>
+                                    <button onClick={() => { setEditingRegDate(reg.id); setEditingRegBal(reg.startingBalance.toString()); }} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-black font-black rounded-lg uppercase text-[10px] tracking-widest transition-colors shadow-sm border border-gray-200">{t('overrideBtn')}</button>
                                 </div>
                             )}
                         </div>
@@ -2050,43 +2096,43 @@
            
            {activeOwnerTab === 'reset' && (
               <div className="bg-red-50 rounded-[2rem] shadow-xl border-2 border-red-100 p-8">
-                 <h3 className="text-xl font-black text-red-700 uppercase mb-2 flex items-center gap-2">⚠️ Data Maintenance & Reset</h3>
-                 <p className="text-sm font-bold text-red-900/60 mb-8">Select a specific category to permanently delete all its records. This action cannot be undone.</p>
+                 <h3 className="text-xl font-black text-red-700 uppercase mb-2 flex items-center gap-2">⚠️ {t('dataMaintenanceReset')}</h3>
+                 <p className="text-sm font-bold text-red-900/60 mb-8">{t('resetSubtext')}</p>
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Workers / Employees</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all worker profiles.</p></div>
-                        <button onClick={() => handleSpecificReset('employees', 'WORKERS')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Workers</button>
+                        <div><h4 className="font-black text-black">{t('workersEmployees')}</h4><p className="text-[10px] text-gray-500 mt-1">{t('delWorkers')}</p></div>
+                        <button onClick={() => handleSpecificReset('employees', 'WORKERS')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">{t('wipeAllWorkers')}</button>
                     </div>
                     <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Attendance Logs</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all daily attendance history.</p></div>
-                        <button onClick={() => handleSpecificReset('attendance', 'ATTENDANCE')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Attendance</button>
+                        <div><h4 className="font-black text-black">{t('attendanceLogs')}</h4><p className="text-[10px] text-gray-500 mt-1">{t('delAttendance')}</p></div>
+                        <button onClick={() => handleSpecificReset('attendance', 'ATTENDANCE')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">{t('wipeAllAttendance')}</button>
                     </div>
                     <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Financial: Loans</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all loan contracts.</p></div>
-                        <button onClick={() => handleSpecificReset('loans', 'LOANS')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Loans</button>
+                        <div><h4 className="font-black text-black">{t('financialLoans')}</h4><p className="text-[10px] text-gray-500 mt-1">{t('delLoans')}</p></div>
+                        <button onClick={() => handleSpecificReset('loans', 'LOANS')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">{t('wipeLoans')}</button>
                     </div>
                     <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Financial: Advances</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all cash advance records.</p></div>
-                        <button onClick={() => handleSpecificReset('advances', 'ADVANCES')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Advances</button>
+                        <div><h4 className="font-black text-black">{t('financialAdvances')}</h4><p className="text-[10px] text-gray-500 mt-1">{t('delAdvances')}</p></div>
+                        <button onClick={() => handleSpecificReset('advances', 'ADVANCES')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">{t('wipeAdvances')}</button>
                     </div>
                     <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Financial: Overtime</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all overtime hour logs.</p></div>
-                        <button onClick={() => handleSpecificReset('overtime', 'OVERTIME')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Overtime</button>
+                        <div><h4 className="font-black text-black">{t('financialOvertime')}</h4><p className="text-[10px] text-gray-500 mt-1">{t('delOvertime')}</p></div>
+                        <button onClick={() => handleSpecificReset('overtime', 'OVERTIME')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">{t('wipeOvertime')}</button>
                     </div>
                     <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Financial: Bonuses</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all bonus distributions.</p></div>
-                        <button onClick={() => handleSpecificReset('bonuses', 'BONUSES')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Bonuses</button>
+                        <div><h4 className="font-black text-black">{t('financialBonuses')}</h4><p className="text-[10px] text-gray-500 mt-1">{t('delBonuses')}</p></div>
+                        <button onClick={() => handleSpecificReset('bonuses', 'BONUSES')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">{t('wipeBonuses')}</button>
                     </div>
                     <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Financial: Support/Aid</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all Aid distributions.</p></div>
+                        <div><h4 className="font-black text-black">{t('financialSupport')}</h4><p className="text-[10px] text-gray-500 mt-1">{t('delSupport')}</p></div>
                         <button onClick={() => handleSpecificReset('grants', 'GRANTS')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">{t('wipeGrants')}</button>
                     </div>
                     <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Financial: Transport</h4><p className="text-[10px] text-gray-500 mt-1">Deletes extra transport logs.</p></div>
-                        <button onClick={() => handleSpecificReset('transportation', 'TRANSPORT')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">Wipe Transport</button>
+                        <div><h4 className="font-black text-black">{t('financialTransport')}</h4><p className="text-[10px] text-gray-500 mt-1">{t('delTransport')}</p></div>
+                        <button onClick={() => handleSpecificReset('transportation', 'TRANSPORT')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">{t('wipeTransport')}</button>
                     </div>
                     <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm flex flex-col justify-between h-40">
-                        <div><h4 className="font-black text-black">Cashier Logs</h4><p className="text-[10px] text-gray-500 mt-1">Deletes all payout records.</p></div>
+                        <div><h4 className="font-black text-black">{t('cashierLogs')}</h4><p className="text-[10px] text-gray-500 mt-1">{t('delCashierLogs')}</p></div>
                         <button onClick={() => handleSpecificReset('payout_logs', 'CASHIER LOGS')} className="w-full py-3 bg-red-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">{t('wipePayouts')}</button>
                     </div>
                  </div>
@@ -2098,30 +2144,30 @@
                  <h3 className="text-xl font-black text-black uppercase tracking-tight">{t('systemVariables')}</h3>
                  
                  <div className="col-span-2 bg-indigo-50 p-6 rounded-2xl border border-indigo-100 mb-6 space-y-4">
-                     <h4 className="font-black text-indigo-800 uppercase tracking-widest text-xs mb-2">Dual Currency Engine</h4>
+                     <h4 className="font-black text-indigo-800 uppercase tracking-widest text-xs mb-2">{t('dualCurrencyEngine')}</h4>
                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                          <div>
-                             <label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">Main Name</label>
+                             <label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">{t('mainName')}</label>
                              <input type="text" className={inputClass} placeholder="e.g. SYP" value={tempConfig.mainCurrency || 'SYP'} onChange={e => setTempConfig({...tempConfig, mainCurrency: e.target.value})} />
                          </div>
                          <div>
-                             <label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">Main Symbol</label>
+                             <label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">{t('mainSymbol')}</label>
                              <input type="text" className={inputClass} placeholder="e.g. ل.س" value={tempConfig.mainSymbol || 'ل.س'} onChange={e => setTempConfig({...tempConfig, mainSymbol: e.target.value})} />
                          </div>
                          <div>
-                             <label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">Sec Name</label>
+                             <label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">{t('secName')}</label>
                              <input type="text" className={inputClass} placeholder="e.g. USD" value={tempConfig.secCurrency || 'USD'} onChange={e => setTempConfig({...tempConfig, secCurrency: e.target.value})} />
                          </div>
                          <div>
-                             <label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">Sec Symbol</label>
+                             <label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">{t('secSymbol')}</label>
                              <input type="text" className={inputClass} placeholder="e.g. $" value={tempConfig.secSymbol || '$'} onChange={e => setTempConfig({...tempConfig, secSymbol: e.target.value})} />
                          </div>
                          <div>
-                             <label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">Exchange Rate</label>
+                             <label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">{t('exchangeRate')}</label>
                              <input type="number" step="0.01" className={inputClass} placeholder="e.g. 15000" value={tempConfig.exchangeRate || 1} onChange={e => setTempConfig({...tempConfig, exchangeRate: Math.max(0.0001, +e.target.value)})} />
                          </div>
                      </div>
-                     <p className="text-[10px] text-indigo-600 font-bold mt-2">Preview: 150,000 {tempConfig.mainSymbol || 'ل.س'} = {formatSec(150000, tempConfig)} {tempConfig.secSymbol || '$'}</p>
+                     <p className="text-[10px] text-indigo-600 font-bold mt-2">{t('preview')}: 150,000 {tempConfig.mainSymbol || 'ل.س'} = {formatSec(150000, tempConfig)} {tempConfig.secSymbol || '$'}</p>
                  </div>
 
                  <div className="grid grid-cols-2 gap-4">
@@ -2155,8 +2201,8 @@
                                </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-200 pt-4">
-                               <button onClick={() => toggleMonthLock(`${month}-p1`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP1Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>{isP1Locked ? 'P1 Locked 🔒 (Tap to Unlock)' : 'Lock P1 (Days 1-15)'}</button>
-                               <button onClick={() => toggleMonthLock(`${month}-p2`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP2Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>{isP2Locked ? 'P2 Locked 🔒 (Tap to Unlock)' : 'Lock P2 (Days 16-31)'}</button>
+                               <button onClick={() => toggleMonthLock(`${month}-p1`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP1Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>{isP1Locked ? t('p1Locked') : t('lockP1')}</button>
+                               <button onClick={() => toggleMonthLock(`${month}-p2`)} className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isP2Locked ? 'bg-gray-200 text-gray-500 shadow-inner' : 'bg-red-600 text-white shadow hover:bg-red-700'}`}>{isP2Locked ? t('p2Locked') : t('lockP2')}</button>
                             </div>
                          </div>
                       );
@@ -2205,7 +2251,7 @@
                  </div>
                  <div className="bg-white rounded-[2rem] shadow-xl p-8 max-h-[500px] overflow-y-auto">
                     <h3 className="text-xl font-black uppercase mb-6">{t('distributionLogs')}</h3>
-                    {bonuses.length === 0 && <p className="text-center text-gray-400 font-bold text-xs py-10">No records found.</p>}
+                    {bonuses.length === 0 && <p className="text-center text-gray-400 font-bold text-xs py-10">{t('noRecordsFound')}</p>}
                     {bonuses.map(b => (
                        <div key={b.id} className="flex justify-between items-center p-3 border-b hover:bg-gray-50 transition-colors">
                           <div>
@@ -2219,7 +2265,6 @@
               </div>
            )}
 
-           {/* GRANTS / SUPPORT ENGINE */}
            {activeOwnerTab === 'grants' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                  <div className="bg-white rounded-[2rem] shadow-xl p-8">
@@ -2280,7 +2325,7 @@
                     </div>
                     
                     <div className="max-h-[300px] overflow-y-auto divide-y">
-                        {grants.length === 0 && <p className="text-center text-gray-400 font-bold text-xs py-10">No records found.</p>}
+                        {grants.length === 0 && <p className="text-center text-gray-400 font-bold text-xs py-10">{t('noRecordsFound')}</p>}
                         {grants.map(g => (
                            <div key={g.id} className="flex justify-between items-center py-3 hover:bg-gray-50 transition-colors">
                               <div>
@@ -2323,7 +2368,7 @@
                            <option value="owner">Owner</option>
                        </select>
                        {newUserFormData.role === 'cashier' && (
-                           <input className={inputClass} placeholder="Cashier Zone (e.g. 1 or 2)" value={newUserFormData.cashierZone} onChange={e=>setNewUserFormData({...newUserFormData, cashierZone:e.target.value})} required />
+                           <input className={inputClass} placeholder={`${t('cashierZone')} (1, 2, ...)`} value={newUserFormData.cashierZone} onChange={e=>setNewUserFormData({...newUserFormData, cashierZone:e.target.value})} required />
                        )}
                        <div className="flex gap-2">
                           {editingUserId && <button type="button" onClick={cancelEditUser} className="flex-1 bg-gray-200 text-black p-4 rounded-xl font-black uppercase text-xs tracking-widest">{t('cancel')}</button>}
@@ -2344,27 +2389,24 @@
                  
                  <div className="space-y-8 max-h-[65vh] overflow-y-auto pr-2 pb-10">
                     {(() => {
-                       // 1. Define the Sections here
                        const groups = {
-                          "General & App": ["appTitle", "subTitle", "signOut", "save", "edit", "delete", "add", "cancel", "confirm", "search", "total", "optional", "amount", "name", "actions", "logged", "mustBePositive", "missing", "locked", "unauthorized", "equivalent"],
-                          "Login & Roles": ["username", "password", "login", "loginTitle", "owner", "hr", "manager", "finance", "data_entry", "cashier", "userAccess"],
-                          "HR Dashboard": ["workers", "sections", "attendance", "periods", "resetData", "resigned", "active", "unassigned", "workerDetails", "employeeInfo", "downloadTemplate", "importExcel", "bulkImport", "shift", "section", "wage", "transport", "transPeriod", "period1Amount", "period2Amount", "period1", "period2", "fullMonth", "split", "saveAll"],
+                          "General & App": ["appTitle", "subTitle", "signOut", "save", "edit", "delete", "add", "cancel", "confirm", "search", "total", "optional", "amount", "name", "actions", "logged", "mustBePositive", "missing", "locked", "unauthorized", "equivalent", "preview", "commit"],
+                          "Login & Roles": ["username", "password", "login", "loginTitle", "owner", "hr", "manager", "finance", "data_entry", "cashier", "userAccess", "createAccess", "updateIdentity", "authorizeIdentity", "secretKey"],
+                          "HR Dashboard": ["workers", "sections", "attendance", "periods", "resetData", "resigned", "active", "unassigned", "workerDetails", "employeeInfo", "downloadTemplate", "importExcel", "bulkImport", "bulkImportSub", "shift", "section", "wage", "transport", "transPeriod", "period1Amount", "period2Amount", "period1", "period2", "fullMonth", "split", "saveAll", "zone", "individualAdd", "fatherName", "motherName", "nationalId", "insuranceId", "resignBtn", "p1LockedHR", "p2LockedHR"],
                           "Manager Operations": ["opsHub", "recordingFor", "verified", "notLogged", "verifiedSub", "notLoggedSub", "verifyLog", "updateLog", "present", "absent", "advance", "advances", "overtime", "editEntries"],
                           "Finance & Loans": ["liabilityOversight", "remainingDebt", "issueLoan", "editContract", "liabilityContract", "managingProfile", "discard", "saveContract", "recoveryVelocity"],
-                          "Owner Controls": ["systemVariables", "strategicControl", "systemLogic", "bonusCenter", "credentialManagement", "dictionary", "saveDictionary", "logicSync", "daysPerMonth", "hoursPerDay", "otFactor", "absencePenalty", "nightMultiplier", "commitLogic", "overtimePeriod", "absencePeriod", "paymentSettings", "dangerZone", "wipeAllWorkers", "wipeAllAttendance", "wipeConfirm", "backupData", "distType", "target", "individual", "allActive", "bonusEngine", "distributeCapital", "distributionLogs", "fixedAmount", "percentWage", "wipeGrants", "wipePayouts", "selectReport", "downloadExcel", "dataMaintenance", "cashierAudit", "engine", "percentage", "eventDate", "payPeriod", "reasonAid", "reasonBonus", "distributeAid", "calcPercentFrom"],
-                          "Cashier Dashboard": ["cashRegister", "startingBalance", "setBalance", "recordPayout", "totalPaid", "remainingCash", "paymentType", "dailyLogs", "printEodReport", "cashierZone", "targetPayrollMonth", "unlockPastMonths", "selectEmployee", "autoCalc"],
-                          "Reports & PDFs": ["generatePdf", "exportCsv", "viewTotals", "estimatedPayout", "activitySummary", "historyProtected", "bonus", "supportAid", "grantsLogs", "printInstantSlips", "printBtn"]
+                          "Owner Controls": ["systemVariables", "strategicControl", "systemLogic", "bonusCenter", "credentialManagement", "dictionary", "saveDictionary", "logicSync", "daysPerMonth", "hoursPerDay", "otFactor", "absencePenalty", "nightMultiplier", "commitLogic", "overtimePeriod", "absencePeriod", "paymentSettings", "dangerZone", "dataMaintenanceReset", "resetSubtext", "wipeAllWorkers", "wipeAllAttendance", "wipeConfirm", "backupData", "distType", "target", "individual", "allActive", "bonusEngine", "distributeCapital", "distributionLogs", "fixedAmount", "percentWage", "wipeGrants", "wipePayouts", "selectReport", "downloadExcel", "dataMaintenance", "cashierAudit", "engine", "percentage", "eventDate", "payPeriod", "reasonAid", "reasonBonus", "distributeAid", "calcPercentFrom", "dualCurrencyEngine", "mainName", "mainSymbol", "secName", "secSymbol", "exchangeRate", "payrollPeriods", "lockP1", "lockP2", "p1Locked", "p2Locked", "financialLoans", "delLoans", "wipeLoans", "attendanceLogs", "delAttendance", "workersEmployees", "delWorkers", "financialBonuses", "delBonuses", "wipeBonuses", "financialOvertime", "delOvertime", "wipeOvertime", "financialAdvances", "delAdvances", "wipeAdvances", "cashierLogs", "delCashierLogs", "financialTransport", "delTransport", "wipeTransport", "financialSupport", "delSupport"],
+                          "Cashier Dashboard": ["cashRegister", "startingBalance", "setBalance", "recordPayout", "totalPaid", "remainingCash", "paymentType", "dailyLogs", "printEodReport", "cashierZone", "targetPayrollMonth", "unlockPastMonths", "selectEmployee", "autoCalc", "auditSubtext", "overrideBtn"],
+                          "Reports & PDFs": ["generatePdf", "exportCsv", "viewTotals", "estimatedPayout", "activitySummary", "historyProtected", "bonus", "supportAid", "grantsLogs", "printInstantSlips", "printInstantAidSlips", "printInstantSlipsSub", "printBtn", "noRecordsFound"]
                        };
                        
-                       // 2. Catch any missing or future words automatically
                        const allCat = Object.values(groups).flat();
                        const uncat = Object.keys(translations).filter(k => !allCat.includes(k));
                        if (uncat.length > 0) groups["Other / Uncategorized"] = uncat;
 
-                       // 3. Render the Sections
                        return Object.entries(groups).map(([groupName, keys]) => {
                            const filteredKeys = keys.filter(k => k.toLowerCase().includes(dictionarySearch.toLowerCase()) || translations[k]?.en?.toLowerCase()?.includes(dictionarySearch.toLowerCase()) || translations[k]?.ar?.includes(dictionarySearch));
-                           if (filteredKeys.length === 0) return null; // Hide empty sections while searching
+                           if (filteredKeys.length === 0) return null; 
                            
                            return (
                               <div key={groupName} className="mb-8">
@@ -2412,7 +2454,7 @@
                   <div className="space-y-4 text-left">
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                           <div className="flex justify-between items-center mb-1">
-                              <span className="text-xs font-black uppercase text-gray-400">Period 1</span>
+                              <span className="text-xs font-black uppercase text-gray-400">{t('period1')}</span>
                               <div className="text-right">
                                   <span className="font-black text-lg block">{formatBase(totalsData.p1.grandTotal)} {pdfConfig.mainSymbol || 'SYP'}</span>
                                   <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.p1.grandTotal, pdfConfig)} {pdfConfig.secSymbol || '$'}</span>
@@ -2422,7 +2464,7 @@
                       </div>
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                           <div className="flex justify-between items-center mb-1">
-                              <span className="text-xs font-black uppercase text-gray-400">Period 2</span>
+                              <span className="text-xs font-black uppercase text-gray-400">{t('period2')}</span>
                               <div className="text-right">
                                   <span className="font-black text-lg block">{formatBase(totalsData.p2.grandTotal)} {pdfConfig.mainSymbol || 'SYP'}</span>
                                   <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.p2.grandTotal, pdfConfig)} {pdfConfig.secSymbol || '$'}</span>
@@ -2432,7 +2474,7 @@
                       </div>
                       <div className="bg-black p-4 rounded-xl shadow-lg">
                           <div className="flex justify-between items-center mb-1">
-                              <span className="text-xs font-black uppercase text-gray-400">Full Month</span>
+                              <span className="text-xs font-black uppercase text-gray-400">{t('fullMonth')}</span>
                               <div className="text-right">
                                   <span className="font-black text-lg text-white block">{formatBase(totalsData.full.grandTotal)} {pdfConfig.mainSymbol || 'SYP'}</span>
                                   <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.full.grandTotal, pdfConfig)} {pdfConfig.secSymbol || '$'}</span>
@@ -2447,7 +2489,6 @@
           )}
         </div>
       );
-    };
 
     // --- 7. MAIN APP ROUTER ---
     const App = () => {
