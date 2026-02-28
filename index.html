@@ -2456,8 +2456,8 @@
                           <div className="flex justify-between items-center mb-1">
                               <span className="text-xs font-black uppercase text-gray-400">{t('period1')}</span>
                               <div className="text-right">
-                                  <span className="font-black text-lg block">{formatBase(totalsData.p1.grandTotal)} {pdfConfig.mainSymbol || 'SYP'}</span>
-                                  <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.p1.grandTotal, pdfConfig)} {pdfConfig.secSymbol || '$'}</span>
+                                  <span className="font-black text-lg block">{formatBase(totalsData.p1.grandTotal)} {config.mainSymbol || 'SYP'}</span>
+                                  <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.p1.grandTotal, config)} {config.secSymbol || '$'}</span>
                               </div>
                           </div>
                           <p className="text-[10px] text-gray-400 font-bold text-right">{totalsData.p1.count} Employees</p>
@@ -2466,8 +2466,8 @@
                           <div className="flex justify-between items-center mb-1">
                               <span className="text-xs font-black uppercase text-gray-400">{t('period2')}</span>
                               <div className="text-right">
-                                  <span className="font-black text-lg block">{formatBase(totalsData.p2.grandTotal)} {pdfConfig.mainSymbol || 'SYP'}</span>
-                                  <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.p2.grandTotal, pdfConfig)} {pdfConfig.secSymbol || '$'}</span>
+                                  <span className="font-black text-lg block">{formatBase(totalsData.p2.grandTotal)} {config.mainSymbol || 'SYP'}</span>
+                                  <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.p2.grandTotal, config)} {config.secSymbol || '$'}</span>
                               </div>
                           </div>
                           <p className="text-[10px] text-gray-400 font-bold text-right">{totalsData.p2.count} Employees</p>
@@ -2476,8 +2476,8 @@
                           <div className="flex justify-between items-center mb-1">
                               <span className="text-xs font-black uppercase text-gray-400">{t('fullMonth')}</span>
                               <div className="text-right">
-                                  <span className="font-black text-lg text-white block">{formatBase(totalsData.full.grandTotal)} {pdfConfig.mainSymbol || 'SYP'}</span>
-                                  <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.full.grandTotal, pdfConfig)} {pdfConfig.secSymbol || '$'}</span>
+                                  <span className="font-black text-lg text-white block">{formatBase(totalsData.full.grandTotal)} {config.mainSymbol || 'SYP'}</span>
+                                  <span className="text-[10px] text-gray-400 font-bold block">{formatSec(totalsData.full.grandTotal, config)} {config.secSymbol || '$'}</span>
                               </div>
                           </div>
                           <p className="text-[10px] text-gray-400 font-bold text-right text-white opacity-50">Total Paid</p>
@@ -2489,6 +2489,7 @@
           )}
         </div>
       );
+    };
 
     // --- 7. MAIN APP ROUTER ---
     const App = () => {
