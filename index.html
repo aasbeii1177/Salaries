@@ -189,6 +189,7 @@
       noRecordsFound: { en: "No records found.", ar: "لم يتم العثور على سجلات." },
       dataMaintenanceReset: { en: "Data Maintenance & Reset", ar: "صيانة وتصفير البيانات" },
       resetSubtext: { en: "Select a specific category to permanently delete all its records. This action cannot be undone.", ar: "اختر فئة محددة لحذف جميع سجلاتها نهائياً. لا يمكن التراجع عن هذا الإجراء." },
+      joinDate: { en: "Join Date", ar: "تاريخ الانضمام" },
       financialLoans: { en: "Financial: Loans", ar: "المالية: القروض" },
       delLoans: { en: "Deletes all loan contracts.", ar: "حذف جميع عقود القروض." },
       wipeLoans: { en: "Wipe Loans", ar: "مسح القروض" },
@@ -1125,9 +1126,8 @@
           alert("Worker Added Successfully!"); 
       };
       
-      const startEditing = (emp) => { setEditingId(emp.id); setEditFormData({ ...emp, wage: emp.monthlyWage, transportAllowance: emp.transportationAllowance }); };
-      const handleUpdate = () => { updateEmployee(editingId, { ...editFormData, monthlyWage: parseFloat(editFormData.wage), transportationAllowance: parseFloat(editFormData.transportAllowance) }); setEditingId(null); };
-      
+      const startEditing = (emp) => { setEditingId(emp.id); setEditFormData({ ...emp, wage: emp.monthlyWage, transportAllowance: emp.transportationAllowance, cashierZone: emp.cashierZone || '1', joinDate: emp.joinDate || new Date().toISOString().split('T')[0] }); };
+      const handleUpdate = () => { updateEmployee(editingId, { ...editFormData, monthlyWage: parseFloat(editFormData.wage), transportationAllowance: parseFloat(editFormData.transportAllowance), cashierZone: (editFormData.cashierZone || '1').toString() }); setEditingId(null); };
       const handleViewTotals = (month) => { 
           const activeEmps = employees.filter(e => !e.isResigned); 
           let p1Count = 0, p2Count = 0, fullCount = 0;
@@ -1335,6 +1335,8 @@
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('nationalId')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.nationalId} onChange={e=>setEditFormData({...editFormData, nationalId:e.target.value})} /> : <p className="font-black">{emp.nationalId || '-'}</p>}</div>
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('insuranceId')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.socialInsuranceId} onChange={e=>setEditFormData({...editFormData, socialInsuranceId:e.target.value})} /> : <p className="font-black">{emp.socialInsuranceId || '-'}</p>}</div>
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('transport')}</label>{editingId === emp.id ? <MoneyInput className={inputClass} value={editFormData.transportationAllowance} onChange={e=>setEditFormData({...editFormData, transportationAllowance:e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} /> : <p className="font-black">{emp.transportationAllowance || '0'}</p>}</div>
+                                                                  <div><label className="text-[10px] font-black uppercase block mb-1">{t('joinDate')}</label>{editingId === emp.id ? <input type="date" className={inputClass} value={editFormData.joinDate} onChange={e=>setEditFormData({...editFormData, joinDate:e.target.value})} /> : <p className="font-black">{emp.joinDate || '-'}</p>}</div>
+                                                                  <div><label className="text-[10px] font-black uppercase block mb-1">{t('cashierZone')}</label>{editingId === emp.id ? <input type="number" min="1" className={inputClass} value={editFormData.cashierZone} onChange={e=>setEditFormData({...editFormData, cashierZone:e.target.value})} /> : <p className="font-black">Z-{emp.cashierZone || '1'}</p>}</div>
                                                                   {editingId === emp.id && <div className="col-span-full flex justify-end gap-2 mt-4"><button onClick={handleUpdate} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-black uppercase text-xs">{t('save')}</button><button onClick={()=>setEditingId(null)} className="bg-gray-200 text-black px-6 py-2 rounded-lg font-black uppercase text-xs">{t('cancel')}</button></div>}
                                                               </div>
                                                           </td>
@@ -1368,10 +1370,17 @@
                 <h3 className="font-black text-black text-xl uppercase tracking-tight mb-8 flex items-center gap-3"><div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 text-2xl">+</div> {t('add')} {t('workers')} ({t('individualAdd')})</h3>
                 
                 <form onSubmit={handleAdd} className="space-y-6">
-                  <div>
-                      <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('name')}</label>
-                      <input type="text" required className={inputClass} placeholder={t('name')} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('name')}</label>
+                          <input type="text" required className={inputClass} placeholder={t('name')} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                      </div>
+                      <div>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('joinDate')}</label>
+                          <input type="date" required className={inputClass} value={formData.joinDate} onChange={e => setFormData({...formData, joinDate: e.target.value})} />
+                      </div>
                   </div>
+                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                           <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('fatherName')}</label>
