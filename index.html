@@ -1629,6 +1629,7 @@
           )}
         </div>
       );
+    };
 
     const ManagerDashboard = ({ employees, sections, attendance, advances, overtime, updateAttendance, addAdvance, addOvertime, lockedMonths, lang, t, canEdit, updateAdvance, updateOvertime, deleteAdvance, deleteOvertime, config }) => {
       const [selectedDate, setSelectedDate] = React.useState(new Date().toISOString().split('T')[0]);
