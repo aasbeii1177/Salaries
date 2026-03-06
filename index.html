@@ -203,6 +203,8 @@
       transportAllowancesTitle: { en: "Transport Allowances", ar: "بدلات المواصلات" },
       transportP1: { en: "Transport P1", ar: "مواصلات ف1" },
       transportP2: { en: "Transport P2", ar: "مواصلات ف2" },
+      hr_manager: { en: "HR Manager", ar: "مدير الموارد البشرية" },
+      confidentialWorker: { en: "Confidential (Hidden from HR)", ar: "عامل سري (مخفي عن الموارد البشرية)" },
       financialLoans: { en: "Financial: Loans", ar: "المالية: القروض" },
       delLoans: { en: "Deletes all loan contracts.", ar: "حذف جميع عقود القروض." },
       wipeLoans: { en: "Wipe Loans", ar: "مسح القروض" },
@@ -1097,7 +1099,7 @@
         );
     };
 // --------------
-    const HRDashboard = ({ employees, sections, addEmployee, updateEmployee, resignEmployee, deleteEmployee, addSection, deleteSection, attendance, advances, overtime, transportation, loans, pdfConfig, bonuses, grants, lockedMonths, toggleMonthLock, lang, t }) => {
+    const HRDashboard = ({ currentUser, employees, sections, addEmployee, updateEmployee, resignEmployee, deleteEmployee, addSection, deleteSection, attendance, advances, overtime, transportation, loans, pdfConfig, bonuses, grants, lockedMonths, toggleMonthLock, lang, t }) => {
       const [formData, setFormData] = React.useState({ name: '', wage: '', transportAllowance: '0', shift: 'day', joinDate: new Date().toISOString().split('T')[0], nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '', dateOfBirth: '', sectionId: '', period1Amount: '', period2Amount: '' });
       const [isGenerating, setIsGenerating] = React.useState(false); 
       const [searchQuery, setSearchQuery] = React.useState(''); 
@@ -1118,7 +1120,8 @@
       
       const inputClass = "w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl font-bold bg-white text-black outline-none focus:border-indigo-600 transition-all";
 
-      const filteredEmployees = React.useMemo(() => employees.filter(emp => (viewResigned ? emp.isResigned : !emp.isResigned) && (emp.name || '').toLowerCase().includes(searchQuery.toLowerCase())), [employees, searchQuery, viewResigned]);
+      // NEW: Hide confidential workers if user is just regular "hr"
+      const filteredEmployees = React.useMemo(() => employees.filter(emp => (viewResigned ? emp.isResigned : !emp.isResigned) && (emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()) && (currentUser?.role !== 'hr' || !emp.isConfidential)), [employees, searchQuery, viewResigned, currentUser]);
       const employeesBySection = React.useMemo(() => { 
           const grouped = { 'unassigned': [] }; 
           sections.forEach(s => grouped[s.id] = []); 
@@ -1154,9 +1157,10 @@
               cashierZone: (formData.cashierZone || '1').toString(),
               payCycle: formData.payCycle || 'monthly',
               dailyWage: parseFloat(formData.dailyWage) || 0,
-              weeklyWage: parseFloat(formData.weeklyWage) || 0
+              weeklyWage: parseFloat(formData.weeklyWage) || 0,
+              isConfidential: formData.isConfidential !== undefined ? formData.isConfidential : (currentUser?.role === 'hr_manager')
           }); 
-          setFormData({ ...formData, name: '', wage: '', dailyWage: '', weeklyWage: '', period1Amount: '', period2Amount: '', transportPeriod1Amount: '', transportPeriod2Amount: '', nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '' }); 
+          setFormData({ ...formData, name: '', wage: '', dailyWage: '', weeklyWage: '', period1Amount: '', period2Amount: '', transportPeriod1Amount: '', transportPeriod2Amount: '', nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '', isConfidential: currentUser?.role === 'hr_manager' }); 
           alert("Worker Added Successfully!"); 
       };
       
@@ -1167,10 +1171,10 @@
               if (pref === '1') tp1 = leg; else if (pref === 'split') { tp1 = leg/2; tp2 = leg/2; } else tp2 = leg;
           }
           setEditingId(emp.id); 
-          setEditFormData({ ...emp, wage: emp.monthlyWage, transportPeriod1Amount: tp1, transportPeriod2Amount: tp2, cashierZone: emp.cashierZone || '1', joinDate: emp.joinDate || new Date().toISOString().split('T')[0], payCycle: emp.payCycle || 'monthly', dailyWage: emp.dailyWage || '', weeklyWage: emp.weeklyWage || '' }); 
+          setEditFormData({ ...emp, wage: emp.monthlyWage, transportPeriod1Amount: tp1, transportPeriod2Amount: tp2, cashierZone: emp.cashierZone || '1', joinDate: emp.joinDate || new Date().toISOString().split('T')[0], payCycle: emp.payCycle || 'monthly', dailyWage: emp.dailyWage || '', weeklyWage: emp.weeklyWage || '', isConfidential: emp.isConfidential || false }); 
       };
       
-      const handleUpdate = () => { updateEmployee(editingId, { ...editFormData, monthlyWage: parseFloat(editFormData.wage), transportPeriod1Amount: parseFloat(editFormData.transportPeriod1Amount) || 0, transportPeriod2Amount: parseFloat(editFormData.transportPeriod2Amount) || 0, cashierZone: (editFormData.cashierZone || '1').toString(), dailyWage: parseFloat(editFormData.dailyWage) || 0, weeklyWage: parseFloat(editFormData.weeklyWage) || 0 }); setEditingId(null); };
+      const handleUpdate = () => { updateEmployee(editingId, { ...editFormData, monthlyWage: parseFloat(editFormData.wage), transportPeriod1Amount: parseFloat(editFormData.transportPeriod1Amount) || 0, transportPeriod2Amount: parseFloat(editFormData.transportPeriod2Amount) || 0, cashierZone: (editFormData.cashierZone || '1').toString(), dailyWage: parseFloat(editFormData.dailyWage) || 0, weeklyWage: parseFloat(editFormData.weeklyWage) || 0, isConfidential: !!editFormData.isConfidential }); setEditingId(null); };
       const handleViewTotals = (month) => { 
           const activeEmps = employees.filter(e => !e.isResigned); 
           let p1Count = 0, p2Count = 0, fullCount = 0;
@@ -1399,6 +1403,11 @@
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('insuranceId')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.socialInsuranceId} onChange={e=>setEditFormData({...editFormData, socialInsuranceId:e.target.value})} /> : <p className="font-black">{emp.socialInsuranceId || '-'}</p>}</div>
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('joinDate')}</label>{editingId === emp.id ? <input type="date" className={inputClass} value={editFormData.joinDate} onChange={e=>setEditFormData({...editFormData, joinDate:e.target.value})} /> : <p className="font-black">{emp.joinDate || '-'}</p>}</div>
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('cashierZone')}</label>{editingId === emp.id ? <input type="number" min="1" className={inputClass} value={editFormData.cashierZone} onChange={e=>setEditFormData({...editFormData, cashierZone:e.target.value})} /> : <p className="font-black">Z-{emp.cashierZone || '1'}</p>}</div>
+                                                                  
+                                                                  {(currentUser?.role === 'hr_manager' || currentUser?.role === 'owner') && (
+                                                                      <div><label className="text-[10px] font-black uppercase block mb-1 text-red-600">{t('confidentialWorker')}</label>{editingId === emp.id ? <input type="checkbox" className="w-5 h-5 accent-red-600" checked={editFormData.isConfidential || false} onChange={e=>setEditFormData({...editFormData, isConfidential:e.target.checked})} /> : <p className="font-black text-red-600">{emp.isConfidential ? 'YES' : 'NO'}</p>}</div>
+                                                                  )}
+
                                                                   {editingId === emp.id && <div className="col-span-full flex justify-end gap-2 mt-4"><button onClick={handleUpdate} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-black uppercase text-xs">{t('save')}</button><button onClick={()=>setEditingId(null)} className="bg-gray-200 text-black px-6 py-2 rounded-lg font-black uppercase text-xs">{t('cancel')}</button></div>}
                                                               </div>
                                                           </td>
@@ -1533,6 +1542,14 @@
                           <input type="number" min="1" className={inputClass} placeholder="e.g. 1 or 2" value={formData.cashierZone || '1'} onChange={e => setFormData({...formData, cashierZone: e.target.value})} required />
                       </div>
                   </div>
+                  
+                  {(currentUser?.role === 'hr_manager' || currentUser?.role === 'owner') && (
+                      <div className="flex items-center gap-3 bg-red-50 p-4 rounded-xl border border-red-100">
+                          <input type="checkbox" id="isConf" className="w-5 h-5 accent-red-600" checked={formData.isConfidential !== undefined ? formData.isConfidential : (currentUser?.role === 'hr_manager')} onChange={e => setFormData({...formData, isConfidential: e.target.checked})} />
+                          <label htmlFor="isConf" className="text-[10px] font-black uppercase text-red-700 tracking-widest">{t('confidentialWorker')}</label>
+                      </div>
+                  )}
+
                   <button type="submit" className="w-full bg-black text-white font-black py-5 rounded-xl shadow-xl hover:bg-gray-800 transition-all uppercase tracking-widest text-sm mt-6">{t('confirm')}</button>
                 </form>
               </section>
@@ -2578,6 +2595,7 @@
                        <input className={inputClass} placeholder={t('secretKey')} value={newUserFormData.password} onChange={e=>setNewUserFormData({...newUserFormData, password:e.target.value})} required />
                        <select className={inputClass} value={newUserFormData.role} onChange={e=>setNewUserFormData({...newUserFormData, role:e.target.value})}>
                            <option value="hr">HR</option>
+                           <option value="hr_manager">{t('hr_manager')}</option>
                            <option value="manager">Manager</option>
                            <option value="finance">Finance</option>
                            <option value="data_entry">Data Entry</option>
@@ -2773,11 +2791,11 @@
       const handleToggleMonthLock = (lockKey) => { const newLocks = lockedMonths.includes(lockKey) ? lockedMonths.filter(x => x !== lockKey) : [...lockedMonths, lockKey]; db.collection('meta').doc('locks').set({months: newLocks}); };
 
       const renderDashboard = () => {
-          const props = { employees, sections, attendance, advances, bonuses, grants, overtime, transportation, loans, pdfConfig, config: pdfConfig, lockedMonths, lang, t, toggleMonthLock: handleToggleMonthLock };
+          const props = { employees, sections, attendance, advances, bonuses, grants, overtime, transportation, loans, pdfConfig, config: pdfConfig, lockedMonths, lang, t, toggleMonthLock: handleToggleMonthLock, currentUser };
           
-          if (currentUser.role === 'owner') return <OwnerDashboard {...props} currentUser={currentUser} users={users} cashRegisters={cashRegisters} updateCashRegister={(date, balance) => db.collection('cash_registers').doc(date).set({startingBalance: balance})} setConfig={(c)=>db.collection('meta').doc('config').set(c)} addUser={(u)=>db.collection('users').add(u)} updateUser={(id, u)=>db.collection('users').doc(id).update(u)} deleteUser={(id)=>db.collection('users').doc(id).delete()} addBonus={(eid, amt, date, desc, period) => db.collection('bonuses').add({employeeId: eid, amount: amt, date, description: desc, period: period})} deleteBonus={(id) => db.collection('bonuses').doc(id).delete()} addGrant={(eid, amt, date, desc) => db.collection('grants').add({employeeId: eid, amount: amt, date, description: desc})} deleteGrant={(id) => db.collection('grants').doc(id).delete()} />;
+          if (currentUser.role === 'owner') return <OwnerDashboard {...props} users={users} cashRegisters={cashRegisters} updateCashRegister={(date, balance) => db.collection('cash_registers').doc(date).set({startingBalance: balance})} setConfig={(c)=>db.collection('meta').doc('config').set(c)} addUser={(u)=>db.collection('users').add(u)} updateUser={(id, u)=>db.collection('users').doc(id).update(u)} deleteUser={(id)=>db.collection('users').doc(id).delete()} addBonus={(eid, amt, date, desc, period) => db.collection('bonuses').add({employeeId: eid, amount: amt, date, description: desc, period: period})} deleteBonus={(id) => db.collection('bonuses').doc(id).delete()} addGrant={(eid, amt, date, desc) => db.collection('grants').add({employeeId: eid, amount: amt, date, description: desc})} deleteGrant={(id) => db.collection('grants').doc(id).delete()} />;
           
-          if (currentUser.role === 'hr') return <HRDashboard {...props} lockPeriod={handleToggleMonthLock} setPdfConfig={(c)=>db.collection('meta').doc('config').set(c)} addEmployee={(d)=>db.collection('employees').add(d)} updateEmployee={(id,d)=>db.collection('employees').doc(id).update(d)} deleteEmployee={(id)=>db.collection('employees').doc(id).delete()} addSection={(n)=>db.collection('sections').add({name:n})} deleteSection={(id)=>db.collection('sections').doc(id).delete()} resignEmployee={(id)=>db.collection('employees').doc(id).update({isResigned:true})} />;
+          if (currentUser.role === 'hr' || currentUser.role === 'hr_manager') return <HRDashboard {...props} lockPeriod={handleToggleMonthLock} setPdfConfig={(c)=>db.collection('meta').doc('config').set(c)} addEmployee={(d)=>db.collection('employees').add(d)} updateEmployee={(id,d)=>db.collection('employees').doc(id).update(d)} deleteEmployee={(id)=>db.collection('employees').doc(id).delete()} addSection={(n)=>db.collection('sections').add({name:n})} deleteSection={(id)=>db.collection('sections').doc(id).delete()} resignEmployee={(id)=>db.collection('employees').doc(id).update({isResigned:true})} />;
         
           if (currentUser.role === 'manager' || currentUser.role === 'data_entry') return <ManagerDashboard {...props} canEdit={currentUser.role === 'manager'} updateAttendance={(d, ids) => { const r = attendance.find(a=>a.date===d); if(r) db.collection('attendance').doc(r.id).update({absentEmployeeIds:ids}); else db.collection('attendance').add({date:d, absentEmployeeIds:ids}); }} addOvertime={(eid, hrs, d)=>db.collection('overtime').add({employeeId:eid, hours:hrs, date:d})} updateOvertime={(id, val)=>db.collection('overtime').doc(id).update({hours:val})} deleteOvertime={(id)=>db.collection('overtime').doc(id).delete()} />;
           
