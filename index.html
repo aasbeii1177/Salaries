@@ -205,6 +205,7 @@
       transportP2: { en: "Transport P2", ar: "مواصلات ف2" },
       hr_manager: { en: "HR Manager", ar: "مدير الموارد البشرية" },
       confidentialWorker: { en: "Confidential (Hidden from HR)", ar: "عامل سري (مخفي عن الموارد البشرية)" },
+      jobTitle: { en: "Job Title", ar: "المسمى الوظيفي" },
       financialLoans: { en: "Financial: Loans", ar: "المالية: القروض" },
       delLoans: { en: "Deletes all loan contracts.", ar: "حذف جميع عقود القروض." },
       wipeLoans: { en: "Wipe Loans", ar: "مسح القروض" },
@@ -1100,7 +1101,7 @@
     };
 // --------------
     const HRDashboard = ({ currentUser, employees, sections, addEmployee, updateEmployee, resignEmployee, deleteEmployee, addSection, deleteSection, attendance, advances, overtime, transportation, loans, pdfConfig, bonuses, grants, lockedMonths, toggleMonthLock, lang, t }) => {
-      const [formData, setFormData] = React.useState({ name: '', wage: '', transportAllowance: '0', shift: 'day', joinDate: new Date().toISOString().split('T')[0], nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '', dateOfBirth: '', sectionId: '', period1Amount: '', period2Amount: '' });
+      const [formData, setFormData] = React.useState({ name: '', jobTitle: '', wage: '', transportAllowance: '0', shift: 'day', joinDate: new Date().toISOString().split('T')[0], nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '', dateOfBirth: '', sectionId: '', period1Amount: '', period2Amount: '' });
       const [isGenerating, setIsGenerating] = React.useState(false); 
       const [searchQuery, setSearchQuery] = React.useState(''); 
       const [viewResigned, setViewResigned] = React.useState(false); 
@@ -1149,7 +1150,8 @@
 
           addEmployee({ 
               ...formData, 
-              monthlyWage: finalWage, 
+              monthlyWage: finalWage,
+              jobTitle: formData.jobTitle || 'Worker',
               period1Amount: p1Amt,
               transportPeriod1Amount: parseFloat(formData.transportPeriod1Amount) || 0,
               transportPeriod2Amount: parseFloat(formData.transportPeriod2Amount) || 0,
@@ -1160,7 +1162,7 @@
               weeklyWage: parseFloat(formData.weeklyWage) || 0,
               isConfidential: formData.isConfidential !== undefined ? formData.isConfidential : (currentUser?.role === 'hr_manager')
           }); 
-          setFormData({ ...formData, name: '', wage: '', dailyWage: '', weeklyWage: '', period1Amount: '', period2Amount: '', transportPeriod1Amount: '', transportPeriod2Amount: '', nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '', isConfidential: currentUser?.role === 'hr_manager' }); 
+          setFormData({ ...formData, name: '', jobTitle: '', wage: '', dailyWage: '', weeklyWage: '', period1Amount: '', period2Amount: '', transportPeriod1Amount: '', transportPeriod2Amount: '', nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '', isConfidential: currentUser?.role === 'hr_manager' }); 
           alert("Worker Added Successfully!"); 
       };
       
@@ -1171,10 +1173,10 @@
               if (pref === '1') tp1 = leg; else if (pref === 'split') { tp1 = leg/2; tp2 = leg/2; } else tp2 = leg;
           }
           setEditingId(emp.id); 
-          setEditFormData({ ...emp, wage: emp.monthlyWage, transportPeriod1Amount: tp1, transportPeriod2Amount: tp2, cashierZone: emp.cashierZone || '1', joinDate: emp.joinDate || new Date().toISOString().split('T')[0], payCycle: emp.payCycle || 'monthly', dailyWage: emp.dailyWage || '', weeklyWage: emp.weeklyWage || '', isConfidential: emp.isConfidential || false }); 
+          setEditFormData({ ...emp, wage: emp.monthlyWage, jobTitle: emp.jobTitle || '', transportPeriod1Amount: tp1, transportPeriod2Amount: tp2, cashierZone: emp.cashierZone || '1', joinDate: emp.joinDate || new Date().toISOString().split('T')[0], payCycle: emp.payCycle || 'monthly', dailyWage: emp.dailyWage || '', weeklyWage: emp.weeklyWage || '', isConfidential: emp.isConfidential || false }); 
       };
       
-      const handleUpdate = () => { updateEmployee(editingId, { ...editFormData, monthlyWage: parseFloat(editFormData.wage), transportPeriod1Amount: parseFloat(editFormData.transportPeriod1Amount) || 0, transportPeriod2Amount: parseFloat(editFormData.transportPeriod2Amount) || 0, cashierZone: (editFormData.cashierZone || '1').toString(), dailyWage: parseFloat(editFormData.dailyWage) || 0, weeklyWage: parseFloat(editFormData.weeklyWage) || 0, isConfidential: !!editFormData.isConfidential }); setEditingId(null); };
+      const handleUpdate = () => { updateEmployee(editingId, { ...editFormData, monthlyWage: parseFloat(editFormData.wage), jobTitle: editFormData.jobTitle || 'Worker', transportPeriod1Amount: parseFloat(editFormData.transportPeriod1Amount) || 0, transportPeriod2Amount: parseFloat(editFormData.transportPeriod2Amount) || 0, cashierZone: (editFormData.cashierZone || '1').toString(), dailyWage: parseFloat(editFormData.dailyWage) || 0, weeklyWage: parseFloat(editFormData.weeklyWage) || 0, isConfidential: !!editFormData.isConfidential }); setEditingId(null); };
       const handleViewTotals = (month) => { 
           const activeEmps = employees.filter(e => !e.isResigned); 
           let p1Count = 0, p2Count = 0, fullCount = 0;
@@ -1204,13 +1206,13 @@
       const downloadTemplate = () => { 
           const isAr = lang === 'ar'; 
           const headers = isAr ? 
-             ['الاسم', 'القسم', 'رقم الصندوق', 'دورة الدفع (monthly/daily/weekly)', 'تاريخ الانضمام', 'الراتب الشهري', 'مبلغ الفترة الأولى', 'مبلغ الفترة الثانية', 'مواصلات ف1', 'مواصلات ف2', 'الأجر اليومي', 'الأجر الأسبوعي', 'الوردية', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] : 
-             ['Name', 'Section', 'Cashier Zone', 'Pay Cycle (monthly/daily/weekly)', 'Join Date', 'Monthly Wage', 'Period 1 Amount', 'Period 2 Amount', 'Transport P1', 'Transport P2', 'Daily Wage', 'Weekly Wage', 'Shift', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name']; 
+             ['الاسم', 'المسمى الوظيفي', 'القسم', 'رقم الصندوق', 'دورة الدفع (monthly/daily/weekly)', 'تاريخ الانضمام', 'الراتب الشهري', 'مبلغ الفترة الأولى', 'مبلغ الفترة الثانية', 'مواصلات ف1', 'مواصلات ف2', 'الأجر اليومي', 'الأجر الأسبوعي', 'الوردية', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] : 
+             ['Name', 'Job Title', 'Section', 'Cashier Zone', 'Pay Cycle (monthly/daily/weekly)', 'Join Date', 'Monthly Wage', 'Period 1 Amount', 'Period 2 Amount', 'Transport P1', 'Transport P2', 'Daily Wage', 'Weekly Wage', 'Shift', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name']; 
           
           const sample = isAr ? 
-             ['أحمد', 'القسم العام', '1', 'monthly', '2024-01-01', '', '250000', '250000', '25000', '25000', '0', '0', 'صباحي', '010101010', '123456', 'محمود', 'فاطمة'] : 
-             ['John Doe', 'General', '1', 'monthly', '2024-01-01', '', '250000', '250000', '25000', '25000', '0', '0', 'day', '010101010', '123456', 'Robert', 'Mary'];  
-          
+             ['أحمد', 'عامل', 'القسم العام', '1', 'monthly', '2024-01-01', '', '250000', '250000', '25000', '25000', '0', '0', 'صباحي', '010101010', '123456', 'محمود', 'فاطمة'] : 
+             ['John Doe', 'Worker', 'General', '1', 'monthly', '2024-01-01', '', '250000', '250000', '25000', '25000', '0', '0', 'day', '010101010', '123456', 'Robert', 'Mary'];  
+        
           const ws = XLSX.utils.aoa_to_sheet([headers, sample]); 
           const wb = XLSX.utils.book_new(); 
           XLSX.utils.book_append_sheet(wb, ws, "Template"); 
@@ -1230,8 +1232,11 @@
               let count = 0; 
               
               data.forEach(row => { 
+                  // --- REPLACE IT WITH THIS ---
                   const name = row['Name'] || row['الاسم']; 
                   if (!name) return; 
+                  
+                  let jTitle = (row['Job Title'] || row['المسمى الوظيفي'] || 'Worker').toString().trim();
                   
                   // Read Pay Cycle
                   const rawCycle = (row['Pay Cycle (monthly/daily/weekly)'] || row['دورة الدفع (monthly/daily/weekly)'] || 'monthly').toString().toLowerCase();
@@ -1273,7 +1278,8 @@
                   }
 
                   const newEmp = { 
-                      name: name.toString(), 
+                      name: name.toString(),
+                      jobTitle: jTitle,
                       payCycle: cycleVal,
                       monthlyWage: wage, 
                       dailyWage: dWage,
@@ -1369,7 +1375,10 @@
                                               <React.Fragment key={emp.id}>
                                                   <tr className="hover:bg-indigo-50/30 transition-colors border-b border-gray-50">
                                                       <td className="px-4 py-4 w-10 text-center"><button onClick={() => setExpandedId(expandedId === emp.id ? null : emp.id)} className="text-black hover:text-indigo-600 font-bold text-lg">{expandedId === emp.id ? '-' : '+'}</button></td>
-                                                      <td className="px-6 py-4"><span className="font-black text-black">{emp.name}</span> <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${emp.shift === 'night' ? 'bg-black text-amber-400' : 'bg-amber-100 text-amber-700'}`}>{t(emp.shift || 'day')}</span></td>
+                                                      <td className="px-6 py-4">
+                                                          <div className="flex items-center gap-2"><span className="font-black text-black">{emp.name}</span> <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${emp.shift === 'night' ? 'bg-black text-amber-400' : 'bg-amber-100 text-amber-700'}`}>{t(emp.shift || 'day')}</span></div>
+                                                          <div className="text-[10px] font-bold text-indigo-600 uppercase mt-1">{emp.jobTitle || 'Worker'}</div>
+                                                      </td>
                                                       <td className="px-6 py-4 text-center"><span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-[10px] font-black tracking-widest">Z-{emp.cashierZone || '1'}</span></td>
                                                       <td className="px-6 py-4 text-center font-black text-black">{emp.monthlyWage.toLocaleString()} {pdfConfig.mainSymbol || 'SYP'}</td>
                                                       <td className="px-6 py-4 text-center font-black text-black">{emp.transportationAllowance > 0 ? <span className="text-green-600">{emp.transportationAllowance.toLocaleString()}</span> : <span className="text-red-500 bg-red-50 px-2 py-1 rounded text-[10px] uppercase">{t('missing')}</span>}</td>
@@ -1384,6 +1393,7 @@
                                                           <td colSpan={6} className="px-8 py-6">
                                                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('name')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.name} onChange={e=>setEditFormData({...editFormData, name:e.target.value})} /> : <p className="font-black">{emp.name}</p>}</div>
+                                                                  <div><label className="text-[10px] font-black uppercase block mb-1">{t('jobTitle')}</label>{editingId === emp.id ? <input className={inputClass} placeholder="e.g. Manager, Worker..." value={editFormData.jobTitle} onChange={e=>setEditFormData({...editFormData, jobTitle:e.target.value})} /> : <p className="font-black">{emp.jobTitle || 'Worker'}</p>}</div>
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('wage')}</label>{editingId === emp.id ? <MoneyInput className={inputClass} value={editFormData.wage} onChange={e=>setEditFormData({...editFormData, wage:e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} /> : <p className="font-black">{emp.monthlyWage}</p>}</div>
                                                                   <div className="col-span-full border-t border-gray-200 mt-2 pt-2">
                                                                       <p className="text-[10px] font-black uppercase text-indigo-600 mb-2">{t('paymentSettings')}</p>
@@ -1446,6 +1456,13 @@
                           <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('name')}</label>
                           <input type="text" required className={inputClass} placeholder={t('name')} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                       </div>
+                      <div>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('jobTitle')}</label>
+                          <input type="text" className={inputClass} placeholder="e.g. Manager, Worker..." value={formData.jobTitle || ''} onChange={e => setFormData({...formData, jobTitle: e.target.value})} />
+                      </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                           <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('joinDate')}</label>
                           <input type="date" required className={inputClass} value={formData.joinDate} onChange={e => setFormData({...formData, joinDate: e.target.value})} />
