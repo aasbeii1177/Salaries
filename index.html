@@ -1277,31 +1277,61 @@
                       jDate = new Date(excelEpoch.getTime() + jDate * 86400000).toISOString().split('T')[0];
                   }
 
-                  const newEmp = { 
-                      name: name.toString(),
-                      jobTitle: jTitle,
-                      payCycle: cycleVal,
-                      monthlyWage: wage, 
-                      dailyWage: dWage,
-                      weeklyWage: wWage,
-                      period1Amount: p1, 
-                      transportPeriod1Amount: tp1,
-                      transportPeriod2Amount: tp2,
-                      shift: shiftVal, 
-                      joinDate: jDate, 
-                      nationalId: (row['National ID'] || row['الرقم الوطني'] || '').toString(), 
-                      socialInsuranceId: (row['Insurance ID'] || row['رقم التأمين'] || '').toString(), 
-                      fatherName: (row['Father Name'] || row['اسم الأب'] || '').toString(), 
-                      motherName: (row['Mother Name'] || row['اسم الأم'] || '').toString(), 
-                      sectionId: matchedSectionId, 
-                      cashierZone: (row['Cashier Zone'] || row['رقم الصندوق'] || '1').toString(),
-                      isResigned: false 
-                  }; 
-                  
-                  addEmployee(newEmp); 
+                  // --- REPLACE IT WITH THIS ---
+                  const natId = (row['National ID'] || row['الرقم الوطني'] || '').toString();
+                  const insId = (row['Insurance ID'] || row['رقم التأمين'] || '').toString();
+                  const fName = (row['Father Name'] || row['اسم الأب'] || '').toString();
+                  const mName = (row['Mother Name'] || row['اسم الأم'] || '').toString();
+                  const cZone = (row['Cashier Zone'] || row['رقم الصندوق'] || '').toString();
+
+                  // NEW: Smart Sync - Check if the employee already exists
+                  const existingEmp = employees.find(e => e.name.toLowerCase() === name.toString().toLowerCase());
+
+                  if (existingEmp) {
+                      // Update existing profile (Only overrides fields if the Excel box wasn't empty)
+                      const updateData = {};
+                      if (jTitle !== 'Worker') updateData.jobTitle = jTitle;
+                      if (wage > 0) updateData.monthlyWage = wage;
+                      if (dWage > 0) updateData.dailyWage = dWage;
+                      if (wWage > 0) updateData.weeklyWage = wWage;
+                      if (p1 > 0) updateData.period1Amount = p1;
+                      if (tp1 > 0) updateData.transportPeriod1Amount = tp1;
+                      if (tp2 > 0) updateData.transportPeriod2Amount = tp2;
+                      if (natId) updateData.nationalId = natId;
+                      if (insId) updateData.socialInsuranceId = insId;
+                      if (fName) updateData.fatherName = fName;
+                      if (mName) updateData.motherName = mName;
+                      if (matchedSectionId) updateData.sectionId = matchedSectionId;
+                      if (cZone) updateData.cashierZone = cZone;
+                      
+                      updateEmployee(existingEmp.id, updateData);
+                  } else {
+                    
+                      const newEmp = { 
+                          name: name.toString(), 
+                          jobTitle: jTitle,
+                          payCycle: cycleVal,
+                          monthlyWage: wage, 
+                          dailyWage: dWage,
+                          weeklyWage: wWage,
+                          period1Amount: p1, 
+                          transportPeriod1Amount: tp1,
+                          transportPeriod2Amount: tp2,
+                          shift: shiftVal, 
+                          joinDate: jDate, 
+                          nationalId: natId, 
+                          socialInsuranceId: insId, 
+                          fatherName: fName, 
+                          motherName: mName, 
+                          sectionId: matchedSectionId, 
+                          cashierZone: cZone || '1',
+                          isResigned: false 
+                      }; 
+                      addEmployee(newEmp); 
+                  }
                   count++; 
               }); 
-              alert(`Successfully imported ${count} employees!`); 
+              alert(`Successfully processed ${count} employees (Updated existing & Added new)!`); 
               e.target.value = null; 
           }; 
       };
