@@ -336,10 +336,22 @@
         if (isP1) wageForPeriod = Math.min(basePlusNight, p1Amount);
         else if (!isFull) wageForPeriod = Math.max(0, basePlusNight - p1Amount);
 
-        const transPref = emp.transportPeriod || '2'; 
-        let includeTransport = isFull || transPref === 'split' || (transPref === '1' && isP1) || (transPref === '2' && !isP1);
-        let fixedTransport = includeTransport ? (parseFloat(emp.transportationAllowance) || 0) : 0;
-        if (transPref === 'split' && !isFull) fixedTransport /= 2;
+        let tp1 = parseFloat(emp.transportPeriod1Amount) || 0;
+        let tp2 = parseFloat(emp.transportPeriod2Amount) || 0;
+        
+        // Legacy Support for existing workers
+        if (!emp.transportPeriod1Amount && !emp.transportPeriod2Amount && emp.transportationAllowance) {
+            const legacyTotal = parseFloat(emp.transportationAllowance) || 0;
+            const pref = emp.transportPeriod || '2';
+            if (pref === '1') tp1 = legacyTotal;
+            else if (pref === 'split') { tp1 = legacyTotal / 2; tp2 = legacyTotal / 2; }
+            else tp2 = legacyTotal;
+        }
+
+        let fixedTransport = 0;
+        if (isFull) fixedTransport = tp1 + tp2;
+        else if (isP1) fixedTransport = tp1;
+        else fixedTransport = tp2;
 
         const absenceRecords = monthAttendance.filter(a => (a.absentEmployeeIds || []).includes(emp.id));
         const daysAbsent = absenceRecords.length;
@@ -1122,31 +1134,38 @@
 
       const handleAdd = (e) => { 
           e.preventDefault(); 
-          
           let finalWage = parseFloat(formData.wage) || 0;
           let p1Amt = parseFloat(formData.period1Amount) || 0;
           let p2Amt = parseFloat(formData.period2Amount) || 0;
-          
           if (finalWage === 0 && p1Amt > 0 && p2Amt > 0) finalWage = p1Amt + p2Amt;
 
           addEmployee({ 
               ...formData, 
               monthlyWage: finalWage, 
               period1Amount: p1Amt,
-              transportationAllowance: parseFloat(formData.transportAllowance) || 0, 
+              transportPeriod1Amount: parseFloat(formData.transportPeriod1Amount) || 0,
+              transportPeriod2Amount: parseFloat(formData.transportPeriod2Amount) || 0,
               sectionId: formData.sectionId || undefined,
               cashierZone: (formData.cashierZone || '1').toString(),
               payCycle: formData.payCycle || 'monthly',
               dailyWage: parseFloat(formData.dailyWage) || 0,
               weeklyWage: parseFloat(formData.weeklyWage) || 0
           }); 
-          
-          setFormData({ ...formData, name: '', wage: '', dailyWage: '', weeklyWage: '', period1Amount: '', period2Amount: '', nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '' }); 
+          setFormData({ ...formData, name: '', wage: '', dailyWage: '', weeklyWage: '', period1Amount: '', period2Amount: '', transportPeriod1Amount: '', transportPeriod2Amount: '', nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '' }); 
           alert("Worker Added Successfully!"); 
       };
       
-      const startEditing = (emp) => { setEditingId(emp.id); setEditFormData({ ...emp, wage: emp.monthlyWage, transportAllowance: emp.transportationAllowance, cashierZone: emp.cashierZone || '1', joinDate: emp.joinDate || new Date().toISOString().split('T')[0], payCycle: emp.payCycle || 'monthly', dailyWage: emp.dailyWage || '', weeklyWage: emp.weeklyWage || '' }); };
-      const handleUpdate = () => { updateEmployee(editingId, { ...editFormData, monthlyWage: parseFloat(editFormData.wage), transportationAllowance: parseFloat(editFormData.transportAllowance), cashierZone: (editFormData.cashierZone || '1').toString(), dailyWage: parseFloat(editFormData.dailyWage) || 0, weeklyWage: parseFloat(editFormData.weeklyWage) || 0 }); setEditingId(null); };
+      const startEditing = (emp) => { 
+          let tp1 = emp.transportPeriod1Amount || ''; let tp2 = emp.transportPeriod2Amount || '';
+          if (!tp1 && !tp2 && emp.transportationAllowance) {
+              const leg = parseFloat(emp.transportationAllowance) || 0; const pref = emp.transportPeriod || '2';
+              if (pref === '1') tp1 = leg; else if (pref === 'split') { tp1 = leg/2; tp2 = leg/2; } else tp2 = leg;
+          }
+          setEditingId(emp.id); 
+          setEditFormData({ ...emp, wage: emp.monthlyWage, transportPeriod1Amount: tp1, transportPeriod2Amount: tp2, cashierZone: emp.cashierZone || '1', joinDate: emp.joinDate || new Date().toISOString().split('T')[0], payCycle: emp.payCycle || 'monthly', dailyWage: emp.dailyWage || '', weeklyWage: emp.weeklyWage || '' }); 
+      };
+      
+      const handleUpdate = () => { updateEmployee(editingId, { ...editFormData, monthlyWage: parseFloat(editFormData.wage), transportPeriod1Amount: parseFloat(editFormData.transportPeriod1Amount) || 0, transportPeriod2Amount: parseFloat(editFormData.transportPeriod2Amount) || 0, cashierZone: (editFormData.cashierZone || '1').toString(), dailyWage: parseFloat(editFormData.dailyWage) || 0, weeklyWage: parseFloat(editFormData.weeklyWage) || 0 }); setEditingId(null); };
       const handleViewTotals = (month) => { 
           const activeEmps = employees.filter(e => !e.isResigned); 
           let p1Count = 0, p2Count = 0, fullCount = 0;
@@ -1176,12 +1195,12 @@
       const downloadTemplate = () => { 
           const isAr = lang === 'ar'; 
           const headers = isAr ? 
-             ['الاسم', 'القسم', 'رقم الصندوق', 'الراتب', 'مبلغ الفترة الأولى', 'مبلغ الفترة الثانية', 'المواصلات', 'الوردية', 'فترة المواصلات', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] : 
-             ['Name', 'Section', 'Cashier Zone', 'Wage', 'Period 1 Amount', 'Period 2 Amount', 'Transport', 'Shift', 'Transport Period', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name']; 
+             ['الاسم', 'القسم', 'رقم الصندوق', 'دورة الدفع (monthly/daily/weekly)', 'تاريخ الانضمام', 'الراتب الشهري', 'مبلغ الفترة الأولى', 'مبلغ الفترة الثانية', 'مواصلات ف1', 'مواصلات ف2', 'الأجر اليومي', 'الأجر الأسبوعي', 'الوردية', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] : 
+             ['Name', 'Section', 'Cashier Zone', 'Pay Cycle (monthly/daily/weekly)', 'Join Date', 'Monthly Wage', 'Period 1 Amount', 'Period 2 Amount', 'Transport P1', 'Transport P2', 'Daily Wage', 'Weekly Wage', 'Shift', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name']; 
           
           const sample = isAr ? 
-             ['أحمد', 'القسم العام', '1', '', '250000', '250000', '50000', 'صباحي', '2', '010101010', '123456', 'محمود', 'فاطمة'] : 
-             ['John Doe', 'General', '1', '', '250000', '250000', '50000', 'day', '2', '010101010', '123456', 'Robert', 'Mary'];  
+             ['أحمد', 'القسم العام', '1', 'monthly', '2024-01-01', '', '250000', '250000', '25000', '25000', '0', '0', 'صباحي', '010101010', '123456', 'محمود', 'فاطمة'] : 
+             ['John Doe', 'General', '1', 'monthly', '2024-01-01', '', '250000', '250000', '25000', '25000', '0', '0', 'day', '010101010', '123456', 'Robert', 'Mary'];  
           
           const ws = XLSX.utils.aoa_to_sheet([headers, sample]); 
           const wb = XLSX.utils.book_new(); 
@@ -1205,46 +1224,61 @@
                   const name = row['Name'] || row['الاسم']; 
                   if (!name) return; 
                   
+                  // Read Pay Cycle
+                  const rawCycle = (row['Pay Cycle (monthly/daily/weekly)'] || row['دورة الدفع (monthly/daily/weekly)'] || 'monthly').toString().toLowerCase();
+                  let cycleVal = 'monthly';
+                  if (rawCycle.includes('daily') || rawCycle.includes('يومي')) cycleVal = 'daily';
+                  if (rawCycle.includes('weekly') || rawCycle.includes('اسبوعي') || rawCycle.includes('أسبوعي')) cycleVal = 'weekly';
+
                   let p1 = parseFloat(row['Period 1 Amount'] || row['مبلغ الفترة الأولى']) || 0;
                   let p2 = parseFloat(row['Period 2 Amount'] || row['مبلغ الفترة الثانية']) || 0;
-                  let wage = parseFloat(row['Wage'] || row['الراتب']) || 0;
+                  let wage = parseFloat(row['Monthly Wage'] || row['الراتب الشهري']) || 0;
+                  let dWage = parseFloat(row['Daily Wage'] || row['الأجر اليومي']) || 0;
+                  let wWage = parseFloat(row['Weekly Wage'] || row['الأجر الأسبوعي']) || 0;
+                  let tp1 = parseFloat(row['Transport P1'] || row['مواصلات ف1']) || 0;
+                  let tp2 = parseFloat(row['Transport P2'] || row['مواصلات ف2']) || 0;
                   
-                  // Auto Calculate Wage if it's missing but P1 and P2 exist
-                  if (wage === 0 && p1 > 0 && p2 > 0) {
-                      wage = p1 + p2;
-                  }
+                  // Auto Calculate Wage if missing
+                  if (wage === 0 && p1 > 0 && p2 > 0) wage = p1 + p2;
                   
-                  if (wage === 0 && p1 === 0) return; // Ignore completely blank salary rows
+                  // Ignore entirely blank rows
+                  if (wage === 0 && dWage === 0 && wWage === 0 && p1 === 0) return; 
 
                   const rawShift = (row['Shift'] || row['الوردية'] || '').toString().toLowerCase(); 
                   const shiftVal = (rawShift.includes('night') || rawShift.includes('مساء') || rawShift.includes('ليل')) ? 'night' : 'day'; 
-                  
-                  const rawTPeriod = (row['Transport Period'] || row['فترة المواصلات'] || '2').toString().toLowerCase(); 
-                  const tPeriod = rawTPeriod.includes('1') ? '1' : (rawTPeriod.includes('split') || rawTPeriod.includes('تقسيم') ? 'split' : '2'); 
                   
                   // Match Section
                   const sectionNameInput = (row['Section'] || row['القسم'] || '').toString().trim();
                   let matchedSectionId = '';
                   if (sectionNameInput) {
                       const foundSection = sections.find(s => s.name.toLowerCase() === sectionNameInput.toLowerCase());
-                      if (foundSection) {
-                          matchedSectionId = foundSection.id;
-                      }
+                      if (foundSection) matchedSectionId = foundSection.id;
+                  }
+                  
+                  // Read Join Date
+                  let jDate = row['Join Date'] || row['تاريخ الانضمام'] || new Date().toISOString().split('T')[0];
+                  // If Excel converts date to a number (serial date), fix it:
+                  if (typeof jDate === 'number') {
+                      const excelEpoch = new Date(1899, 11, 30);
+                      jDate = new Date(excelEpoch.getTime() + jDate * 86400000).toISOString().split('T')[0];
                   }
 
                   const newEmp = { 
                       name: name.toString(), 
+                      payCycle: cycleVal,
                       monthlyWage: wage, 
-                      transportationAllowance: parseFloat(row['Transport'] || row['المواصلات']) || 0, 
+                      dailyWage: dWage,
+                      weeklyWage: wWage,
+                      period1Amount: p1, 
+                      transportPeriod1Amount: tp1,
+                      transportPeriod2Amount: tp2,
                       shift: shiftVal, 
-                      joinDate: new Date().toISOString().split('T')[0], 
+                      joinDate: jDate, 
                       nationalId: (row['National ID'] || row['الرقم الوطني'] || '').toString(), 
                       socialInsuranceId: (row['Insurance ID'] || row['رقم التأمين'] || '').toString(), 
                       fatherName: (row['Father Name'] || row['اسم الأب'] || '').toString(), 
                       motherName: (row['Mother Name'] || row['اسم الأم'] || '').toString(), 
                       sectionId: matchedSectionId, 
-                      period1Amount: p1, 
-                      transportPeriod: tPeriod, 
                       cashierZone: (row['Cashier Zone'] || row['رقم الصندوق'] || '1').toString(),
                       isResigned: false 
                   }; 
@@ -1344,16 +1378,20 @@
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('wage')}</label>{editingId === emp.id ? <MoneyInput className={inputClass} value={editFormData.wage} onChange={e=>setEditFormData({...editFormData, wage:e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} /> : <p className="font-black">{emp.monthlyWage}</p>}</div>
                                                                   <div className="col-span-full border-t border-gray-200 mt-2 pt-2">
                                                                       <p className="text-[10px] font-black uppercase text-indigo-600 mb-2">{t('paymentSettings')}</p>
-                                                                      <div className="grid grid-cols-2 gap-4">
+                                                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                                                           <div><label className="block text-[10px] font-black text-gray-500 uppercase mb-1">{t('period1Amount')}</label><MoneyInput className={inputClass} value={editFormData.period1Amount || ''} onChange={e=>setEditFormData({...editFormData, period1Amount:e.target.value})} placeholder={t('amount')} currency={pdfConfig.mainSymbol || 'SYP'} /></div>
-                                                                          <div><label className="block text-[10px] font-black text-gray-500 uppercase mb-1">{t('transPeriod')}</label><select className={inputClass} value={editFormData.transportPeriod || '2'} onChange={e=>setEditFormData({...editFormData, transportPeriod:e.target.value})}><option value="1">{t('period1')}</option><option value="2">{t('period2')}</option><option value="split">{t('split')}</option></select></div>
+                                                                          <div><label className="block text-[10px] font-black text-gray-500 uppercase mb-1">{t('period2Amount')}</label><MoneyInput className={inputClass} value={editFormData.period2Amount || ''} onChange={e=>setEditFormData({...editFormData, period2Amount:e.target.value})} placeholder={t('amount')} currency={pdfConfig.mainSymbol || 'SYP'} /></div>
+                                                                      </div>
+                                                                      <p className="text-[10px] font-black uppercase text-indigo-600 mb-2">Transport Allowances</p>
+                                                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                                          <div><label className="block text-[10px] font-black text-gray-500 uppercase mb-1">Transport P1</label>{editingId === emp.id ? <MoneyInput className={inputClass} value={editFormData.transportPeriod1Amount || ''} onChange={e=>setEditFormData({...editFormData, transportPeriod1Amount:e.target.value})} placeholder="0" currency={pdfConfig.mainSymbol || 'SYP'} /> : <p className="font-black">{emp.transportPeriod1Amount || (emp.transportationAllowance && emp.transportPeriod === '1' ? emp.transportationAllowance : (emp.transportationAllowance && emp.transportPeriod === 'split' ? emp.transportationAllowance/2 : '0'))}</p>}</div>
+                                                                          <div><label className="block text-[10px] font-black text-gray-500 uppercase mb-1">Transport P2</label>{editingId === emp.id ? <MoneyInput className={inputClass} value={editFormData.transportPeriod2Amount || ''} onChange={e=>setEditFormData({...editFormData, transportPeriod2Amount:e.target.value})} placeholder="0" currency={pdfConfig.mainSymbol || 'SYP'} /> : <p className="font-black">{emp.transportPeriod2Amount || (emp.transportationAllowance && (!emp.transportPeriod || emp.transportPeriod === '2') ? emp.transportationAllowance : (emp.transportationAllowance && emp.transportPeriod === 'split' ? emp.transportationAllowance/2 : '0'))}</p>}</div>
                                                                       </div>
                                                                   </div>
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('fatherName')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.fatherName} onChange={e=>setEditFormData({...editFormData, fatherName:e.target.value})} /> : <p className="font-black">{emp.fatherName || '-'}</p>}</div>
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('motherName')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.motherName} onChange={e=>setEditFormData({...editFormData, motherName:e.target.value})} /> : <p className="font-black">{emp.motherName || '-'}</p>}</div>
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('nationalId')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.nationalId} onChange={e=>setEditFormData({...editFormData, nationalId:e.target.value})} /> : <p className="font-black">{emp.nationalId || '-'}</p>}</div>
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('insuranceId')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.socialInsuranceId} onChange={e=>setEditFormData({...editFormData, socialInsuranceId:e.target.value})} /> : <p className="font-black">{emp.socialInsuranceId || '-'}</p>}</div>
-                                                                  <div><label className="text-[10px] font-black uppercase block mb-1">{t('transport')}</label>{editingId === emp.id ? <MoneyInput className={inputClass} value={editFormData.transportationAllowance} onChange={e=>setEditFormData({...editFormData, transportationAllowance:e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} /> : <p className="font-black">{emp.transportationAllowance || '0'}</p>}</div>
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('joinDate')}</label>{editingId === emp.id ? <input type="date" className={inputClass} value={editFormData.joinDate} onChange={e=>setEditFormData({...editFormData, joinDate:e.target.value})} /> : <p className="font-black">{emp.joinDate || '-'}</p>}</div>
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('cashierZone')}</label>{editingId === emp.id ? <input type="number" min="1" className={inputClass} value={editFormData.cashierZone} onChange={e=>setEditFormData({...editFormData, cashierZone:e.target.value})} /> : <p className="font-black">Z-{emp.cashierZone || '1'}</p>}</div>
                                                                   {editingId === emp.id && <div className="col-span-full flex justify-end gap-2 mt-4"><button onClick={handleUpdate} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-black uppercase text-xs">{t('save')}</button><button onClick={()=>setEditingId(null)} className="bg-gray-200 text-black px-6 py-2 rounded-lg font-black uppercase text-xs">{t('cancel')}</button></div>}
@@ -1429,10 +1467,6 @@
                               <option value="weekly">{t('weekly')}</option>
                           </select>
                       </div>
-                      <div>
-                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('transport')}</label>
-                          <MoneyInput required className={inputClass} placeholder="0" value={formData.transportAllowance} onChange={e => setFormData({...formData, transportAllowance: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
-                      </div>
                   </div>
 
                   {(!formData.payCycle || formData.payCycle === 'monthly') && (
@@ -1441,8 +1475,8 @@
                               <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('wage')} (Monthly)</label>
                               <MoneyInput className={inputClass} placeholder="0" value={formData.wage} onChange={e => setFormData({...formData, wage: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                              <p className="col-span-full text-xs font-black uppercase text-gray-500 tracking-widest">{t('paymentSettings')}</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                              <p className="col-span-full text-xs font-black uppercase text-gray-500 tracking-widest">{t('paymentSettings')} - Wages</p>
                               <div>
                                   <label className="block text-[10px] font-bold mb-2">{t('period1Amount')}</label>
                                   <MoneyInput className={inputClass} placeholder={t('amount')} value={formData.period1Amount || ''} onChange={e => setFormData({...formData, period1Amount: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
@@ -1451,13 +1485,16 @@
                                   <label className="block text-[10px] font-bold mb-2">{t('period2Amount')}</label>
                                   <MoneyInput className={inputClass} placeholder={t('amount')} value={formData.period2Amount || ''} onChange={e => setFormData({...formData, period2Amount: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
                               </div>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                              <p className="col-span-full text-xs font-black uppercase text-gray-500 tracking-widest">Transport Allowances</p>
                               <div>
-                                  <label className="block text-[10px] font-bold mb-2">{t('transPeriod')}</label>
-                                  <select className={inputClass} value={formData.transportPeriod || '2'} onChange={e => setFormData({...formData, transportPeriod: e.target.value})}>
-                                      <option value="1">{t('period1')}</option>
-                                      <option value="2">{t('period2')}</option>
-                                      <option value="split">{t('split')}</option>
-                                  </select>
+                                  <label className="block text-[10px] font-bold mb-2">Transport Period 1</label>
+                                  <MoneyInput className={inputClass} placeholder="0" value={formData.transportPeriod1Amount || ''} onChange={e => setFormData({...formData, transportPeriod1Amount: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
+                              </div>
+                              <div>
+                                  <label className="block text-[10px] font-bold mb-2">Transport Period 2</label>
+                                  <MoneyInput className={inputClass} placeholder="0" value={formData.transportPeriod2Amount || ''} onChange={e => setFormData({...formData, transportPeriod2Amount: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
                               </div>
                           </div>
                       </div>
