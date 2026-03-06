@@ -190,6 +190,14 @@
       dataMaintenanceReset: { en: "Data Maintenance & Reset", ar: "صيانة وتصفير البيانات" },
       resetSubtext: { en: "Select a specific category to permanently delete all its records. This action cannot be undone.", ar: "اختر فئة محددة لحذف جميع سجلاتها نهائياً. لا يمكن التراجع عن هذا الإجراء." },
       joinDate: { en: "Join Date", ar: "تاريخ الانضمام" },
+      payCycle: { en: "Pay Cycle", ar: "دورة الدفع" },
+      monthly: { en: "Monthly / Half-Month", ar: "شهري / نصف شهري" },
+      daily: { en: "Daily", ar: "يومي" },
+      weekly: { en: "Weekly", ar: "أسبوعي" },
+      dailyWage: { en: "Daily Wage", ar: "الأجر اليومي" },
+      weeklyWage: { en: "Weekly Wage", ar: "الأجر الأسبوعي" },
+      dailyPayout: { en: "Daily Payout", ar: "دفعة يومية" },
+      weeklyPayout: { en: "Weekly Payout", ar: "دفعة أسبوعية" },
       financialLoans: { en: "Financial: Loans", ar: "المالية: القروض" },
       delLoans: { en: "Deletes all loan contracts.", ar: "حذف جميع عقود القروض." },
       wipeLoans: { en: "Wipe Loans", ar: "مسح القروض" },
@@ -760,43 +768,54 @@
         if (isFullLocked) availableTypes.push({ id: 'fullMonth', label: t('fullMonth') });
         if (hasGrantsToday) availableTypes.push({ id: 'supportAid', label: t('supportAid') });
         if (hasBonusesToday) availableTypes.push({ id: 'bonus', label: t('bonus') });
+        
+        // NEW: Always allow Cashier to pay out Daily/Weekly workers on demand
+        if (employees.some(e => e.payCycle === 'daily')) availableTypes.push({ id: 'dailyPayout', label: t('dailyPayout') });
+        if (employees.some(e => e.payCycle === 'weekly')) availableTypes.push({ id: 'weeklyPayout', label: t('weeklyPayout') });
 
         React.useEffect(() => {
             if (availableTypes.length > 0) {
                 if (!availableTypes.find(t => t.id === payType)) {
-                    setPayType(availableTypes[0].id); // Auto-select first authorized option
+                    setPayType(availableTypes[0].id);
                 }
             } else {
-                setPayType(''); // Lock the dropdown if nothing is authorized
+                setPayType('');
             }
             setSelectedEmp('');
             setAmount('');
             setIsEditingBalance(false);
         }, [targetMonth, selectedDate, lockedMonths, grants, bonuses]);
-        // ----------------------------------
 
         const alreadyPaidIds = payoutLogs.filter(log => {
             if (log.type !== payType) return false;
             if (['period1', 'period2', 'fullMonth'].includes(payType)) {
-                const logMonth = log.targetMonth || log.date.substring(0,7);
-                return logMonth === targetMonth; 
+                return (log.targetMonth || log.date.substring(0,7)) === targetMonth; 
             } else {
                 return log.date === selectedDate; 
             }
         }).map(l => l.employeeId);
 
-        const availableEmployees = employees.filter(e => !e.isResigned && !alreadyPaidIds.includes(e.id) && (e.cashierZone || '1').toString() === myZone);
+        // NEW: Filter employees based on the Pay Cycle they belong to
+        const availableEmployees = employees.filter(e => {
+            if (e.isResigned || alreadyPaidIds.includes(e.id) || (e.cashierZone || '1').toString() !== myZone) return false;
+            if (payType === 'dailyPayout') return e.payCycle === 'daily';
+            if (payType === 'weeklyPayout') return e.payCycle === 'weekly';
+            if (['period1', 'period2', 'fullMonth'].includes(payType)) return (!e.payCycle || e.payCycle === 'monthly');
+            return true;
+        });
 
         React.useEffect(() => {
-            if (!selectedEmp || !payType) {
-                setAmount('');
-                return;
-            }
+            if (!selectedEmp || !payType) { setAmount(''); return; }
             const emp = employees.find(e => e.id === selectedEmp);
             if (!emp) return;
 
             let calc = 0;
-            if (payType === 'period1') {
+            // NEW: Bypass math engine entirely for exact daily/weekly wages
+            if (payType === 'dailyPayout') {
+                calc = parseFloat(emp.dailyWage) || 0;
+            } else if (payType === 'weeklyPayout') {
+                calc = parseFloat(emp.weeklyWage) || 0;
+            } else if (payType === 'period1') {
                 calc = calculateEmployeePayroll(emp, targetMonth, 'p1', attendance, advances, overtime, loans, transportation, config, bonuses).netSalary;
             } else if (payType === 'period2') {
                 calc = calculateEmployeePayroll(emp, targetMonth, 'p2', attendance, advances, overtime, loans, transportation, config, bonuses).netSalary;
@@ -1108,10 +1127,7 @@
           let p1Amt = parseFloat(formData.period1Amount) || 0;
           let p2Amt = parseFloat(formData.period2Amount) || 0;
           
-          // DYNAMIC AUTO CALCULATION LOGIC
-          if (finalWage === 0 && p1Amt > 0 && p2Amt > 0) {
-              finalWage = p1Amt + p2Amt;
-          }
+          if (finalWage === 0 && p1Amt > 0 && p2Amt > 0) finalWage = p1Amt + p2Amt;
 
           addEmployee({ 
               ...formData, 
@@ -1119,15 +1135,18 @@
               period1Amount: p1Amt,
               transportationAllowance: parseFloat(formData.transportAllowance) || 0, 
               sectionId: formData.sectionId || undefined,
-              cashierZone: (formData.cashierZone || '1').toString()
+              cashierZone: (formData.cashierZone || '1').toString(),
+              payCycle: formData.payCycle || 'monthly',
+              dailyWage: parseFloat(formData.dailyWage) || 0,
+              weeklyWage: parseFloat(formData.weeklyWage) || 0
           }); 
           
-          setFormData({ ...formData, name: '', wage: '', period1Amount: '', period2Amount: '', nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '' }); 
+          setFormData({ ...formData, name: '', wage: '', dailyWage: '', weeklyWage: '', period1Amount: '', period2Amount: '', nationalId: '', socialInsuranceId: '', fatherName: '', motherName: '' }); 
           alert("Worker Added Successfully!"); 
       };
       
-      const startEditing = (emp) => { setEditingId(emp.id); setEditFormData({ ...emp, wage: emp.monthlyWage, transportAllowance: emp.transportationAllowance, cashierZone: emp.cashierZone || '1', joinDate: emp.joinDate || new Date().toISOString().split('T')[0] }); };
-      const handleUpdate = () => { updateEmployee(editingId, { ...editFormData, monthlyWage: parseFloat(editFormData.wage), transportationAllowance: parseFloat(editFormData.transportAllowance), cashierZone: (editFormData.cashierZone || '1').toString() }); setEditingId(null); };
+      const startEditing = (emp) => { setEditingId(emp.id); setEditFormData({ ...emp, wage: emp.monthlyWage, transportAllowance: emp.transportationAllowance, cashierZone: emp.cashierZone || '1', joinDate: emp.joinDate || new Date().toISOString().split('T')[0], payCycle: emp.payCycle || 'monthly', dailyWage: emp.dailyWage || '', weeklyWage: emp.weeklyWage || '' }); };
+      const handleUpdate = () => { updateEmployee(editingId, { ...editFormData, monthlyWage: parseFloat(editFormData.wage), transportationAllowance: parseFloat(editFormData.transportAllowance), cashierZone: (editFormData.cashierZone || '1').toString(), dailyWage: parseFloat(editFormData.dailyWage) || 0, weeklyWage: parseFloat(editFormData.weeklyWage) || 0 }); setEditingId(null); };
       const handleViewTotals = (month) => { 
           const activeEmps = employees.filter(e => !e.isResigned); 
           let p1Count = 0, p2Count = 0, fullCount = 0;
@@ -1401,36 +1420,62 @@
                           <input type="text" className={inputClass} placeholder={t('optional')} value={formData.socialInsuranceId} onChange={e => setFormData({...formData, socialInsuranceId: e.target.value})} />
                       </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
-                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('wage')}</label>
-                          <MoneyInput className={inputClass} placeholder="0" value={formData.wage} onChange={e => setFormData({...formData, wage: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
+                          <label className="block text-[10px] font-black uppercase mb-2 text-indigo-600">{t('payCycle')}</label>
+                          <select className={inputClass} value={formData.payCycle || 'monthly'} onChange={e => setFormData({...formData, payCycle: e.target.value})}>
+                              <option value="monthly">{t('monthly')}</option>
+                              <option value="daily">{t('daily')}</option>
+                              <option value="weekly">{t('weekly')}</option>
+                          </select>
                       </div>
                       <div>
                           <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('transport')}</label>
                           <MoneyInput required className={inputClass} placeholder="0" value={formData.transportAllowance} onChange={e => setFormData({...formData, transportAllowance: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
                       </div>
                   </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                      <p className="col-span-full text-xs font-black uppercase text-gray-500 tracking-widest">{t('paymentSettings')}</p>
-                      <div>
-                          <label className="block text-[10px] font-bold mb-2">{t('period1Amount')}</label>
-                          <MoneyInput className={inputClass} placeholder={t('amount')} value={formData.period1Amount || ''} onChange={e => setFormData({...formData, period1Amount: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
+
+                  {(!formData.payCycle || formData.payCycle === 'monthly') && (
+                      <div className="space-y-4">
+                          <div>
+                              <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('wage')} (Monthly)</label>
+                              <MoneyInput className={inputClass} placeholder="0" value={formData.wage} onChange={e => setFormData({...formData, wage: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                              <p className="col-span-full text-xs font-black uppercase text-gray-500 tracking-widest">{t('paymentSettings')}</p>
+                              <div>
+                                  <label className="block text-[10px] font-bold mb-2">{t('period1Amount')}</label>
+                                  <MoneyInput className={inputClass} placeholder={t('amount')} value={formData.period1Amount || ''} onChange={e => setFormData({...formData, period1Amount: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
+                              </div>
+                              <div>
+                                  <label className="block text-[10px] font-bold mb-2">{t('period2Amount')}</label>
+                                  <MoneyInput className={inputClass} placeholder={t('amount')} value={formData.period2Amount || ''} onChange={e => setFormData({...formData, period2Amount: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
+                              </div>
+                              <div>
+                                  <label className="block text-[10px] font-bold mb-2">{t('transPeriod')}</label>
+                                  <select className={inputClass} value={formData.transportPeriod || '2'} onChange={e => setFormData({...formData, transportPeriod: e.target.value})}>
+                                      <option value="1">{t('period1')}</option>
+                                      <option value="2">{t('period2')}</option>
+                                      <option value="split">{t('split')}</option>
+                                  </select>
+                              </div>
+                          </div>
                       </div>
+                  )}
+
+                  {formData.payCycle === 'daily' && (
                       <div>
-                          <label className="block text-[10px] font-bold mb-2">{t('period2Amount')}</label>
-                          <MoneyInput className={inputClass} placeholder={t('amount')} value={formData.period2Amount || ''} onChange={e => setFormData({...formData, period2Amount: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
+                          <label className="block text-[10px] font-black uppercase mb-2 text-green-600">{t('dailyWage')}</label>
+                          <MoneyInput required className={`${inputClass} border-green-300 bg-green-50`} placeholder="0" value={formData.dailyWage || ''} onChange={e => setFormData({...formData, dailyWage: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
                       </div>
+                  )}
+
+                  {formData.payCycle === 'weekly' && (
                       <div>
-                          <label className="block text-[10px] font-bold mb-2">{t('transPeriod')}</label>
-                          <select className={inputClass} value={formData.transportPeriod || '2'} onChange={e => setFormData({...formData, transportPeriod: e.target.value})}>
-                              <option value="1">{t('period1')}</option>
-                              <option value="2">{t('period2')}</option>
-                              <option value="split">{t('split')}</option>
-                          </select>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-amber-600">{t('weeklyWage')}</label>
+                          <MoneyInput required className={`${inputClass} border-amber-300 bg-amber-50`} placeholder="0" value={formData.weeklyWage || ''} onChange={e => setFormData({...formData, weeklyWage: e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} />
                       </div>
-                  </div>
+                  )}
                   
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
