@@ -328,9 +328,12 @@
         };
 
         const monthAttendance = attendance.filter(a => a.date?.startsWith(targetMonth) && (isFull || (isP1 ? parseInt(a.date.split('-')[2]) <= 15 : parseInt(a.date.split('-')[2]) > 15)));
-        const totalPotentialDays = monthAttendance.length || 0;
+        
+        // NEW: Always assume a fixed standard month (default 30) instead of counting actual logged days.
+        const standardMonthDays = config.daysInMonth || 30;
+        const totalPotentialDays = isFull ? standardMonthDays : (standardMonthDays / 2);
 
-        const absDivisor = config.absencePeriod || config.daysInMonth || 26;
+        const absDivisor = config.absencePeriod || standardMonthDays;
         const otDivisor = config.overtimePeriod || ((config.daysInMonth || 26) * (config.hoursPerDay || 8));
 
         const isNight = emp.shift === 'night';
