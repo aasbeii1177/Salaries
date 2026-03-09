@@ -399,8 +399,15 @@
         const totalDeductions = totalAdvances + loanDeduction + totalAbsenceDeduction;
         const netSalary = Math.max(0, totalEarnings - totalDeductions);
 
+        // NEW: Calculate the exact printed wage for the current period/cycle
+        let periodBaseWage = totalWage;
+        if (emp.payCycle === 'daily') periodBaseWage = parseFloat(emp.dailyWage) || 0;
+        else if (emp.payCycle === 'weekly') periodBaseWage = parseFloat(emp.weeklyWage) || 0;
+        else if (isP1) periodBaseWage = parseFloat(emp.period1Amount) || 0;
+        else if (!isFull) periodBaseWage = Math.max(0, totalWage - (parseFloat(emp.period1Amount) || 0));
+
         return {
-            totalWage, nightDiff, daysPresent, dailyRateAbsence, daysAbsent, penaltyRate, totalAbsenceDeduction,
+            totalWage, periodBaseWage, nightDiff, daysPresent, dailyRateAbsence, daysAbsent, penaltyRate, totalAbsenceDeduction,
             empOvertimeHours, overtimePay, empBonus, fixedTransport, extraTransport, totalTransport,
             loanBalance, loanDeduction, loanRemaining, totalAdvances, netSalary, isNight, wageForPeriod
         };
@@ -421,7 +428,7 @@
                 
                 return [
                     emp.name, sectionName, shiftName, 
-                    Math.round(pay.totalWage), pay.daysPresent, pay.daysAbsent, Math.round(pay.totalAbsenceDeduction), 
+                    Math.round(pay.periodBaseWage), pay.daysPresent, pay.daysAbsent, Math.round(pay.totalAbsenceDeduction), 
                     pay.empOvertimeHours, Math.round(pay.overtimePay), Math.round(pay.empBonus), 
                     Math.round(pay.totalTransport), Math.round(pay.totalAdvances), Math.round(pay.loanDeduction), 
                     formatBase(pay.netSalary), formatSec(pay.netSalary, config)
@@ -488,8 +495,8 @@
 
           drawRow("اسم العامل", emp.name); 
           drawRow("الوردية", shiftName);
-          drawRow("الوظيفة", "عامل"); 
-          drawRow("الراتب المقطوع", formatBase(pay.totalWage));
+          drawRow("الوظيفة", emp.jobTitle || "عامل"); 
+          drawRow("الراتب المقطوع", formatBase(pay.periodBaseWage));
           drawRow("فرق الليل", formatBase(pay.nightDiff));
           drawRow("عدد أيام الدوام", pay.daysPresent);
           drawRow("أجر اليوم الواحد", formatBase(pay.dailyRateAbsence));
