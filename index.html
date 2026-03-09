@@ -497,17 +497,34 @@
           drawRow("الوردية", shiftName);
           drawRow("الوظيفة", emp.jobTitle || "عامل"); 
           drawRow("الراتب المقطوع", formatBase(pay.periodBaseWage));
-          drawRow("فرق الليل", formatBase(pay.nightDiff));
+          
+          if (pay.nightDiff > 0) drawRow("فرق الليل", formatBase(pay.nightDiff));
+          
           drawRow("عدد أيام الدوام", pay.daysPresent);
-          drawRow("أجر اليوم الواحد", formatBase(pay.dailyRateAbsence));
-          drawRow("عدد أيام الغياب", pay.daysAbsent);
-          drawRow("خصم يوم الغياب", formatBase(pay.penaltyRate));
-          drawRow("خصم الغياب", formatBase(pay.totalAbsenceDeduction));
-          drawRow("اضافي / دوام", pay.empOvertimeHours); 
-          drawRow("قيمة اضافي / دوام", formatBase(pay.overtimePay));
-          drawRow("اضافات أخرى / مكافآت", formatBase(pay.empBonus + pay.extraTransport));
-          drawRow("المواصلات الثابتة", formatBase(pay.fixedTransport));
-          drawRow("السلفة الشهرية", formatBase(pay.totalAdvances));
+          
+          if (pay.daysAbsent > 0) {
+              drawRow("أجر اليوم الواحد", formatBase(pay.dailyRateAbsence));
+              drawRow("عدد أيام الغياب", pay.daysAbsent);
+              drawRow("خصم يوم الغياب", formatBase(pay.penaltyRate));
+              drawRow("خصم الغياب", formatBase(pay.totalAbsenceDeduction));
+          }
+          
+          if (pay.empOvertimeHours > 0) {
+              drawRow("اضافي / دوام", pay.empOvertimeHours); 
+              drawRow("قيمة اضافي / دوام", formatBase(pay.overtimePay));
+          }
+          
+          if ((pay.empBonus + pay.extraTransport) > 0) {
+              drawRow("اضافات أخرى / مكافآت", formatBase(pay.empBonus + pay.extraTransport));
+          }
+          
+          if (pay.fixedTransport > 0) {
+              drawRow("المواصلات الثابتة", formatBase(pay.fixedTransport));
+          }
+          
+          if (pay.totalAdvances > 0) {
+              drawRow("السلفة الشهرية", formatBase(pay.totalAdvances));
+          }
           
           if (pay.loanBalance > 0) {
              drawRow("مدور القرض", formatBase(pay.loanBalance));
@@ -673,13 +690,13 @@
 
           drawRow("اسم العامل", emp.name);
           drawRow("الراتب الأساسي", formatBase(settlementData.basePay));
-          drawRow("الإضافي", formatBase(settlementData.overtime));
-          drawRow("المواصلات", formatBase(settlementData.transport));
-          drawRow("المكافآت", formatBase(settlementData.bonus));
+          if (settlementData.overtime > 0) drawRow("الإضافي", formatBase(settlementData.overtime));
+          if (settlementData.transport > 0) drawRow("المواصلات", formatBase(settlementData.transport));
+          if (settlementData.bonus > 0) drawRow("المكافآت", formatBase(settlementData.bonus));
           if (settlementData.grant > 0) drawRow("منح ومساعدات", formatBase(settlementData.grant));
-          drawRow("السلف", formatBase(settlementData.advances));
-          drawRow("خصم القروض", formatBase(settlementData.loans));
-          drawRow("غرامة الغياب", formatBase(settlementData.penalty));
+          if (settlementData.advances > 0) drawRow("السلف", formatBase(settlementData.advances));
+          if (settlementData.loans > 0) drawRow("خصم القروض", formatBase(settlementData.loans));
+          if (settlementData.penalty > 0) drawRow("غرامة الغياب", formatBase(settlementData.penalty));
 
           // DUAL CURRENCY TOTAL
           y += 10; 
