@@ -1411,7 +1411,15 @@
                                                       </td>
                                                       <td className="px-6 py-4 text-center"><span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-[10px] font-black tracking-widest">Z-{emp.cashierZone || '1'}</span></td>
                                                       <td className="px-6 py-4 text-center font-black text-black">{emp.monthlyWage.toLocaleString()} {pdfConfig.mainSymbol || 'SYP'}</td>
-                                                      <td className="px-6 py-4 text-center font-black text-black">{emp.transportationAllowance > 0 ? <span className="text-green-600">{emp.transportationAllowance.toLocaleString()}</span> : <span className="text-red-500 bg-red-50 px-2 py-1 rounded text-[10px] uppercase">{t('missing')}</span>}</td>
+                                                      <td className="px-6 py-4 text-center font-black text-black">
+                                                      {((parseFloat(emp.transportPeriod1Amount) || 0) + (parseFloat(emp.transportPeriod2Amount) || 0) || parseFloat(emp.transportationAllowance) || 0) > 0 ? (
+                                                      <span className="text-green-600">
+                                                      {((parseFloat(emp.transportPeriod1Amount) || 0) + (parseFloat(emp.transportPeriod2Amount) || 0) || parseFloat(emp.transportationAllowance) || 0).toLocaleString()}
+                                                      </span>
+                                                      ) : (
+                                                      <span className="text-red-500 bg-red-50 px-2 py-1 rounded text-[10px] uppercase">{t('missing')}</span>
+                                                      )}
+                                                      </td>
                                                       <td className="px-6 py-4 text-right flex gap-1 justify-end">
                                                           {!viewResigned && <button onClick={() => startEditing(emp)} className="text-indigo-600 font-black px-2 text-[10px] uppercase">{t('edit')}</button>}
                                                           {!viewResigned && <button onClick={() => handleResign(emp)} className="bg-amber-100 text-amber-700 font-black px-2 py-1 rounded text-[10px] uppercase hover:bg-amber-200">{t('resignBtn')}</button>}
