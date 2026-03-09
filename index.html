@@ -1390,16 +1390,27 @@
                               <div className="bg-gray-50/50 px-6 py-2 border-y border-gray-100 text-[10px] font-black text-black uppercase tracking-[0.2em]">{sId === 'unassigned' ? t('unassigned') : sections.find(s => s.id === sId)?.name || '???'}</div>
                               <div className="overflow-x-auto">
                                   <table className="w-full text-left">
-                                      <thead className="bg-white text-[10px] uppercase font-black text-gray-400 tracking-widest border-b border-gray-100">
-                                          <tr>
-                                              <th className="px-4 py-3 w-10"></th>
-                                              <th className="px-6 py-3">{t('name')}</th>
-                                              <th className="px-6 py-3 text-center">{t('zone')}</th>
-                                              <th className="px-6 py-3 text-center">{t('wage')}</th>
-                                              <th className="px-6 py-3 text-center">{t('transport')}</th>
-                                              <th className="px-6 py-3 text-right">{t('actions')}</th>
-                                          </tr>
-                                      </thead>
+    <thead className="bg-white border-b border-gray-50 text-[10px] uppercase font-black text-gray-400">
+        <tr>
+            {/* 1. This empty block goes FIRST to sit above the '+' button */}
+            <th className="px-4 py-3 w-10"></th> 
+            
+            {/* 2. Then the Name */}
+            <th className="px-6 py-4 text-right">{t('name')}</th>
+            
+            {/* 3. Then the Cashier Zone */}
+            <th className="px-6 py-4 text-center">{t('zone')}</th>
+            
+            {/* 4. Then the Wage */}
+            <th className="px-6 py-4 text-center">{t('wage')}</th>
+            
+            {/* 5. Then the Transport */}
+            <th className="px-6 py-4 text-center">{t('transport')}</th>
+            
+            {/* 6. Finally, the Actions (Edit/Delete) go LAST (far left) */}
+            <th className="px-6 py-4 text-center">{t('actions')}</th>
+        </tr>
+    </thead>
                                       <tbody className="divide-y divide-gray-50">
                                           {emps.map(emp => (
                                               <React.Fragment key={emp.id}>
