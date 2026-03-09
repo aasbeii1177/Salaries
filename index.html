@@ -478,7 +478,9 @@
           doc.setFontSize(14);
           doc.setTextColor(0, 0, 0);
           doc.setFont('Amiri', 'normal'); 
-          doc.text(sectionName, rightMargin, 10, { align: 'right' }); 
+          
+          // You can change "كشف راتب" to anything you want, or leave it empty like ""
+          doc.text("كشف راتب", rightMargin, 10, { align: 'right' }); 
           
           doc.setFontSize(10);
           doc.text(targetMonth, leftMargin, 10, { align: 'left' }); 
