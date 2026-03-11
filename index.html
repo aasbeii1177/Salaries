@@ -501,6 +501,10 @@
           drawRow("اسم العامل", emp.name); 
           drawRow("الوردية", shiftName);
           drawRow("الوظيفة", emp.jobTitle || "عامل"); 
+          
+          // NEW: Print the Worker Number if they have one
+          if (emp.workerNumber) drawRow("الرقم الوظيفي", emp.workerNumber);
+          
           drawRow("الراتب المقطوع", formatBase(pay.periodBaseWage));
           
           if (pay.nightDiff > 0) drawRow("فرق الليل", formatBase(pay.nightDiff));
@@ -852,8 +856,11 @@
             if (payType === 'weeklyPayout') return e.payCycle === 'weekly';
             if (['period1', 'period2', 'fullMonth'].includes(payType)) return (!e.payCycle || e.payCycle === 'monthly');
             
-            // NEW: Instantly shrink the list based on what the cashier types
-            if (empSearch && !e.name.toLowerCase().includes(empSearch.toLowerCase())) return false; 
+            // NEW: Search by Name OR by Worker Number
+            if (empSearch && 
+                !e.name.toLowerCase().includes(empSearch.toLowerCase()) && 
+                !(e.workerNumber || '').toString().includes(empSearch.trim())
+            ) return false; 
             
             return true;
         }).sort((a, b) => a.name.localeCompare(b.name));
@@ -1179,6 +1186,7 @@
           return [...new Set(rawMonths)].sort().reverse(); 
       }, [attendance, lockedMonths]);
 
+      // --- REPLACE IT WITH THIS ---
       const handleAdd = (e) => { 
           e.preventDefault(); 
           let finalWage = parseFloat(formData.wage) || 0;
@@ -1186,8 +1194,17 @@
           let p2Amt = parseFloat(formData.period2Amount) || 0;
           if (finalWage === 0 && p1Amt > 0 && p2Amt > 0) finalWage = p1Amt + p2Amt;
 
+          // NEW: Auto-calculate the next available Worker Number
+          let maxId = 0;
+          employees.forEach(emp => {
+              const num = parseInt(emp.workerNumber);
+              if (!isNaN(num) && num > maxId) maxId = num;
+          });
+          const nextWorkerNumber = (maxId + 1).toString();
+
           addEmployee({ 
               ...formData, 
+              workerNumber: nextWorkerNumber,
               monthlyWage: finalWage,
               jobTitle: formData.jobTitle || 'Worker',
               period1Amount: p1Amt,
@@ -1214,7 +1231,7 @@
           setEditFormData({ ...emp, wage: emp.monthlyWage, jobTitle: emp.jobTitle || '', transportPeriod1Amount: tp1, transportPeriod2Amount: tp2, cashierZone: emp.cashierZone || '1', joinDate: emp.joinDate || new Date().toISOString().split('T')[0], payCycle: emp.payCycle || 'monthly', dailyWage: emp.dailyWage || '', weeklyWage: emp.weeklyWage || '', isConfidential: emp.isConfidential || false }); 
       };
       
-      const handleUpdate = () => { updateEmployee(editingId, { ...editFormData, monthlyWage: parseFloat(editFormData.wage), jobTitle: editFormData.jobTitle || 'Worker', transportPeriod1Amount: parseFloat(editFormData.transportPeriod1Amount) || 0, transportPeriod2Amount: parseFloat(editFormData.transportPeriod2Amount) || 0, cashierZone: (editFormData.cashierZone || '1').toString(), dailyWage: parseFloat(editFormData.dailyWage) || 0, weeklyWage: parseFloat(editFormData.weeklyWage) || 0, isConfidential: !!editFormData.isConfidential }); setEditingId(null); };
+      const handleUpdate = () => { updateEmployee(editingId, { ...editFormData, monthlyWage: parseFloat(editFormData.wage), jobTitle: editFormData.jobTitle || 'Worker', workerNumber: (editFormData.workerNumber || '').toString(), transportPeriod1Amount: parseFloat(editFormData.transportPeriod1Amount) || 0, transportPeriod2Amount: parseFloat(editFormData.transportPeriod2Amount) || 0, cashierZone: (editFormData.cashierZone || '1').toString(), dailyWage: parseFloat(editFormData.dailyWage) || 0, weeklyWage: parseFloat(editFormData.weeklyWage) || 0, isConfidential: !!editFormData.isConfidential }); setEditingId(null); };
       const handleViewTotals = (month) => { 
           const activeEmps = employees.filter(e => !e.isResigned); 
           let p1Count = 0, p2Count = 0, fullCount = 0;
@@ -1267,8 +1284,16 @@
               const arrayBuffer = evt.target.result; 
               const wb = XLSX.read(arrayBuffer, { type: 'array' }); 
               const ws = wb.Sheets[wb.SheetNames[0]]; 
+             // --- REPLACE IT WITH THIS ---
               const data = XLSX.utils.sheet_to_json(ws); 
               let count = 0; 
+
+              // NEW: Get current max ID to seamlessly increment for new Excel workers
+              let currentMaxId = 0;
+              employees.forEach(emp => {
+                  const num = parseInt(emp.workerNumber);
+                  if (!isNaN(num) && num > currentMaxId) currentMaxId = num;
+              });
               
               data.forEach(row => { 
                   // --- REPLACE IT WITH THIS ---
@@ -1322,6 +1347,13 @@
                   const fName = (row['Father Name'] || row['اسم الأب'] || '').toString();
                   const mName = (row['Mother Name'] || row['اسم الأم'] || '').toString();
                   const cZone = (row['Cashier Zone'] || row['رقم الصندوق'] || '').toString();
+                  let wNum = (row['Worker Number'] || row['الرقم الوظيفي'] || '').toString(); // NEW
+                  
+                  // NEW: Auto-assign ID if the Excel column was left blank
+                  if (!wNum) {
+                      currentMaxId++;
+                      wNum = currentMaxId.toString();
+                  }
 
                   // NEW: Smart Sync - Check if the employee already exists
                   const existingEmp = employees.find(e => e.name.toLowerCase() === name.toString().toLowerCase());
@@ -1342,6 +1374,7 @@
                       if (mName) updateData.motherName = mName;
                       if (matchedSectionId) updateData.sectionId = matchedSectionId;
                       if (cZone) updateData.cashierZone = cZone;
+                      if (wNum) updateData.workerNumber = wNum;
                       
                       updateEmployee(existingEmp.id, updateData);
                   } else {
@@ -1364,6 +1397,7 @@
                           motherName: mName, 
                           sectionId: matchedSectionId, 
                           cashierZone: cZone || '1',
+                          workerNumber: wNum,
                           isResigned: false 
                       }; 
                       addEmployee(newEmp); 
@@ -1398,6 +1432,27 @@
           let count = 0; 
           snapshot.docs.forEach(doc => { db.collection(collection).doc(doc.id).delete(); count++; }); 
           alert(`Deleted ${count} records from ${collection}.`); 
+      };
+
+      // NEW: One-click auto-assigner for all existing employees
+      const handleAutoAssignExisting = async () => {
+          if(!confirm("This will instantly assign a sequential Worker Number to any employee who currently does not have one. Continue?")) return;
+          let currentMaxId = 0;
+          employees.forEach(emp => {
+              const num = parseInt(emp.workerNumber);
+              if (!isNaN(num) && num > currentMaxId) currentMaxId = num;
+          });
+          let count = 0;
+          const promises = [];
+          employees.forEach(emp => {
+              if (!emp.workerNumber) {
+                  currentMaxId++;
+                  promises.push(db.collection('employees').doc(emp.id).update({ workerNumber: currentMaxId.toString() }));
+                  count++;
+              }
+          });
+          await Promise.all(promises);
+          alert(`Successfully assigned automatic IDs to ${count} existing workers!`);
       };
 
       return (
@@ -1481,8 +1536,13 @@
                                                           <td colSpan={6} className="px-8 py-6">
                                                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('name')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.name} onChange={e=>setEditFormData({...editFormData, name:e.target.value})} /> : <p className="font-black">{emp.name}</p>}</div>
-                                                                  <div><label className="text-[10px] font-black uppercase block mb-1">{t('jobTitle')}</label>{editingId === emp.id ? <input className={inputClass} placeholder="e.g. Manager, Worker..." value={editFormData.jobTitle} onChange={e=>setEditFormData({...editFormData, jobTitle:e.target.value})} /> : <p className="font-black">{emp.jobTitle || 'Worker'}</p>}</div>
-                                                                  <div><label className="text-[10px] font-black uppercase block mb-1">{t('wage')}</label>{editingId === emp.id ? <MoneyInput className={inputClass} value={editFormData.wage} onChange={e=>setEditFormData({...editFormData, wage:e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} /> : <p className="font-black">{emp.monthlyWage}</p>}</div>
+                                                                  // --- REPLACE IT WITH THIS ---
+     <div><label className="text-[10px] font-black uppercase block mb-1">{t('jobTitle')}</label>{editingId === emp.id ? <input className={inputClass} placeholder="e.g. Manager, Worker..." value={editFormData.jobTitle} onChange={e=>setEditFormData({...editFormData, jobTitle:e.target.value})} /> : <p className="font-black">{emp.jobTitle || 'Worker'}</p>}</div>
+    
+    {/* NEW: Worker Number Box */}
+    <div><label className="text-[10px] font-black uppercase block mb-1 text-indigo-600">الرقم الوظيفي (ID)</label>{editingId === emp.id ? <input className={inputClass} placeholder="e.g. 77" value={editFormData.workerNumber || ''} onChange={e=>setEditFormData({...editFormData, workerNumber:e.target.value})} /> : <p className="font-black text-indigo-600">{emp.workerNumber || '-'}</p>}</div>
+    
+    <div><label className="text-[10px] font-black uppercase block mb-1">{t('wage')}</label>{editingId === emp.id ? <MoneyInput className={inputClass} value={editFormData.wage} onChange={e=>setEditFormData({...editFormData, wage:e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} /> : <p className="font-black">{emp.monthlyWage}</p>}</div>
                                                                   <div className="col-span-full border-t border-gray-200 mt-2 pt-2">
                                                                       <p className="text-[10px] font-black uppercase text-indigo-600 mb-2">{t('paymentSettings')}</p>
                                                                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -1536,7 +1596,10 @@
                 </div>
               </section>
               <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8">
-                <h3 className="font-black text-black text-xl uppercase tracking-tight mb-8 flex items-center gap-3"><div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 text-2xl">+</div> {t('add')} {t('workers')} ({t('individualAdd')})</h3>
+                <div className="flex justify-between items-center mb-8">
+                    <h3 className="font-black text-black text-xl uppercase tracking-tight flex items-center gap-3"><div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 text-2xl">+</div> {t('add')} {t('workers')} ({t('individualAdd')})</h3>
+                    <button onClick={handleAutoAssignExisting} className="px-4 py-2 bg-indigo-50 text-indigo-600 font-black rounded-xl uppercase text-[10px] tracking-widest hover:bg-indigo-100 transition-all shadow-sm">Auto-Assign Missing IDs</button>
+                </div>
                 
                 <form onSubmit={handleAdd} className="space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
