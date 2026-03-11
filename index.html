@@ -1826,8 +1826,9 @@
                         <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
                             <select className="px-4 py-3 border border-teal-200 rounded-xl text-sm font-bold w-full md:w-auto outline-none focus:border-teal-500" value={reportZone} onChange={e=>setReportZone(e.target.value)}>
                                 <option value="all">كل الصناديق</option>
-                                <option value="1">الصندوق 1</option>
-                                <option value="2">الصندوق 2</option>
+                                {[...new Set(employees.map(e => (e.cashierZone || '1').toString()))].sort().map(z => (
+                                    <option key={z} value={z}>الصندوق {z}</option>
+                                ))}
                             </select>
                             <input type="date" className="px-4 py-3 border border-teal-200 rounded-xl text-sm font-bold w-full md:w-auto outline-none focus:border-teal-500" value={printGrantDate} onChange={e=>setPrintGrantDate(e.target.value)} />
                             <button onClick={() => generateAidPayslips(printGrantDate, employees.filter(e => reportZone === 'all' || (e.cashierZone || '1').toString() === reportZone), grants, pdfConfig, sections)} className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-xl text-xs uppercase font-black tracking-widest transition-all shadow-lg shadow-teal-500/30">{t('printBtn')}</button>
@@ -1921,8 +1922,9 @@
                    <h4 className="text-xl font-black mb-6 text-black uppercase tracking-widest">{t('selectReport')} {reportType === 'excel' ? '(EXCEL)' : '(PDF)'}</h4>
                    <select className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-black outline-none focus:border-indigo-600 transition-all mb-6 text-center" value={reportZone} onChange={e=>setReportZone(e.target.value)}>
                        <option value="all">كل الصناديق (All Zones)</option>
-                       <option value="1">الصندوق 1 (Zone 1)</option>
-                       <option value="2">الصندوق 2 (Zone 2)</option>
+                       {[...new Set(employees.map(e => (e.cashierZone || '1').toString()))].sort().map(z => (
+                           <option key={z} value={z}>الصندوق {z} (Zone {z})</option>
+                       ))}
                    </select>
                    <div className="space-y-4">
                        <button onClick={() => handleGenerateReport('p1')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period1')}</button>
@@ -2822,8 +2824,9 @@
                             <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
                                 <select className="px-3 py-2 border border-teal-200 rounded text-xs font-bold w-full md:w-auto outline-none focus:border-teal-500" value={reportZone} onChange={e=>setReportZone(e.target.value)}>
                                     <option value="all">كل الصناديق</option>
-                                    <option value="1">الصندوق 1</option>
-                                    <option value="2">الصندوق 2</option>
+                                    {[...new Set(employees.map(e => (e.cashierZone || '1').toString()))].sort().map(z => (
+                                        <option key={z} value={z}>الصندوق {z}</option>
+                                    ))}
                                 </select>
                                 <input type="date" className="px-3 py-2 border border-teal-200 rounded text-xs font-bold w-full md:w-auto outline-none focus:border-teal-500" value={printGrantDate} onChange={e=>setPrintGrantDate(e.target.value)} />
                                 <button onClick={() => generateAidPayslips(printGrantDate, employees.filter(e => reportZone === 'all' || (e.cashierZone || '1').toString() === reportZone), grants, config, sections)} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded text-[10px] uppercase font-black tracking-widest transition-all">{t('printBtn')}</button>
@@ -2960,8 +2963,9 @@
                    <h4 className="text-xl font-black mb-6 text-black uppercase tracking-widest">{t('selectReport')} {reportType === 'excel' ? '(EXCEL)' : '(PDF)'}</h4>
                    <select className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-black outline-none focus:border-indigo-600 transition-all mb-6 text-center" value={reportZone} onChange={e=>setReportZone(e.target.value)}>
                        <option value="all">كل الصناديق (All Zones)</option>
-                       <option value="1">الصندوق 1 (Zone 1)</option>
-                       <option value="2">الصندوق 2 (Zone 2)</option>
+                       {[...new Set(employees.map(e => (e.cashierZone || '1').toString()))].sort().map(z => (
+                           <option key={z} value={z}>الصندوق {z} (Zone {z})</option>
+                       ))}
                    </select>
                    <div className="space-y-4">
                        <button onClick={() => handleGenerateReport('p1')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period1')}</button>
