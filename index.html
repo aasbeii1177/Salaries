@@ -1383,15 +1383,9 @@
                   const fName = (row['Father Name'] || row['اسم الأب'] || '').toString();
                   const mName = (row['Mother Name'] || row['اسم الأم'] || '').toString();
                   const cZone = (row['Cashier Zone'] || row['رقم الصندوق'] || '').toString();
-                  let wNum = (row['Worker Number'] || row['الرقم الوظيفي'] || '').toString(); // NEW
-                  
-                  // NEW: Auto-assign ID if the Excel column was left blank
-                  if (!wNum) {
-                      currentMaxId++;
-                      wNum = currentMaxId.toString();
-                  }
+                  let wNum = (row['Worker Number'] || row['الرقم الوظيفي'] || '').toString();
 
-                  // NEW: Smart Sync - Check if the employee already exists
+                  // NEW: Smart Sync - Check if the employee already exists FIRST
                   const existingEmp = employees.find(e => e.name.toLowerCase() === name.toString().toLowerCase());
 
                   if (existingEmp) {
@@ -1410,10 +1404,23 @@
                       if (mName) updateData.motherName = mName;
                       if (matchedSectionId) updateData.sectionId = matchedSectionId;
                       if (cZone) updateData.cashierZone = cZone;
-                      if (wNum) updateData.workerNumber = wNum;
+                      
+                      // CRITICAL FIX: Only update ID if Excel explicitly has one. 
+                      // If Excel is blank, keep their existing Database ID safely intact!
+                      if (wNum) {
+                          updateData.workerNumber = wNum;
+                      } else if (!existingEmp.workerNumber) {
+                          currentMaxId++;
+                          updateData.workerNumber = currentMaxId.toString();
+                      }
                       
                       updateEmployee(existingEmp.id, updateData);
                   } else {
+                      // If it's a completely NEW worker, and Excel didn't have an ID, generate one!
+                      if (!wNum) {
+                          currentMaxId++;
+                          wNum = currentMaxId.toString();
+                      }
                     
                       const newEmp = { 
                           name: name.toString(), 
@@ -1471,24 +1478,23 @@
       };
 
       // NEW: One-click auto-assigner for all existing employees
+      // UPGRADE: Clean Re-sequencer
       const handleAutoAssignExisting = async () => {
-          if(!confirm("This will instantly assign a sequential Worker Number to any employee who currently does not have one. Continue?")) return;
-          let currentMaxId = 0;
-          employees.forEach(emp => {
-              const num = parseInt(emp.workerNumber);
-              if (!isNaN(num) && num > currentMaxId) currentMaxId = num;
-          });
-          let count = 0;
+          if(!confirm("This will completely reorganize and perfectly re-number ALL workers alphabetically from 1 to " + employees.length + ". Continue?")) return;
+          
+          let counter = 1;
           const promises = [];
-          employees.forEach(emp => {
-              if (!emp.workerNumber) {
-                  currentMaxId++;
-                  promises.push(db.collection('employees').doc(emp.id).update({ workerNumber: currentMaxId.toString() }));
-                  count++;
-              }
+          
+          // Sort everyone alphabetically first so the IDs make sense
+          const sortedEmps = [...employees].sort((a,b) => a.name.localeCompare(b.name));
+          
+          sortedEmps.forEach(emp => {
+              promises.push(db.collection('employees').doc(emp.id).update({ workerNumber: counter.toString() }));
+              counter++;
           });
+          
           await Promise.all(promises);
-          alert(`Successfully assigned automatic IDs to ${count} existing workers!`);
+          alert(`Successfully cleaned up and re-numbered ${counter - 1} workers!`);
       };
 
       return (
