@@ -640,8 +640,8 @@
                 };
 
                 drawRow("اسم العامل", emp.name); 
-                drawRow("القسم", sectionName);
-                
+                //drawRow("القسم", sectionName);
+                drawRow("الوظيفة", emp.jobTitle || "عامل"); 
                 // NEW: Only print the specific targeted wage if it was calculated via percentage
                 if (grant.basisText && grant.basisAmt) {
                     drawRow(grant.basisText, formatBase(grant.basisAmt));
@@ -2394,7 +2394,7 @@
               activeEmps.forEach(emp => { 
                   const targetWage = getPeriodWage(emp);
                   const amount = bonusType === 'percent' ? (targetWage * val / 100) : val; 
-                  const bText = bonusType === 'percent' ? (bonusPeriod === '1' ? "راتب الفترة الأولى" : (bonusPeriod === '2' ? "راتب الفترة الثانية" : "الراتب الأساسي")) : null;
+                  const bText = bonusType === 'percent' ? (bonusPeriod === '1' ? "راتب" : (bonusPeriod === '2' ? "راتب" : "الراتب الأساسي")) : null;
                   addBonus(emp.id, amount, date, bonusDesc, bonusPeriod, bText, bonusType === 'percent' ? targetWage : null); 
               }); 
               alert(`Distributed bonus to ${activeEmps.length} employees.`); 
@@ -2404,7 +2404,7 @@
               if(emp) { 
                   const targetWage = getPeriodWage(emp);
                   const amount = bonusType === 'percent' ? (targetWage * val / 100) : val; 
-                  const bText = bonusType === 'percent' ? (bonusPeriod === '1' ? "راتب الفترة الأولى" : (bonusPeriod === '2' ? "راتب الفترة الثانية" : "الراتب الأساسي")) : null;
+                  const bText = bonusType === 'percent' ? (bonusPeriod === '1' ? "راتب" : (bonusPeriod === '2' ? "راتب" : "الراتب الأساسي")) : null;
                   addBonus(emp.id, amount, date, bonusDesc, bonusPeriod, bText, bonusType === 'percent' ? targetWage : null); 
               } 
           } 
