@@ -2314,6 +2314,7 @@
       const [grantTarget, setGrantTarget] = React.useState('individual');
       const [grantBasis, setGrantBasis] = React.useState('full'); // New State for Support Percentage Basis
       const [selectedGrantEmp, setSelectedGrantEmp] = React.useState('');
+      const [grantIncludeTransport, setGrantIncludeTransport] = React.useState(false);
       const [grantValue, setGrantValue] = React.useState('');
       const [grantDesc, setGrantDesc] = React.useState('');
       const [grantDate, setGrantDate] = React.useState(new Date().toISOString().split('T')[0]);
@@ -2424,23 +2425,36 @@
               return basePlusNight; 
           };
 
+          let finalBText = grantType === 'percent' ? (grantBasis === '1' ? "راتب" : (grantBasis === '2' ? "راتب" : "الراتب الأساسي")) : null;
+          if (grantType === 'percent' && grantIncludeTransport) finalBText += " + بدل نقل";
+
+          const calculateFinalWage = (emp) => {
+              let wage = getGrantTargetWage(emp);
+              if (grantType === 'percent' && grantIncludeTransport) {
+                  let tAmt = 0;
+                  if (grantBasis === '1') tAmt = parseFloat(emp.transportPeriod1Amount) || 0;
+                  else if (grantBasis === '2') tAmt = parseFloat(emp.transportPeriod2Amount) || 0;
+                  else tAmt = (parseFloat(emp.transportPeriod1Amount) || 0) + (parseFloat(emp.transportPeriod2Amount) || 0);
+                  wage += tAmt;
+              }
+              return wage;
+          };
+
           if (grantTarget === 'all') { 
               const activeEmps = employees.filter(e => !e.isResigned); 
               activeEmps.forEach(emp => { 
-                  const targetWage = getGrantTargetWage(emp);
+                  const targetWage = calculateFinalWage(emp);
                   const amount = grantType === 'percent' ? (targetWage * val / 100) : val; 
-                  const bText = grantType === 'percent' ? (grantBasis === '1' ? "راتب" : (grantBasis === '2' ? "راتب" : "الراتب الأساسي")) : null;
-                  addGrant(emp.id, amount, grantDate, grantDesc, bText, grantType === 'percent' ? targetWage : null); 
+                  addGrant(emp.id, amount, grantDate, grantDesc, finalBText, grantType === 'percent' ? targetWage : null); 
               }); 
               alert(`Distributed support to ${activeEmps.length} employees.`); 
           } else { 
               if(!selectedGrantEmp) return; 
               const emp = employees.find(e => e.id === selectedGrantEmp); 
               if(emp) { 
-                  const targetWage = getGrantTargetWage(emp);
+                  const targetWage = calculateFinalWage(emp);
                   const amount = grantType === 'percent' ? (targetWage * val / 100) : val; 
-                  const bText = grantType === 'percent' ? (grantBasis === '1' ? "راتب" : (grantBasis === '2' ? "راتب" : "الراتب الأساسي")) : null;
-                  addGrant(emp.id, amount, grantDate, grantDesc, bText, grantType === 'percent' ? targetWage : null); 
+                  addGrant(emp.id, amount, grantDate, grantDesc, finalBText, grantType === 'percent' ? targetWage : null); 
               } 
           } 
           setGrantValue(''); setGrantDesc(''); 
@@ -2721,14 +2735,20 @@
                           </div>
                        </div>
                        
-                       {grantType === 'percent' && (
-                          <div>
-                              <label className="block text-[10px] font-black uppercase mb-2 text-teal-700">{t('calcPercentFrom')}</label>
-                              <div className="flex bg-teal-50 p-1 rounded-xl border border-teal-100">
-                                  <button type="button" onClick={()=>setGrantBasis('full')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='full'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('fullMonth')}</button>
-                                  <button type="button" onClick={()=>setGrantBasis('1')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='1'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('period1')}</button>
-                                  <button type="button" onClick={()=>setGrantBasis('2')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='2'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('period2')}</button>
+                        {grantType === 'percent' && (
+                          <div className="flex flex-col gap-3">
+                              <div>
+                                  <label className="block text-[10px] font-black uppercase mb-2 text-teal-700">{t('calcPercentFrom')}</label>
+                                  <div className="flex bg-teal-50 p-1 rounded-xl border border-teal-100">
+                                      <button type="button" onClick={()=>setGrantBasis('full')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='full'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('fullMonth')}</button>
+                                      <button type="button" onClick={()=>setGrantBasis('1')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='1'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('period1')}</button>
+                                      <button type="button" onClick={()=>setGrantBasis('2')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='2'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('period2')}</button>
+                                  </div>
                               </div>
+                              <label className="flex items-center gap-2 text-[11px] font-black text-teal-700 cursor-pointer">
+                                  <input type="checkbox" className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500" checked={grantIncludeTransport} onChange={e=>setGrantIncludeTransport(e.target.checked)} />
+                                  تضمين بدل النقل في الحساب (Include Transport)
+                              </label>
                           </div>
                        )}
 
