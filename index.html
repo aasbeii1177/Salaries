@@ -854,11 +854,13 @@
             if (payType === 'weeklyPayout') return e.payCycle === 'weekly';
             if (['period1', 'period2', 'fullMonth'].includes(payType)) return (!e.payCycle || e.payCycle === 'monthly');
             
-            // NEW: Search by Name OR by Worker Number
-            if (empSearch && 
-                !e.name.toLowerCase().includes(empSearch.toLowerCase()) && 
-                !(e.workerNumber || '').toString().includes(empSearch.trim())
-            ) return false; 
+            // NEW: Exact match for Worker Number, partial match for Name
+            if (empSearch) {
+                const q = empSearch.toLowerCase().trim();
+                const matchName = (e.name || '').toLowerCase().includes(q);
+                const matchId = (e.workerNumber || '').toString() === q; // '===' forces an exact match
+                if (!matchName && !matchId) return false;
+            }
             
             return true;
         }).sort((a, b) => a.name.localeCompare(b.name));
@@ -1164,7 +1166,7 @@
       const inputClass = "w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl font-bold bg-white text-black outline-none focus:border-indigo-600 transition-all";
 
       // NEW: Hide confidential workers if user is just regular "hr"
-      const filteredEmployees = React.useMemo(() => employees.filter(emp => (viewResigned ? emp.isResigned : !emp.isResigned) && ((emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (emp.workerNumber || '').toString().includes(searchQuery.trim())) && (currentUser?.role !== 'hr' || !emp.isConfidential)).sort((a, b) => a.name.localeCompare(b.name)), [employees, searchQuery, viewResigned, currentUser]);
+      const filteredEmployees = React.useMemo(() => employees.filter(emp => (viewResigned ? emp.isResigned : !emp.isResigned) && ((emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (emp.workerNumber || '').toString() === searchQuery.trim()) && (currentUser?.role !== 'hr' || !emp.isConfidential)).sort((a, b) => a.name.localeCompare(b.name)), [employees, searchQuery, viewResigned, currentUser]);
       const employeesBySection = React.useMemo(() => { 
           const grouped = { 'unassigned': [] }; 
           sections.forEach(s => grouped[s.id] = []); 
@@ -1924,7 +1926,7 @@
       
       const dailyOvertime = overtime.filter(o => o.date === selectedDate);
       
-      const filteredEmployees = employees.filter(emp => !emp.isResigned && ((emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (emp.workerNumber || '').toString().includes(searchQuery.trim()))).sort((a, b) => a.name.localeCompare(b.name));
+      const filteredEmployees = employees.filter(emp => !emp.isResigned && ((emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (emp.workerNumber || '').toString() === searchQuery.trim())).sort((a, b) => a.name.localeCompare(b.name));
       
       const employeesBySection = React.useMemo(() => { 
           const grouped = { 'unassigned': [] }; 
@@ -2091,7 +2093,7 @@
       const [editingEntries, setEditingEntries] = React.useState(null);
 
       // --- Logic for Loans ---
-      const activeEmployees = employees.filter(emp => !emp.isResigned && ((emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (emp.workerNumber || '').toString().includes(searchQuery.trim()))).sort((a, b) => a.name.localeCompare(b.name));
+      const activeEmployees = employees.filter(emp => !emp.isResigned && ((emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (emp.workerNumber || '').toString() === searchQuery.trim())).sort((a, b) => a.name.localeCompare(b.name));
       const handleSaveLoan = () => { if (loanTarget) { updateLoan(loanTarget.id, parseFloat(loanAmount), parseFloat(loanPercent)); setLoanTarget(null); }};
 
       // --- Logic for Advances ---
