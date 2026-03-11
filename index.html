@@ -2439,7 +2439,7 @@
               if(emp) { 
                   const targetWage = getGrantTargetWage(emp);
                   const amount = grantType === 'percent' ? (targetWage * val / 100) : val; 
-                  const bText = grantType === 'percent' ? (grantBasis === '1' ? "راتب الفترة الأولى" : (grantBasis === '2' ? "راتب الفترة الثانية" : "الراتب الأساسي")) : null;
+                  const bText = grantType === 'percent' ? (grantBasis === '1' ? "راتب" : (grantBasis === '2' ? "راتب" : "الراتب الأساسي")) : null;
                   addGrant(emp.id, amount, grantDate, grantDesc, bText, grantType === 'percent' ? targetWage : null); 
               } 
           } 
