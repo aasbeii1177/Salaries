@@ -482,6 +482,11 @@
           // You can change "كشف راتب" to anything you want, or leave it empty like ""
           doc.text("كشف راتب", rightMargin, 10, { align: 'right' }); 
           
+          if (emp.workerNumber) {
+              doc.setFontSize(11);
+              doc.text(`الرقم الوظيفي: ${emp.workerNumber}`, rightMargin, 18, { align: 'right' });
+          }
+          
           doc.setFontSize(10);
           doc.text(targetMonth, leftMargin, 10, { align: 'left' }); 
 
@@ -501,12 +506,8 @@
           drawRow("اسم العامل", emp.name); 
           drawRow("الوردية", shiftName);
           drawRow("الوظيفة", emp.jobTitle || "عامل"); 
-          
-          // NEW: Print the Worker Number if they have one
-          if (emp.workerNumber) drawRow("الرقم الوظيفي", emp.workerNumber);
-          
           drawRow("الراتب المقطوع", formatBase(pay.periodBaseWage));
-          
+
           if (pay.nightDiff > 0) drawRow("فرق الليل", formatBase(pay.nightDiff));
           
           drawRow("عدد أيام الدوام", pay.daysPresent);
@@ -614,10 +615,15 @@
                 
                 doc.setFontSize(14);
                 doc.setTextColor(255, 255, 255);
-                doc.text("إيصال صرف منحة / مساعدة", rightMargin, 15, { align: 'right' }); 
+                doc.text("إيصال صرف منحة / مساعدة", rightMargin, 10, { align: 'right' }); 
                 
+                if (emp.workerNumber) {
+                    doc.setFontSize(11);
+                    doc.text(`الرقم الوظيفي: ${emp.workerNumber}`, rightMargin, 18, { align: 'right' });
+                }
+
                 doc.setFontSize(10);
-                doc.text(targetDate, leftMargin, 15, { align: 'left' }); 
+                doc.text(targetDate, leftMargin, 10, { align: 'left' }); 
 
                 let y = 45;
                 const rowHeight = 10; 
@@ -689,6 +695,12 @@
           doc.setTextColor(255, 255, 255); 
           doc.setFontSize(14); 
           doc.text("تصفية حساب نهائية", 105, 10, { align: 'right' }); 
+          
+          if (emp.workerNumber) {
+              doc.setFontSize(11);
+              doc.text(`الرقم الوظيفي: ${emp.workerNumber}`, 105, 18, { align: 'right' });
+          }
+
           doc.setFontSize(10); 
           doc.text(new Date().toLocaleDateString(), 10, 10, { align: 'left' });
 
@@ -947,8 +959,14 @@
                     const sectionName = sections.find(s => s.id === emp.sectionId)?.name || 'القسم العام';
 
                     doc.setFillColor(79, 70, 229); doc.rect(0, 0, 110, 25, 'F');
-                    doc.setFontSize(14); doc.setTextColor(255, 255, 255); doc.text("إيصال صرف مكافأة", 100, 15, { align: 'right' }); 
-                    doc.setFontSize(10); doc.text(log.date, 10, 15, { align: 'left' }); 
+                    doc.setFontSize(14); doc.setTextColor(255, 255, 255); doc.text("إيصال صرف مكافأة", 100, 10, { align: 'right' }); 
+                    
+                    if (emp.workerNumber) { 
+                        doc.setFontSize(11); 
+                        doc.text(`الرقم الوظيفي: ${emp.workerNumber}`, 100, 18, { align: 'right' }); 
+                    }
+                    
+                    doc.setFontSize(10); doc.text(log.date, 10, 10, { align: 'left' }); 
 
                     let y = 45; doc.setTextColor(0, 0, 0);
                     const drawRow = (label, value) => {
