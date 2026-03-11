@@ -641,6 +641,12 @@
 
                 drawRow("اسم العامل", emp.name); 
                 drawRow("القسم", sectionName);
+                
+                // NEW: Only print the specific targeted wage if it was calculated via percentage
+                if (grant.basisText && grant.basisAmt) {
+                    drawRow(grant.basisText, formatBase(grant.basisAmt));
+                }
+                
                 drawRow("التفاصيل", grant.description);
 
                 y += 10;
@@ -970,10 +976,21 @@
 
                     let y = 45; doc.setTextColor(0, 0, 0);
                     const drawRow = (label, value) => {
-                       doc.setFontSize(10); doc.text(label, 100, y, { align: 'right' }); doc.text(value.toString(), 10, y, { align: 'left' }); doc.setDrawColor(200); doc.line(10, y + 3, 100, y + 3); y += 10;
+                        doc.setFontSize(10); doc.text(label, 100, y, { align: 'right' }); doc.text(value.toString(), 10, y, { align: 'left' }); doc.setDrawColor(200); doc.line(10, y + 3, 100, y + 3); y += 10;
                     };
                     drawRow("اسم العامل", emp.name); drawRow("القسم", sectionName);
                     
+                    const dayBonuses = bonuses.filter(b => b.employeeId === emp.id && b.date === log.date);
+                    if (dayBonuses.length > 0) {
+                        // NEW: Only print the specific targeted wage if it was calculated via percentage
+                        dayBonuses.forEach(b => {
+                            if (b.basisText && b.basisAmt) {
+                                drawRow(b.basisText, formatBase(b.basisAmt));
+                            }
+                        });
+                        drawRow("التفاصيل", dayBonuses.map(b => b.description).join(" + "));
+                    }
+
                     y += 10; doc.setFillColor(0, 0, 0); doc.rect(10, y - 5, 90, 16, 'F');
                     doc.setTextColor(255, 255, 255); doc.setFontSize(12); doc.text("المبلغ المستحق", 98, y + 1, { align: 'right' }); doc.text(`${formatBase(log.amount)} ${config.mainSymbol || 'ل.س'}`, 12, y + 1, { align: 'left' });
                     doc.setTextColor(200, 200, 200); doc.setFontSize(9); doc.text("يعادل", 98, y + 8, { align: 'right' }); doc.text(`${formatSec(log.amount, config)} ${config.secSymbol || '$'}`, 12, y + 8, { align: 'left' });
@@ -2377,7 +2394,8 @@
               activeEmps.forEach(emp => { 
                   const targetWage = getPeriodWage(emp);
                   const amount = bonusType === 'percent' ? (targetWage * val / 100) : val; 
-                  addBonus(emp.id, amount, date, bonusDesc, bonusPeriod); 
+                  const bText = bonusType === 'percent' ? (bonusPeriod === '1' ? "راتب الفترة الأولى" : (bonusPeriod === '2' ? "راتب الفترة الثانية" : "الراتب الأساسي")) : null;
+                  addBonus(emp.id, amount, date, bonusDesc, bonusPeriod, bText, bonusType === 'percent' ? targetWage : null); 
               }); 
               alert(`Distributed bonus to ${activeEmps.length} employees.`); 
           } else { 
@@ -2386,7 +2404,8 @@
               if(emp) { 
                   const targetWage = getPeriodWage(emp);
                   const amount = bonusType === 'percent' ? (targetWage * val / 100) : val; 
-                  addBonus(emp.id, amount, date, bonusDesc, bonusPeriod); 
+                  const bText = bonusType === 'percent' ? (bonusPeriod === '1' ? "راتب الفترة الأولى" : (bonusPeriod === '2' ? "راتب الفترة الثانية" : "الراتب الأساسي")) : null;
+                  addBonus(emp.id, amount, date, bonusDesc, bonusPeriod, bText, bonusType === 'percent' ? targetWage : null); 
               } 
           } 
           setBonusValue(''); setBonusDesc(''); 
@@ -2410,7 +2429,8 @@
               activeEmps.forEach(emp => { 
                   const targetWage = getGrantTargetWage(emp);
                   const amount = grantType === 'percent' ? (targetWage * val / 100) : val; 
-                  addGrant(emp.id, amount, grantDate, grantDesc); 
+                  const bText = grantType === 'percent' ? (grantBasis === '1' ? "راتب الفترة الأولى" : (grantBasis === '2' ? "راتب الفترة الثانية" : "الراتب الأساسي")) : null;
+                  addGrant(emp.id, amount, grantDate, grantDesc, bText, grantType === 'percent' ? targetWage : null); 
               }); 
               alert(`Distributed support to ${activeEmps.length} employees.`); 
           } else { 
@@ -2419,7 +2439,8 @@
               if(emp) { 
                   const targetWage = getGrantTargetWage(emp);
                   const amount = grantType === 'percent' ? (targetWage * val / 100) : val; 
-                  addGrant(emp.id, amount, grantDate, grantDesc); 
+                  const bText = grantType === 'percent' ? (grantBasis === '1' ? "راتب الفترة الأولى" : (grantBasis === '2' ? "راتب الفترة الثانية" : "الراتب الأساسي")) : null;
+                  addGrant(emp.id, amount, grantDate, grantDesc, bText, grantType === 'percent' ? targetWage : null); 
               } 
           } 
           setGrantValue(''); setGrantDesc(''); 
@@ -2974,8 +2995,8 @@
       const renderDashboard = () => {
           const props = { employees, sections, attendance, advances, bonuses, grants, overtime, transportation, loans, pdfConfig, config: pdfConfig, lockedMonths, lang, t, toggleMonthLock: handleToggleMonthLock, currentUser };
           
-          if (currentUser.role === 'owner') return <OwnerDashboard {...props} users={users} cashRegisters={cashRegisters} updateCashRegister={(date, balance) => db.collection('cash_registers').doc(date).set({startingBalance: balance})} setConfig={(c)=>db.collection('meta').doc('config').set(c)} addUser={(u)=>db.collection('users').add(u)} updateUser={(id, u)=>db.collection('users').doc(id).update(u)} deleteUser={(id)=>db.collection('users').doc(id).delete()} addBonus={(eid, amt, date, desc, period) => db.collection('bonuses').add({employeeId: eid, amount: amt, date, description: desc, period: period})} deleteBonus={(id) => db.collection('bonuses').doc(id).delete()} addGrant={(eid, amt, date, desc) => db.collection('grants').add({employeeId: eid, amount: amt, date, description: desc})} deleteGrant={(id) => db.collection('grants').doc(id).delete()} />;
-          
+          if (currentUser.role === 'owner') return <OwnerDashboard {...props} users={users} cashRegisters={cashRegisters} updateCashRegister={(date, balance) => db.collection('cash_registers').doc(date).set({startingBalance: balance})} setConfig={(c)=>db.collection('meta').doc('config').set(c)} addUser={(u)=>db.collection('users').add(u)} updateUser={(id, u)=>db.collection('users').doc(id).update(u)} deleteUser={(id)=>db.collection('users').doc(id).delete()} addBonus={(eid, amt, date, desc, period, bText, bAmt) => db.collection('bonuses').add({employeeId: eid, amount: amt, date, description: desc, period: period, basisText: bText || null, basisAmt: bAmt || null})} deleteBonus={(id) => db.collection('bonuses').doc(id).delete()} addGrant={(eid, amt, date, desc, bText, bAmt) => db.collection('grants').add({employeeId: eid, amount: amt, date, description: desc, basisText: bText || null, basisAmt: bAmt || null})} deleteGrant={(id) => db.collection('grants').doc(id).delete()} />;
+
           if (currentUser.role === 'hr' || currentUser.role === 'hr_manager') return <HRDashboard {...props} lockPeriod={handleToggleMonthLock} setPdfConfig={(c)=>db.collection('meta').doc('config').set(c)} addEmployee={(d)=>db.collection('employees').add(d)} updateEmployee={(id,d)=>db.collection('employees').doc(id).update(d)} deleteEmployee={(id)=>db.collection('employees').doc(id).delete()} addSection={(n)=>db.collection('sections').add({name:n})} deleteSection={(id)=>db.collection('sections').doc(id).delete()} resignEmployee={(id)=>db.collection('employees').doc(id).update({isResigned:true})} />;
         
           if (currentUser.role === 'manager' || currentUser.role === 'data_entry') return <ManagerDashboard {...props} canEdit={currentUser.role === 'manager'} updateAttendance={(d, ids) => { const r = attendance.find(a=>a.date===d); if(r) db.collection('attendance').doc(r.id).update({absentEmployeeIds:ids}); else db.collection('attendance').add({date:d, absentEmployeeIds:ids}); }} addOvertime={(eid, hrs, d)=>db.collection('overtime').add({employeeId:eid, hours:hrs, date:d})} updateOvertime={(id, val)=>db.collection('overtime').doc(id).update({hours:val})} deleteOvertime={(id)=>db.collection('overtime').doc(id).delete()} />;
