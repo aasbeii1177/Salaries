@@ -851,8 +851,7 @@
             if (payType === 'weeklyPayout') return e.payCycle === 'weekly';
             if (['period1', 'period2', 'fullMonth'].includes(payType)) return (!e.payCycle || e.payCycle === 'monthly');
             return true;
-        });
-
+        }).sort((a, b) => a.name.localeCompare(b.name)); // <--- Added sorting here
         React.useEffect(() => {
             if (!selectedEmp || !payType) { setAmount(''); return; }
             const emp = employees.find(e => e.id === selectedEmp);
@@ -1151,7 +1150,8 @@
       const inputClass = "w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl font-bold bg-white text-black outline-none focus:border-indigo-600 transition-all";
 
       // NEW: Hide confidential workers if user is just regular "hr"
-      const filteredEmployees = React.useMemo(() => employees.filter(emp => (viewResigned ? emp.isResigned : !emp.isResigned) && (emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()) && (currentUser?.role !== 'hr' || !emp.isConfidential)), [employees, searchQuery, viewResigned, currentUser]);
+     // --- REPLACE IT WITH THIS ---
+      const filteredEmployees = React.useMemo(() => employees.filter(emp => (viewResigned ? emp.isResigned : !emp.isResigned) && (emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()) && (currentUser?.role !== 'hr' || !emp.isConfidential)).sort((a, b) => a.name.localeCompare(b.name)), [employees, searchQuery, viewResigned, currentUser]);
       const employeesBySection = React.useMemo(() => { 
           const grouped = { 'unassigned': [] }; 
           sections.forEach(s => grouped[s.id] = []); 
@@ -1859,7 +1859,7 @@
       
       const dailyOvertime = overtime.filter(o => o.date === selectedDate);
 
-      const filteredEmployees = employees.filter(emp => !emp.isResigned && (emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()));
+      const filteredEmployees = employees.filter(emp => !emp.isResigned && (emp.name || '').toLowerCase().includes(searchQuery.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name));
       
       const employeesBySection = React.useMemo(() => { 
           const grouped = { 'unassigned': [] }; 
@@ -2026,7 +2026,7 @@
       const [editingEntries, setEditingEntries] = React.useState(null);
 
       // --- Logic for Loans ---
-      const activeEmployees = employees.filter(emp => !emp.isResigned && (emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()));
+      const activeEmployees = employees.filter(emp => !emp.isResigned && (emp.name || '').toLowerCase().includes(searchQuery.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name));
       const handleSaveLoan = () => { if (loanTarget) { updateLoan(loanTarget.id, parseFloat(loanAmount), parseFloat(loanPercent)); setLoanTarget(null); }};
 
       // --- Logic for Advances ---
