@@ -1850,18 +1850,26 @@
                         );
                     })()}
                 </div>
-
                 <div className="max-h-[400px] overflow-y-auto divide-y divide-gray-100 border-t pt-4">
-                    {grants.length === 0 && <p className="text-center text-gray-400 font-bold text-xs py-10">{t('noRecordsFound')}</p>}
-                    {grants.slice().sort((a, b) => new Date(b.date) - new Date(a.date)).map(g => (
-                       <div key={g.id} className="flex justify-between items-center py-4 hover:bg-gray-50 transition-colors px-2 rounded-lg">
-                          <div>
-                              <p className="font-black text-black">{employees.find(e=>e.id===g.employeeId)?.name || 'Unknown'}</p>
-                              <p className="text-xs font-bold text-teal-600 uppercase mt-1">{g.description} • {parseFloat(g.amount).toLocaleString()} {pdfConfig.mainSymbol || 'SYP'}</p>
-                          </div>
-                          <span className="font-black text-gray-400 text-xs">{g.date}</span>
-                       </div>
-                    ))}
+                    {(() => {
+                        const visibleGrants = grants.filter(g => {
+                            if (g.date !== printGrantDate) return false; // Only show for the selected date
+                            const emp = employees.find(e => e.id === g.employeeId);
+                            return emp && (reportZone === 'all' || (emp.cashierZone || '1').toString() === reportZone); // Only show for selected zone
+                        }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                        if (visibleGrants.length === 0) return <p className="text-center text-gray-400 font-bold text-xs py-10">{t('noRecordsFound')}</p>;
+
+                        return visibleGrants.map(g => (
+                           <div key={g.id} className="flex justify-between items-center py-4 hover:bg-gray-50 transition-colors px-2 rounded-lg">
+                              <div>
+                                  <p className="font-black text-black">{employees.find(e=>e.id===g.employeeId)?.name || 'Unknown'}</p>
+                                  <p className="text-xs font-bold text-teal-600 uppercase mt-1">{g.description} • {parseFloat(g.amount).toLocaleString()} {pdfConfig.mainSymbol || 'SYP'}</p>
+                              </div>
+                              <span className="font-black text-gray-400 text-xs">{g.date}</span>
+                           </div>
+                        ));
+                    })()}
                 </div>
              </section>
           )}
@@ -2847,19 +2855,27 @@
                                 </div>
                             );
                         })()}
-                    </div>
-                    
+                    </div>                  
                     <div className="max-h-[300px] overflow-y-auto divide-y">
-                        {grants.length === 0 && <p className="text-center text-gray-400 font-bold text-xs py-10">{t('noRecordsFound')}</p>}
-                        {grants.map(g => (
-                           <div key={g.id} className="flex justify-between items-center py-3 hover:bg-gray-50 transition-colors">
-                              <div>
-                                  <p className="font-black text-sm">{employees.find(e=>e.id===g.employeeId)?.name || 'Unknown'}</p>
-                                  <p className="text-[10px] font-bold text-teal-600 uppercase">{g.description} • {parseFloat(g.amount).toLocaleString()} {config.mainSymbol || 'SYP'} ({g.date})</p>
-                              </div>
-                              <button onClick={()=>deleteGrant(g.id)} className="text-red-500 font-black text-[10px] uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button>
-                           </div>
-                        ))}
+                        {(() => {
+                            const visibleGrants = grants.filter(g => {
+                                if (g.date !== printGrantDate) return false; // Only show for the selected date
+                                const emp = employees.find(e => e.id === g.employeeId);
+                                return emp && (reportZone === 'all' || (emp.cashierZone || '1').toString() === reportZone); // Only show for selected zone
+                            });
+
+                            if (visibleGrants.length === 0) return <p className="text-center text-gray-400 font-bold text-xs py-10">{t('noRecordsFound')}</p>;
+
+                            return visibleGrants.map(g => (
+                               <div key={g.id} className="flex justify-between items-center py-3 hover:bg-gray-50 transition-colors">
+                                  <div>
+                                      <p className="font-black text-sm">{employees.find(e=>e.id===g.employeeId)?.name || 'Unknown'}</p>
+                                      <p className="text-[10px] font-bold text-teal-600 uppercase">{g.description} • {parseFloat(g.amount).toLocaleString()} {config.mainSymbol || 'SYP'} ({g.date})</p>
+                                  </div>
+                                  <button onClick={()=>deleteGrant(g.id)} className="text-red-500 font-black text-[10px] uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button>
+                               </div>
+                            ));
+                        })()}
                     </div>
                  </div>
               </div>
