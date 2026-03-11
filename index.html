@@ -647,6 +647,11 @@
                     drawRow(grant.basisText, formatBase(grant.basisAmt));
                 }
                 
+                // NEW: If transport was included separately, draw it on its own beautiful line!
+                if (grant.basisTransportAmt) {
+                    drawRow("المواصلات", formatBase(grant.basisTransportAmt));
+                }
+
                 drawRow("التفاصيل", grant.description);
 
                 y += 10;
@@ -2426,36 +2431,32 @@
           };
 
           let finalBText = grantType === 'percent' ? (grantBasis === '1' ? "راتب" : (grantBasis === '2' ? "راتب" : "الراتب الأساسي")) : null;
-          if (grantType === 'percent' && grantIncludeTransport) finalBText += " + بدل نقل";
 
-          const calculateFinalWage = (emp) => {
-              let wage = getGrantTargetWage(emp);
+          const processGrantForEmp = (emp) => {
+              let baseWage = getGrantTargetWage(emp);
+              let tAmt = 0;
+              
               if (grantType === 'percent' && grantIncludeTransport) {
-                  let tAmt = 0;
                   if (grantBasis === '1') tAmt = parseFloat(emp.transportPeriod1Amount) || 0;
                   else if (grantBasis === '2') tAmt = parseFloat(emp.transportPeriod2Amount) || 0;
                   else tAmt = (parseFloat(emp.transportPeriod1Amount) || 0) + (parseFloat(emp.transportPeriod2Amount) || 0);
-                  wage += tAmt;
               }
-              return wage;
+              
+              let totalCombined = baseWage + tAmt;
+              const amount = grantType === 'percent' ? (totalCombined * val / 100) : val; 
+              
+              // NEW: We pass baseWage and tAmt separately into the database!
+              addGrant(emp.id, amount, grantDate, grantDesc, finalBText, grantType === 'percent' ? baseWage : null, grantType === 'percent' && grantIncludeTransport ? tAmt : null); 
           };
 
           if (grantTarget === 'all') { 
               const activeEmps = employees.filter(e => !e.isResigned); 
-              activeEmps.forEach(emp => { 
-                  const targetWage = calculateFinalWage(emp);
-                  const amount = grantType === 'percent' ? (targetWage * val / 100) : val; 
-                  addGrant(emp.id, amount, grantDate, grantDesc, finalBText, grantType === 'percent' ? targetWage : null); 
-              }); 
+              activeEmps.forEach(emp => processGrantForEmp(emp)); 
               alert(`Distributed support to ${activeEmps.length} employees.`); 
           } else { 
               if(!selectedGrantEmp) return; 
               const emp = employees.find(e => e.id === selectedGrantEmp); 
-              if(emp) { 
-                  const targetWage = calculateFinalWage(emp);
-                  const amount = grantType === 'percent' ? (targetWage * val / 100) : val; 
-                  addGrant(emp.id, amount, grantDate, grantDesc, finalBText, grantType === 'percent' ? targetWage : null); 
-              } 
+              if(emp) processGrantForEmp(emp); 
           } 
           setGrantValue(''); setGrantDesc(''); 
       };
@@ -3015,7 +3016,7 @@
       const renderDashboard = () => {
           const props = { employees, sections, attendance, advances, bonuses, grants, overtime, transportation, loans, pdfConfig, config: pdfConfig, lockedMonths, lang, t, toggleMonthLock: handleToggleMonthLock, currentUser };
           
-          if (currentUser.role === 'owner') return <OwnerDashboard {...props} users={users} cashRegisters={cashRegisters} updateCashRegister={(date, balance) => db.collection('cash_registers').doc(date).set({startingBalance: balance})} setConfig={(c)=>db.collection('meta').doc('config').set(c)} addUser={(u)=>db.collection('users').add(u)} updateUser={(id, u)=>db.collection('users').doc(id).update(u)} deleteUser={(id)=>db.collection('users').doc(id).delete()} addBonus={(eid, amt, date, desc, period, bText, bAmt) => db.collection('bonuses').add({employeeId: eid, amount: amt, date, description: desc, period: period, basisText: bText || null, basisAmt: bAmt || null})} deleteBonus={(id) => db.collection('bonuses').doc(id).delete()} addGrant={(eid, amt, date, desc, bText, bAmt) => db.collection('grants').add({employeeId: eid, amount: amt, date, description: desc, basisText: bText || null, basisAmt: bAmt || null})} deleteGrant={(id) => db.collection('grants').doc(id).delete()} />;
+          if (currentUser.role === 'owner') return <OwnerDashboard {...props} users={users} cashRegisters={cashRegisters} updateCashRegister={(date, balance) => db.collection('cash_registers').doc(date).set({startingBalance: balance})} setConfig={(c)=>db.collection('meta').doc('config').set(c)} addUser={(u)=>db.collection('users').add(u)} updateUser={(id, u)=>db.collection('users').doc(id).update(u)} deleteUser={(id)=>db.collection('users').doc(id).delete()} addBonus={(eid, amt, date, desc, period, bText, bAmt) => db.collection('bonuses').add({employeeId: eid, amount: amt, date, description: desc, period: period, basisText: bText || null, basisAmt: bAmt || null})} deleteBonus={(id) => db.collection('bonuses').doc(id).delete()} addGrant={(eid, amt, date, desc, bText, bAmt, bTransAmt) => db.collection('grants').add({employeeId: eid, amount: amt, date, description: desc, basisText: bText || null, basisAmt: bAmt || null, basisTransportAmt: bTransAmt || null})} deleteGrant={(id) => db.collection('grants').doc(id).delete()} />;
 
           if (currentUser.role === 'hr' || currentUser.role === 'hr_manager') return <HRDashboard {...props} lockPeriod={handleToggleMonthLock} setPdfConfig={(c)=>db.collection('meta').doc('config').set(c)} addEmployee={(d)=>db.collection('employees').add(d)} updateEmployee={(id,d)=>db.collection('employees').doc(id).update(d)} deleteEmployee={(id)=>db.collection('employees').doc(id).delete()} addSection={(n)=>db.collection('sections').add({name:n})} deleteSection={(id)=>db.collection('sections').doc(id).delete()} resignEmployee={(id)=>db.collection('employees').doc(id).update({isResigned:true})} />;
         
