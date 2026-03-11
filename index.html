@@ -1105,14 +1105,7 @@
                             
                             <div>
                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('targetPayrollMonth')}</label>
-                                <div className="flex gap-2">
-                                    <input type="month" className={`${inputClass} w-1/2`} value={targetReportMonth} onChange={e=>setTargetReportMonth(e.target.value)} />
-                                    <select className={`${inputClass} w-1/2`} value={reportZone} onChange={e=>setReportZone(e.target.value)}>
-                                        <option value="all">كل الصناديق (All Zones)</option>
-                                        <option value="1">الصندوق 1 (Zone 1)</option>
-                                        <option value="2">الصندوق 2 (Zone 2)</option>
-                                    </select>
-                                </div>
+                                <input type="month" className={inputClass} value={targetMonth} onChange={e=>setTargetMonth(e.target.value)} required />
                                 <p className="text-[8px] text-gray-400 mt-1 uppercase font-bold text-right">{t('unlockPastMonths')}</p>
                             </div>
                             
@@ -1206,8 +1199,7 @@
       const [employeeTarget, setEmployeeTarget] = React.useState(null); 
       const [settlementData, setSettlementData] = React.useState(null); 
       const [reportType, setReportType] = React.useState(null); 
-      const [targetReportMonth, setTargetReportMonth] = React.useState(null);
-      const [reportZone, setReportZone] = React.useState('all'); // NEW: Remembers which zone to print
+      const [targetReportMonth, setTargetReportMonth] = React.useState(null); 
       const [totalsData, setTotalsData] = React.useState(null);
       const [printGrantDate, setPrintGrantDate] = React.useState(new Date().toISOString().split('T')[0]);
       
@@ -1297,8 +1289,7 @@
       const handleGenerateReport = async (periodType) => { 
          setIsGenerating(true); 
          try {
-            // NEW: Filters out employees who don't match the selected zone
-            const sortedEmps = employees.filter(e => !e.isResigned && (reportZone === 'all' || (e.cashierZone || '1').toString() === reportZone)).sort((a, b) => a.name.localeCompare(b.name));
+            const sortedEmps = employees.filter(e=>!e.isResigned).sort((a, b) => a.name.localeCompare(b.name));
             if (reportType === 'pdf') { await generateAllPayslips(targetReportMonth, periodType, sortedEmps, attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses); }
             else if (reportType === 'excel') { generateExcelReport(targetReportMonth, periodType, sortedEmps, attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses, lang); }
          } catch(e) { console.log("Report Error", e); }
@@ -2311,7 +2302,6 @@
       const [editingUserId, setEditingUserId] = React.useState(null);
       const [reportType, setReportType] = React.useState(null);
       const [targetReportMonth, setTargetReportMonth] = React.useState(null);
-      const [reportZone, setReportZone] = React.useState('all'); // NEW: Remembers which zone to print
       const [isGenerating, setIsGenerating] = React.useState(false);
       
       const [bonusType, setBonusType] = React.useState('fixed'); 
@@ -2374,8 +2364,7 @@
       const handleGenerateReport = async (periodType) => { 
          setIsGenerating(true); 
          try {
-            // NEW: Filters out employees who don't match the selected zone
-            const sortedEmps = employees.filter(e => !e.isResigned && (reportZone === 'all' || (e.cashierZone || '1').toString() === reportZone)).sort((a, b) => a.name.localeCompare(b.name));
+            const sortedEmps = employees.filter(e=>!e.isResigned).sort((a, b) => a.name.localeCompare(b.name));
             if (reportType === 'pdf') { await generateAllPayslips(targetReportMonth, periodType, sortedEmps, attendance, advances, overtime, loans, transportation, config, sections, bonuses); }
             else if (reportType === 'excel') { generateExcelReport(targetReportMonth, periodType, sortedEmps, attendance, advances, overtime, loans, transportation, config, sections, bonuses, lang); }
          } catch(e) { console.log("Report Error", e); }
