@@ -780,8 +780,6 @@
     };
 
     // --- CASHIER DASHBOARD WITH PDF EXPORT & AUTO-MATH ---
-    // --- CASHIER DASHBOARD WITH STRICT AUTHORIZATION ENGINE ---
-    // --- REPLACE IT WITH THIS ---
     // --- CASHIER DASHBOARD WITH STRICT AUTHORIZATION ENGINE & ZONES ---
     const CashierDashboard = ({ employees, payoutLogs, cashRegisters, addPayout, deletePayout, updateCashRegister, lang, t, config, attendance, advances, overtime, loans, transportation, bonuses, grants, sections, lockedMonths, currentUser }) => {
         const myZone = (currentUser?.cashierZone || '1').toString();
@@ -1166,7 +1164,6 @@
       const inputClass = "w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl font-bold bg-white text-black outline-none focus:border-indigo-600 transition-all";
 
       // NEW: Hide confidential workers if user is just regular "hr"
-     // --- REPLACE IT WITH THIS ---
       const filteredEmployees = React.useMemo(() => employees.filter(emp => (viewResigned ? emp.isResigned : !emp.isResigned) && (emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()) && (currentUser?.role !== 'hr' || !emp.isConfidential)).sort((a, b) => a.name.localeCompare(b.name)), [employees, searchQuery, viewResigned, currentUser]);
       const employeesBySection = React.useMemo(() => { 
           const grouped = { 'unassigned': [] }; 
@@ -1186,7 +1183,6 @@
           return [...new Set(rawMonths)].sort().reverse(); 
       }, [attendance, lockedMonths]);
 
-      // --- REPLACE IT WITH THIS ---
       const handleAdd = (e) => { 
           e.preventDefault(); 
           let finalWage = parseFloat(formData.wage) || 0;
@@ -1284,7 +1280,6 @@
               const arrayBuffer = evt.target.result; 
               const wb = XLSX.read(arrayBuffer, { type: 'array' }); 
               const ws = wb.Sheets[wb.SheetNames[0]]; 
-             // --- REPLACE IT WITH THIS ---
               const data = XLSX.utils.sheet_to_json(ws); 
               let count = 0; 
 
@@ -1296,7 +1291,6 @@
               });
               
               data.forEach(row => { 
-                  // --- REPLACE IT WITH THIS ---
                   const name = row['Name'] || row['الاسم']; 
                   if (!name) return; 
                   
@@ -1341,7 +1335,6 @@
                       jDate = new Date(excelEpoch.getTime() + jDate * 86400000).toISOString().split('T')[0];
                   }
 
-                  // --- REPLACE IT WITH THIS ---
                   const natId = (row['National ID'] || row['الرقم الوطني'] || '').toString();
                   const insId = (row['Insurance ID'] || row['رقم التأمين'] || '').toString();
                   const fName = (row['Father Name'] || row['اسم الأب'] || '').toString();
@@ -1536,7 +1529,6 @@
                                                           <td colSpan={6} className="px-8 py-6">
                                                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('name')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.name} onChange={e=>setEditFormData({...editFormData, name:e.target.value})} /> : <p className="font-black">{emp.name}</p>}</div>
-                                                                  // --- REPLACE IT WITH THIS ---
      <div><label className="text-[10px] font-black uppercase block mb-1">{t('jobTitle')}</label>{editingId === emp.id ? <input className={inputClass} placeholder="e.g. Manager, Worker..." value={editFormData.jobTitle} onChange={e=>setEditFormData({...editFormData, jobTitle:e.target.value})} /> : <p className="font-black">{emp.jobTitle || 'Worker'}</p>}</div>
     
     {/* NEW: Worker Number Box */}
