@@ -2314,7 +2314,6 @@
       const [grantTarget, setGrantTarget] = React.useState('individual');
       const [grantBasis, setGrantBasis] = React.useState('full'); // New State for Support Percentage Basis
       const [selectedGrantEmp, setSelectedGrantEmp] = React.useState('');
-      const [grantIncludeTransport, setGrantIncludeTransport] = React.useState(false); // NEW: Remembers the checkbox
       const [grantValue, setGrantValue] = React.useState('');
       const [grantDesc, setGrantDesc] = React.useState('');
       const [grantDate, setGrantDate] = React.useState(new Date().toISOString().split('T')[0]);
@@ -2425,35 +2424,24 @@
               return basePlusNight; 
           };
 
-          const processGrantForEmp = (emp) => {
-              let targetWage = getGrantTargetWage(emp);
-              
-              // NEW: Add the correct transportation if the box is checked
-              if (grantType === 'percent' && grantIncludeTransport) {
-                  let tAmt = 0;
-                  if (grantBasis === '1') tAmt = parseFloat(emp.transportPeriod1Amount) || 0;
-                  else if (grantBasis === '2') tAmt = parseFloat(emp.transportPeriod2Amount) || 0;
-                  else tAmt = (parseFloat(emp.transportPeriod1Amount) || 0) + (parseFloat(emp.transportPeriod2Amount) || 0);
-                  targetWage += tAmt;
-              }
-              
-              const amount = grantType === 'percent' ? (targetWage * val / 100) : val; 
-              
-              // NEW: Update the label to show transport was included
-              let baseLabel = grantBasis === '1' ? "راتب" : (grantBasis === '2' ? "راتب" : "الراتب الأساسي");
-              const bText = grantType === 'percent' ? (grantIncludeTransport ? baseLabel + " + بدل نقل" : baseLabel) : null;
-              
-              addGrant(emp.id, amount, grantDate, grantDesc, bText, grantType === 'percent' ? targetWage : null); 
-          };
-
           if (grantTarget === 'all') { 
               const activeEmps = employees.filter(e => !e.isResigned); 
-              activeEmps.forEach(emp => processGrantForEmp(emp)); 
+              activeEmps.forEach(emp => { 
+                  const targetWage = getGrantTargetWage(emp);
+                  const amount = grantType === 'percent' ? (targetWage * val / 100) : val; 
+                  const bText = grantType === 'percent' ? (grantBasis === '1' ? "راتب" : (grantBasis === '2' ? "راتب" : "الراتب الأساسي")) : null;
+                  addGrant(emp.id, amount, grantDate, grantDesc, bText, grantType === 'percent' ? targetWage : null); 
+              }); 
               alert(`Distributed support to ${activeEmps.length} employees.`); 
           } else { 
               if(!selectedGrantEmp) return; 
               const emp = employees.find(e => e.id === selectedGrantEmp); 
-              if(emp) processGrantForEmp(emp); 
+              if(emp) { 
+                  const targetWage = getGrantTargetWage(emp);
+                  const amount = grantType === 'percent' ? (targetWage * val / 100) : val; 
+                  const bText = grantType === 'percent' ? (grantBasis === '1' ? "راتب" : (grantBasis === '2' ? "راتب" : "الراتب الأساسي")) : null;
+                  addGrant(emp.id, amount, grantDate, grantDesc, bText, grantType === 'percent' ? targetWage : null); 
+              } 
           } 
           setGrantValue(''); setGrantDesc(''); 
       };
@@ -2734,20 +2722,7 @@
                        </div>
                        
                        {grantType === 'percent' && (
-                            <div className="flex flex-col gap-2">
-                                <select className={inputClass} value={grantBasis} onChange={e=>setGrantBasis(e.target.value)}>
-                                    <option value="1">راتب الفترة الأولى</option>
-                                    <option value="2">راتب الفترة الثانية</option>
-                                    <option value="fullMonth">الراتب الكامل</option>
-                                </select>
-                                
-                                <label className="flex items-center gap-2 text-[11px] font-black text-gray-600 cursor-pointer mt-1">
-                                    <input type="checkbox" className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" checked={grantIncludeTransport} onChange={e=>setGrantIncludeTransport(e.target.checked)} />
-                                    تضمين بدل النقل في الحساب (Include Transport)
-                                </label>
-                            </div>
-                        )}
-                    </div>
+                          <div>
                               <label className="block text-[10px] font-black uppercase mb-2 text-teal-700">{t('calcPercentFrom')}</label>
                               <div className="flex bg-teal-50 p-1 rounded-xl border border-teal-100">
                                   <button type="button" onClick={()=>setGrantBasis('full')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='full'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('fullMonth')}</button>
