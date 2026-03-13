@@ -277,7 +277,22 @@
       dataMaintenance: { en: "Data Maintenance", ar: "صيانة البيانات" },
       cashierAudit: { en: "Cashier Audit", ar: "تدقيق الصندوق" },
       userAccess: { en: "User Access", ar: "صلاحيات المستخدمين" },
-      engine: { en: "Engine", ar: "محرك" }
+      engine: { en: "Engine", ar: "محرك" },
+      pdfStyle: { en: "PDF Style", ar: "تصميم الـ PDF" },
+      pdfDesignControl: { en: "PDF Customization Control", ar: "تخصيص تصميم الـ PDF" },
+      colorsMainPayslip: { en: "Colors: Main Payslip", ar: "ألوان: كشف الراتب الشهري" },
+      bgColor: { en: "Background", ar: "الخلفية" },
+      textColor: { en: "Text Color", ar: "لون الخط" },
+      colorsAidPayslip: { en: "Colors: Support / Aid", ar: "ألوان: إيصال المنح والمساعدات" },
+      granularFontSizing: { en: "Granular Font Sizing", ar: "أحجام الخطوط" },
+      mainTitle: { en: "Main Title", ar: "العنوان الرئيسي" },
+      defaultRowSize: { en: "Default Row Size", ar: "حجم السطر الافتراضي" },
+      workerNameLabel: { en: "Worker Name", ar: "اسم العامل" },
+      jobSectionLabel: { en: "Job Title / Section", ar: "الوظيفة / القسم" },
+      absenceRows: { en: "Absence Rows", ar: "أسطر الغياب" },
+      loanRows: { en: "Loan Rows", ar: "أسطر القروض" },
+      detailsReason: { en: "Details / Reason", ar: "التفاصيل والسبب" },
+      savePdfStyle: { en: "Save Style Protocol", ar: "حفظ التصميم" }
     };
     
     // --- 3. UI COMPONENTS ---
@@ -1536,7 +1551,7 @@
               <button onClick={() => setActiveTab('sections')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'sections' ? 'bg-indigo-600 text-white shadow-lg' : 'text-black hover:text-indigo-600'}`}>{t('sections')}</button>
               <button onClick={() => setActiveTab('periods')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'periods' ? 'bg-indigo-600 text-white shadow-lg' : 'text-black hover:text-indigo-600'}`}>{t('periods')}</button>
               <button onClick={() => setActiveTab('grants')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'grants' ? 'bg-indigo-600 text-white shadow-lg' : 'text-black hover:text-indigo-600'}`}>{t('supportAid')}</button>
-              <button onClick={() => setActiveTab('pdf_style')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'pdf_style' ? 'bg-indigo-600 text-white shadow-lg' : 'text-black hover:text-indigo-600'}`}>🎨 PDF Style</button>
+              <button onClick={() => setActiveTab('pdf_style')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'pdf_style' ? 'bg-indigo-600 text-white shadow-lg' : 'text-black hover:text-indigo-600'}`}>🎨 {t('pdfStyle')}</button>
               <button onClick={() => setActiveTab('danger')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'danger' ? 'bg-red-600 text-white shadow-lg' : 'text-red-600 hover:bg-red-50'}`}>⚠️ {t('resetData')}</button>
           </div>
             
@@ -1907,41 +1922,41 @@
           )}
 
           {activeTab === 'pdf_style' && (
-              <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 animate-in fade-in" dir="rtl">
-                  <h3 className="text-xl font-black text-black uppercase mb-6 tracking-tight">🎨 تخصيص تصميم الـ PDF</h3>
+              <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 animate-in fade-in">
+                  <h3 className="text-xl font-black text-black uppercase mb-6 tracking-tight">🎨 {t('pdfDesignControl')}</h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                       <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 space-y-5">
-                          <h4 className="font-black text-gray-600 uppercase text-xs tracking-widest mb-2 border-b-2 border-gray-200 pb-2">ألوان: كشف الراتب الشهري</h4>
+                          <h4 className="font-black text-gray-600 uppercase text-xs tracking-widest mb-2 border-b-2 border-gray-200 pb-2">{t('colorsMainPayslip')}</h4>
                           <div className="flex gap-4">
-                              <div className="w-1/2"><label className="block text-[10px] font-black uppercase mb-2">الخلفية (Background)</label><input type="color" className="w-full h-10 rounded-lg cursor-pointer bg-white p-0 border" value={styleConfig.pdfHeaderBg} onChange={e => setStyleConfig({...styleConfig, pdfHeaderBg: e.target.value})} /></div>
-                              <div className="w-1/2"><label className="block text-[10px] font-black uppercase mb-2">لون الخط (Text Color)</label><input type="color" className="w-full h-10 rounded-lg cursor-pointer bg-white p-0 border" value={styleConfig.pdfHeaderTextColor} onChange={e => setStyleConfig({...styleConfig, pdfHeaderTextColor: e.target.value})} /></div>
+                              <div className="w-1/2"><label className="block text-[10px] font-black uppercase mb-2">{t('bgColor')}</label><input type="color" className="w-full h-10 rounded-lg cursor-pointer bg-white p-0 border" value={styleConfig.pdfHeaderBg} onChange={e => setStyleConfig({...styleConfig, pdfHeaderBg: e.target.value})} /></div>
+                              <div className="w-1/2"><label className="block text-[10px] font-black uppercase mb-2">{t('textColor')}</label><input type="color" className="w-full h-10 rounded-lg cursor-pointer bg-white p-0 border" value={styleConfig.pdfHeaderTextColor} onChange={e => setStyleConfig({...styleConfig, pdfHeaderTextColor: e.target.value})} /></div>
                           </div>
                       </div>
 
                       <div className="bg-teal-50 p-6 rounded-2xl border border-teal-100 space-y-5">
-                          <h4 className="font-black text-teal-700 uppercase text-xs tracking-widest mb-2 border-b-2 border-teal-200 pb-2">ألوان: إيصال المنح والمساعدات</h4>
+                          <h4 className="font-black text-teal-700 uppercase text-xs tracking-widest mb-2 border-b-2 border-teal-200 pb-2">{t('colorsAidPayslip')}</h4>
                           <div className="flex gap-4">
-                              <div className="w-1/2"><label className="block text-[10px] font-black uppercase mb-2 text-teal-800">الخلفية (Background)</label><input type="color" className="w-full h-10 rounded-lg cursor-pointer bg-white p-0 border" value={styleConfig.aidPdfHeaderBg} onChange={e => setStyleConfig({...styleConfig, aidPdfHeaderBg: e.target.value})} /></div>
-                              <div className="w-1/2"><label className="block text-[10px] font-black uppercase mb-2 text-teal-800">لون الخط (Text Color)</label><input type="color" className="w-full h-10 rounded-lg cursor-pointer bg-white p-0 border" value={styleConfig.aidPdfHeaderTextColor} onChange={e => setStyleConfig({...styleConfig, aidPdfHeaderTextColor: e.target.value})} /></div>
+                              <div className="w-1/2"><label className="block text-[10px] font-black uppercase mb-2 text-teal-800">{t('bgColor')}</label><input type="color" className="w-full h-10 rounded-lg cursor-pointer bg-white p-0 border" value={styleConfig.aidPdfHeaderBg} onChange={e => setStyleConfig({...styleConfig, aidPdfHeaderBg: e.target.value})} /></div>
+                              <div className="w-1/2"><label className="block text-[10px] font-black uppercase mb-2 text-teal-800">{t('textColor')}</label><input type="color" className="w-full h-10 rounded-lg cursor-pointer bg-white p-0 border" value={styleConfig.aidPdfHeaderTextColor} onChange={e => setStyleConfig({...styleConfig, aidPdfHeaderTextColor: e.target.value})} /></div>
                           </div>
                       </div>
 
                       <div className="col-span-full bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
-                          <h4 className="font-black text-indigo-700 uppercase text-xs tracking-widest mb-4 border-b-2 border-indigo-200 pb-2">أحجام الخطوط (Font Sizing)</h4>
+                          <h4 className="font-black text-indigo-700 uppercase text-xs tracking-widest mb-4 border-b-2 border-indigo-200 pb-2">{t('granularFontSizing')}</h4>
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">العنوان الرئيسي</label><input type="number" className={inputClass} value={styleConfig.pdfTitleSize} onChange={e => setStyleConfig({...styleConfig, pdfTitleSize: e.target.value})} /></div>
-                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">حجم السطر الافتراضي</label><input type="number" className={inputClass} value={styleConfig.pdfBaseSize} onChange={e => setStyleConfig({...styleConfig, pdfBaseSize: e.target.value})} /></div>
-                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">اسم العامل</label><input type="number" className={inputClass} value={styleConfig.sizeName} onChange={e => setStyleConfig({...styleConfig, sizeName: e.target.value})} /></div>
-                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">الوظيفة / القسم</label><input type="number" className={inputClass} value={styleConfig.sizeJobSection} onChange={e => setStyleConfig({...styleConfig, sizeJobSection: e.target.value})} /></div>
-                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">أسطر الغياب</label><input type="number" className={inputClass} value={styleConfig.sizeAbsence} onChange={e => setStyleConfig({...styleConfig, sizeAbsence: e.target.value})} /></div>
-                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">أسطر القروض</label><input type="number" className={inputClass} value={styleConfig.sizeLoan} onChange={e => setStyleConfig({...styleConfig, sizeLoan: e.target.value})} /></div>
-                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">التفاصيل والسبب</label><input type="number" className={inputClass} value={styleConfig.sizeReason} onChange={e => setStyleConfig({...styleConfig, sizeReason: e.target.value})} /></div>
+                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">{t('mainTitle')}</label><input type="number" className={inputClass} value={styleConfig.pdfTitleSize} onChange={e => setStyleConfig({...styleConfig, pdfTitleSize: e.target.value})} /></div>
+                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">{t('defaultRowSize')}</label><input type="number" className={inputClass} value={styleConfig.pdfBaseSize} onChange={e => setStyleConfig({...styleConfig, pdfBaseSize: e.target.value})} /></div>
+                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">{t('workerNameLabel')}</label><input type="number" className={inputClass} value={styleConfig.sizeName} onChange={e => setStyleConfig({...styleConfig, sizeName: e.target.value})} /></div>
+                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">{t('jobSectionLabel')}</label><input type="number" className={inputClass} value={styleConfig.sizeJobSection} onChange={e => setStyleConfig({...styleConfig, sizeJobSection: e.target.value})} /></div>
+                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">{t('absenceRows')}</label><input type="number" className={inputClass} value={styleConfig.sizeAbsence} onChange={e => setStyleConfig({...styleConfig, sizeAbsence: e.target.value})} /></div>
+                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">{t('loanRows')}</label><input type="number" className={inputClass} value={styleConfig.sizeLoan} onChange={e => setStyleConfig({...styleConfig, sizeLoan: e.target.value})} /></div>
+                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">{t('detailsReason')}</label><input type="number" className={inputClass} value={styleConfig.sizeReason} onChange={e => setStyleConfig({...styleConfig, sizeReason: e.target.value})} /></div>
                           </div>
                       </div>
                   </div>
 
-                  <button onClick={handleSavePdfStyle} className="w-full bg-black text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-gray-800 transition-all">حفظ التصميم (Save Style)</button>
+                  <button onClick={handleSavePdfStyle} className="w-full bg-black text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-gray-800 transition-all">{t('savePdfStyle')}</button>
               </section>
           )}
 
@@ -3010,7 +3025,8 @@
                           "Finance & Loans": ["liabilityOversight", "remainingDebt", "issueLoan", "editContract", "liabilityContract", "managingProfile", "discard", "saveContract", "recoveryVelocity"],
                           "Owner Controls": ["systemVariables", "strategicControl", "systemLogic", "bonusCenter", "credentialManagement", "dictionary", "saveDictionary", "logicSync", "daysPerMonth", "hoursPerDay", "otFactor", "absencePenalty", "nightMultiplier", "commitLogic", "overtimePeriod", "absencePeriod", "paymentSettings", "dangerZone", "dataMaintenanceReset", "resetSubtext", "wipeAllWorkers", "wipeAllAttendance", "wipeConfirm", "backupData", "distType", "target", "individual", "allActive", "bonusEngine", "distributeCapital", "distributionLogs", "fixedAmount", "percentWage", "wipeGrants", "wipePayouts", "selectReport", "downloadExcel", "dataMaintenance", "cashierAudit", "engine", "percentage", "eventDate", "payPeriod", "reasonAid", "reasonBonus", "distributeAid", "calcPercentFrom", "dualCurrencyEngine", "mainName", "mainSymbol", "secName", "secSymbol", "exchangeRate", "payrollPeriods", "lockP1", "lockP2", "p1Locked", "p2Locked", "financialLoans", "delLoans", "wipeLoans", "attendanceLogs", "delAttendance", "workersEmployees", "delWorkers", "financialBonuses", "delBonuses", "wipeBonuses", "financialOvertime", "delOvertime", "wipeOvertime", "financialAdvances", "delAdvances", "wipeAdvances", "cashierLogs", "delCashierLogs", "financialTransport", "delTransport", "wipeTransport", "financialSupport", "delSupport"],
                           "Cashier Dashboard": ["cashRegister", "startingBalance", "setBalance", "recordPayout", "totalPaid", "remainingCash", "paymentType", "dailyLogs", "printEodReport", "cashierZone", "targetPayrollMonth", "unlockPastMonths", "selectEmployee", "autoCalc", "auditSubtext", "overrideBtn", "dailyPayout", "weeklyPayout"],
-                          "Reports & PDFs": ["generatePdf", "exportCsv", "viewTotals", "estimatedPayout", "activitySummary", "historyProtected", "bonus", "supportAid", "grantsLogs", "printInstantSlips", "printInstantAidSlips", "printInstantSlipsSub", "printBtn", "noRecordsFound"]
+                          "Reports & PDFs": ["generatePdf", "exportCsv", "viewTotals", "estimatedPayout", "activitySummary", "historyProtected", "bonus", "supportAid", "grantsLogs", "printInstantSlips", "printInstantAidSlips", "printInstantSlipsSub", "printBtn", "noRecordsFound"],
+                          "PDF Customization": ["pdfStyle", "pdfDesignControl", "colorsMainPayslip", "bgColor", "textColor", "colorsAidPayslip", "granularFontSizing", "mainTitle", "defaultRowSize", "workerNameLabel", "jobSectionLabel", "absenceRows", "loanRows", "detailsReason", "savePdfStyle"]
                        };
                        
                        const allCat = Object.values(groups).flat();
