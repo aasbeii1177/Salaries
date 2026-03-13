@@ -593,6 +593,9 @@
             iframe.src = doc.output('bloburl');
             document.body.appendChild(iframe);
             setTimeout(() => document.body.removeChild(iframe), 10000); // Cleans up after 10 seconds
+        } else if (action === 'preview') {
+            // NEW: Instantly opens the PDF in a new tab for viewing!
+            window.open(doc.output('bloburl'), '_blank');
         } else {
             doc.save(`Payslips_DL_${targetMonth}.pdf`);
         }
@@ -704,6 +707,8 @@
                 iframe.src = doc.output('bloburl');
                 document.body.appendChild(iframe);
                 setTimeout(() => document.body.removeChild(iframe), 10000);
+            } else if (action === 'preview') {
+                window.open(doc.output('bloburl'), '_blank');
             } else {
                 doc.save(`Support_Aid_${targetDate}.pdf`);
             }
@@ -1249,6 +1254,22 @@
       const handleSavePdfStyle = () => {
           db.collection('meta').doc('config').set(styleConfig, { merge: true });
           alert("PDF Design Updated! / تم تحديث تصميم الـ PDF");
+      };
+
+      // NEW: Generate a fast sample of the Main Payslip using unsaved styles
+      const handlePreviewMain = async () => {
+          const sampleEmp = employees.find(e => !e.isResigned) || employees[0];
+          if (!sampleEmp) return alert("No workers found to preview.");
+          const currentMonth = new Date().toISOString().substring(0,7);
+          await generateAllPayslips(currentMonth, 'full', [sampleEmp], attendance, advances, overtime, loans, transportation, styleConfig, sections, bonuses, 'preview');
+      };
+
+      // NEW: Generate a fast sample of the Aid slip (Injects fake data so it never fails)
+      const handlePreviewAid = async () => {
+          const sampleEmp = employees.find(e => !e.isResigned) || employees[0];
+          if (!sampleEmp) return alert("No workers found to preview.");
+          const dummyGrant = { employeeId: sampleEmp.id, amount: 50000, date: printGrantDate, description: "Preview Grant / منحة تجريبية", basisText: "الراتب الأساسي", basisAmt: 150000, basisTransportAmt: 25000 };
+          await generateAidPayslips(printGrantDate, [sampleEmp], [dummyGrant], styleConfig, sections, 'preview');
       };
 
       const inputClass = "w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl font-bold bg-white text-black outline-none focus:border-indigo-600 transition-all";
@@ -1957,9 +1978,13 @@
                   </div>
 
                   <button onClick={handleSavePdfStyle} className="w-full bg-black text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-gray-800 transition-all">{t('savePdfStyle')}</button>
+                  
+                  <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                      <button onClick={handlePreviewMain} className="flex-1 bg-indigo-50 text-indigo-700 border border-indigo-100 font-black py-3 rounded-xl uppercase text-[10px] tracking-widest hover:bg-indigo-100 transition-all shadow-sm">👁️ معاينة كشف الراتب (Preview Main)</button>
+                      <button onClick={handlePreviewAid} className="flex-1 bg-teal-50 text-teal-700 border border-teal-100 font-black py-3 rounded-xl uppercase text-[10px] tracking-widest hover:bg-teal-100 transition-all shadow-sm">👁️ معاينة المنحة (Preview Aid)</button>
+                  </div>
               </section>
           )}
-
           {activeTab === 'danger' && (
              <section className="bg-red-50 rounded-xl shadow-lg border-2 border-red-200 p-8 animate-in fade-in text-center">
                  <div className="w-16 h-16 bg-red-200 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">⚠️</div>
