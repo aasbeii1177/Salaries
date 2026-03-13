@@ -479,7 +479,6 @@
           doc.setTextColor(config.pdfHeaderTextColor || '#000000');
           doc.setFont('Amiri', 'normal'); 
           
-          // You can change "كشف راتب" to anything you want, or leave it empty like ""
           doc.text("كشف راتب", rightMargin, 10, { align: 'right' }); 
           
           if (emp.workerNumber) {
@@ -493,19 +492,20 @@
           let y = 35;
           const rowHeight = 6; 
 
-             const drawRow = (label, value) => {
-             doc.setFontSize(parseInt(config.pdfBaseSize) || 9); 
+          // NEW: The engine now accepts a custom size for each specific row!
+          const drawRow = (label, value, overrideSize) => {
+             doc.setFontSize(parseInt(overrideSize) || parseInt(config.pdfBaseSize) || 9); 
              doc.setFont('Amiri', 'normal'); 
              doc.text(label, rightMargin, y, { align: 'right' }); 
-             doc.text(value.toString(), leftMargin, y, { align: 'left' });    
+             doc.text(value.toString(), leftMargin, y, { align: 'left' });   
              doc.setDrawColor(200);
              doc.line(leftMargin, y + 2, rightMargin, y + 2); 
              y += rowHeight;
           };
 
-          drawRow("اسم العامل", emp.name); 
-          drawRow("الوردية", shiftName);
-          drawRow("الوظيفة", emp.jobTitle || "عامل"); 
+          drawRow("اسم العامل", emp.name, config.sizeName); 
+          drawRow("الوردية", shiftName, config.sizeJobSection);
+          drawRow("الوظيفة", emp.jobTitle || "عامل", config.sizeJobSection); 
           drawRow("الراتب المقطوع", formatBase(pay.periodBaseWage));
 
           if (pay.nightDiff > 0) drawRow("فرق الليل", formatBase(pay.nightDiff));
@@ -513,10 +513,10 @@
           drawRow("عدد أيام الدوام", pay.daysPresent);
           
           if (pay.daysAbsent > 0) {
-              drawRow("أجر اليوم الواحد", formatBase(pay.dailyRateAbsence));
-              drawRow("عدد أيام الغياب", pay.daysAbsent);
-              drawRow("خصم يوم الغياب", formatBase(pay.penaltyRate));
-              drawRow("خصم الغياب", formatBase(pay.totalAbsenceDeduction));
+              drawRow("أجر اليوم الواحد", formatBase(pay.dailyRateAbsence), config.sizeAbsence);
+              drawRow("عدد أيام الغياب", pay.daysAbsent, config.sizeAbsence);
+              drawRow("خصم يوم الغياب", formatBase(pay.penaltyRate), config.sizeAbsence);
+              drawRow("خصم الغياب", formatBase(pay.totalAbsenceDeduction), config.sizeAbsence);
           }
           
           if (pay.empOvertimeHours > 0) {
@@ -537,9 +537,9 @@
           }
           
           if (pay.loanBalance > 0) {
-             drawRow("مدور القرض", formatBase(pay.loanBalance));
-             drawRow("خصم القرض", formatBase(pay.loanDeduction));
-             drawRow("رصيد القرض", formatBase(pay.loanRemaining));
+             drawRow("مدور القرض", formatBase(pay.loanBalance), config.sizeLoan);
+             drawRow("خصم القرض", formatBase(pay.loanDeduction), config.sizeLoan);
+             drawRow("رصيد القرض", formatBase(pay.loanRemaining), config.sizeLoan);
           }
 
           // DUAL CURRENCY NET PAY BOX
@@ -630,30 +630,27 @@
 
                 doc.setTextColor(0, 0, 0);
 
-
-                   const drawRow = (label, value) => {
-                   doc.setFontSize(parseInt(config.pdfBaseSize) || 10); 
+                const drawRow = (label, value, overrideSize) => {
+                   doc.setFontSize(parseInt(overrideSize) || parseInt(config.pdfBaseSize) || 10); 
                    doc.text(label, rightMargin, y, { align: 'right' }); 
-                   doc.text(value.toString(), leftMargin, y, { align: 'left' });    
+                   doc.text(value.toString(), leftMargin, y, { align: 'left' });   
                    doc.setDrawColor(200);
                    doc.line(leftMargin, y + 3, rightMargin, y + 3); 
                    y += rowHeight;
                 };
 
-                drawRow("اسم العامل", emp.name); 
-                //drawRow("القسم", sectionName);
-                drawRow("الوظيفة", emp.jobTitle || "عامل"); 
-                // NEW: Only print the specific targeted wage if it was calculated via percentage
+                drawRow("اسم العامل", emp.name, config.sizeName); 
+                drawRow("الوظيفة", emp.jobTitle || "عامل", config.sizeJobSection); 
+                
                 if (grant.basisText && grant.basisAmt) {
                     drawRow(grant.basisText, formatBase(grant.basisAmt));
                 }
                 
-                // NEW: If transport was included separately, draw it on its own beautiful line!
                 if (grant.basisTransportAmt) {
                     drawRow("المواصلات", formatBase(grant.basisTransportAmt));
                 }
 
-                drawRow("التفاصيل", grant.description);
+                drawRow("التفاصيل", grant.description, config.sizeReason);
 
                 y += 10;
                 doc.setFillColor(0, 0, 0);
@@ -1212,11 +1209,14 @@
           aidPdfHeaderTextColor: pdfConfig.aidPdfHeaderTextColor || '#ffffff',
           pdfTitleSize: pdfConfig.pdfTitleSize || 14,
           pdfBaseSize: pdfConfig.pdfBaseSize || 9,
+          sizeName: pdfConfig.sizeName || 12,
+          sizeJobSection: pdfConfig.sizeJobSection || 9,
+          sizeAbsence: pdfConfig.sizeAbsence || 9,
+          sizeLoan: pdfConfig.sizeLoan || 9,
+          sizeReason: pdfConfig.sizeReason || 9,
       });
 
-      React.useEffect(() => {
-          setStyleConfig(prev => ({ ...prev, ...pdfConfig }));
-      }, [pdfConfig]);
+      React.useEffect(() => { setStyleConfig(prev => ({ ...prev, ...pdfConfig })); }, [pdfConfig]);
 
       const handleSavePdfStyle = () => {
           db.collection('meta').doc('config').set(styleConfig, { merge: true });
@@ -1523,7 +1523,7 @@
               <button onClick={() => setActiveTab('sections')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'sections' ? 'bg-indigo-600 text-white shadow-lg' : 'text-black hover:text-indigo-600'}`}>{t('sections')}</button>
               <button onClick={() => setActiveTab('periods')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'periods' ? 'bg-indigo-600 text-white shadow-lg' : 'text-black hover:text-indigo-600'}`}>{t('periods')}</button>
               <button onClick={() => setActiveTab('grants')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'grants' ? 'bg-indigo-600 text-white shadow-lg' : 'text-black hover:text-indigo-600'}`}>{t('supportAid')}</button>
-              <button onClick={() => setActiveTab('pdf_style')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'pdf_style' ? 'bg-indigo-600 text-white shadow-lg' : 'text-black hover:text-indigo-600'}`}>🎨 PDF Design</button>
+              <button onClick={() => setActiveTab('pdf_style')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'pdf_style' ? 'bg-indigo-600 text-white shadow-lg' : 'text-black hover:text-indigo-600'}`}>🎨 PDF Style</button>
               <button onClick={() => setActiveTab('danger')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'danger' ? 'bg-red-600 text-white shadow-lg' : 'text-red-600 hover:bg-red-50'}`}>⚠️ {t('resetData')}</button>
           </div>
             
@@ -1895,47 +1895,40 @@
 
           {activeTab === 'pdf_style' && (
               <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 animate-in fade-in">
-                  <h3 className="text-xl font-black text-black uppercase mb-6 tracking-tight">🎨 PDF Design Control</h3>
+                  <h3 className="text-xl font-black text-black uppercase mb-6 tracking-tight">🎨 PDF Customization Control</h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                       <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 space-y-5">
-                          <h4 className="font-black text-gray-600 uppercase text-xs tracking-widest mb-2 border-b-2 border-gray-200 pb-2">Main Payslip (Monthly)</h4>
-                          <div>
-                              <label className="block text-[10px] font-black uppercase mb-2">Header Background Color</label>
-                              <input type="color" className="w-full h-12 rounded-xl cursor-pointer bg-white p-1 border-2 border-gray-200 shadow-sm" value={styleConfig.pdfHeaderBg} onChange={e => setStyleConfig({...styleConfig, pdfHeaderBg: e.target.value})} />
-                          </div>
-                          <div>
-                              <label className="block text-[10px] font-black uppercase mb-2">Header Text Color</label>
-                              <input type="color" className="w-full h-12 rounded-xl cursor-pointer bg-white p-1 border-2 border-gray-200 shadow-sm" value={styleConfig.pdfHeaderTextColor} onChange={e => setStyleConfig({...styleConfig, pdfHeaderTextColor: e.target.value})} />
+                          <h4 className="font-black text-gray-600 uppercase text-xs tracking-widest mb-2 border-b-2 border-gray-200 pb-2">Colors: Main Payslip</h4>
+                          <div className="flex gap-4">
+                              <div className="w-1/2"><label className="block text-[10px] font-black uppercase mb-2">Background</label><input type="color" className="w-full h-10 rounded-lg cursor-pointer bg-white p-0 border" value={styleConfig.pdfHeaderBg} onChange={e => setStyleConfig({...styleConfig, pdfHeaderBg: e.target.value})} /></div>
+                              <div className="w-1/2"><label className="block text-[10px] font-black uppercase mb-2">Text Color</label><input type="color" className="w-full h-10 rounded-lg cursor-pointer bg-white p-0 border" value={styleConfig.pdfHeaderTextColor} onChange={e => setStyleConfig({...styleConfig, pdfHeaderTextColor: e.target.value})} /></div>
                           </div>
                       </div>
 
                       <div className="bg-teal-50 p-6 rounded-2xl border border-teal-100 space-y-5">
-                          <h4 className="font-black text-teal-700 uppercase text-xs tracking-widest mb-2 border-b-2 border-teal-200 pb-2">Support / Aid Payslip</h4>
-                          <div>
-                              <label className="block text-[10px] font-black uppercase mb-2 text-teal-800">Header Background Color</label>
-                              <input type="color" className="w-full h-12 rounded-xl cursor-pointer bg-white p-1 border-2 border-teal-200 shadow-sm" value={styleConfig.aidPdfHeaderBg} onChange={e => setStyleConfig({...styleConfig, aidPdfHeaderBg: e.target.value})} />
-                          </div>
-                          <div>
-                              <label className="block text-[10px] font-black uppercase mb-2 text-teal-800">Header Text Color</label>
-                              <input type="color" className="w-full h-12 rounded-xl cursor-pointer bg-white p-1 border-2 border-teal-200 shadow-sm" value={styleConfig.aidPdfHeaderTextColor} onChange={e => setStyleConfig({...styleConfig, aidPdfHeaderTextColor: e.target.value})} />
+                          <h4 className="font-black text-teal-700 uppercase text-xs tracking-widest mb-2 border-b-2 border-teal-200 pb-2">Colors: Support / Aid</h4>
+                          <div className="flex gap-4">
+                              <div className="w-1/2"><label className="block text-[10px] font-black uppercase mb-2 text-teal-800">Background</label><input type="color" className="w-full h-10 rounded-lg cursor-pointer bg-white p-0 border" value={styleConfig.aidPdfHeaderBg} onChange={e => setStyleConfig({...styleConfig, aidPdfHeaderBg: e.target.value})} /></div>
+                              <div className="w-1/2"><label className="block text-[10px] font-black uppercase mb-2 text-teal-800">Text Color</label><input type="color" className="w-full h-10 rounded-lg cursor-pointer bg-white p-0 border" value={styleConfig.aidPdfHeaderTextColor} onChange={e => setStyleConfig({...styleConfig, aidPdfHeaderTextColor: e.target.value})} /></div>
                           </div>
                       </div>
 
-                      <div className="col-span-full bg-indigo-50 p-6 rounded-2xl border border-indigo-100 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                          <h4 className="font-black text-indigo-700 uppercase text-xs tracking-widest col-span-full border-b-2 border-indigo-200 pb-2">Global Typography</h4>
-                          <div>
-                              <label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">Title Font Size (Default: 14)</label>
-                              <input type="number" min="8" max="30" className={inputClass} value={styleConfig.pdfTitleSize} onChange={e => setStyleConfig({...styleConfig, pdfTitleSize: e.target.value})} />
-                          </div>
-                          <div>
-                              <label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">Row Font Size (Default: 9)</label>
-                              <input type="number" min="6" max="20" className={inputClass} value={styleConfig.pdfBaseSize} onChange={e => setStyleConfig({...styleConfig, pdfBaseSize: e.target.value})} />
+                      <div className="col-span-full bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
+                          <h4 className="font-black text-indigo-700 uppercase text-xs tracking-widest mb-4 border-b-2 border-indigo-200 pb-2">Granular Font Sizing</h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">Main Title</label><input type="number" className={inputClass} value={styleConfig.pdfTitleSize} onChange={e => setStyleConfig({...styleConfig, pdfTitleSize: e.target.value})} /></div>
+                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">Default Row Size</label><input type="number" className={inputClass} value={styleConfig.pdfBaseSize} onChange={e => setStyleConfig({...styleConfig, pdfBaseSize: e.target.value})} /></div>
+                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">Worker Name</label><input type="number" className={inputClass} value={styleConfig.sizeName} onChange={e => setStyleConfig({...styleConfig, sizeName: e.target.value})} /></div>
+                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">Job Title / Section</label><input type="number" className={inputClass} value={styleConfig.sizeJobSection} onChange={e => setStyleConfig({...styleConfig, sizeJobSection: e.target.value})} /></div>
+                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">Absence Rows</label><input type="number" className={inputClass} value={styleConfig.sizeAbsence} onChange={e => setStyleConfig({...styleConfig, sizeAbsence: e.target.value})} /></div>
+                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">Loan Rows</label><input type="number" className={inputClass} value={styleConfig.sizeLoan} onChange={e => setStyleConfig({...styleConfig, sizeLoan: e.target.value})} /></div>
+                              <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-900">Details / Reason</label><input type="number" className={inputClass} value={styleConfig.sizeReason} onChange={e => setStyleConfig({...styleConfig, sizeReason: e.target.value})} /></div>
                           </div>
                       </div>
                   </div>
 
-                  <button onClick={handleSavePdfStyle} className="w-full bg-black text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-gray-800 transition-all transform active:scale-[0.99]">Save PDF Settings / حفظ التصميم</button>
+                  <button onClick={handleSavePdfStyle} className="w-full bg-black text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl hover:bg-gray-800 transition-all">Save Style Protocol</button>
               </section>
           )}
 
