@@ -2162,15 +2162,26 @@
               const handleEditSave = (recordId, newVal) => { const val = parseFloat(newVal); if(val <= 0) return alert(t('mustBePositive')); updateOvertime(recordId, val); };
               const handleEditDelete = (recordId) => { deleteOvertime(recordId); };
 
-              // NEW: Bulk Excel Import Engine (Target Specific Period)
+              // UPGRADED: Bulk Excel Import Engine (Names + Attended Days + Smart Text)
               const [bulkMonth, setBulkMonth] = React.useState(new Date().toISOString().substring(0,7));
-              const [bulkPeriod, setBulkPeriod] = React.useState('1'); // Remembers P1 or P2
+              const [bulkPeriod, setBulkPeriod] = React.useState('1'); 
               
               const downloadBulkTemplate = () => {
-                  const ws = XLSX.utils.aoa_to_sheet([['Worker Number', 'Days Absent']]);
+                  // Detects language and sets headers accordingly
+                  const isAr = document.documentElement.dir === 'rtl' || t('search') === 'بحث'; 
+                  const hName = isAr ? 'اسم العامل' : 'Worker Name';
+                  const hAttend = isAr ? 'أيام الحضور' : 'Days Attended';
+                  
+                  // BONUS: Auto-fill all active workers so the manager doesn't have to type them!
+                  const rows = [[hName, hAttend]];
+                  employees.filter(e => !e.isResigned).sort((a,b) => a.name.localeCompare(b.name)).forEach(emp => {
+                      rows.push([emp.name, '']);
+                  });
+
+                  const ws = XLSX.utils.aoa_to_sheet(rows);
                   const wb = XLSX.utils.book_new();
                   XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-                  XLSX.writeFile(wb, `Period_${bulkPeriod}_Absence_Template.xlsx`);
+                  XLSX.writeFile(wb, `Period_${bulkPeriod}_Attendance_Template.xlsx`);
               };
 
               const handleBulkExcelUpload = async (e) => {
@@ -2184,32 +2195,47 @@
                       const data = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
                       
                       const monthDays = new Date(bulkMonth.split('-')[0], bulkMonth.split('-')[1], 0).getDate();
-                      const absenceMap = {}; 
-                      
-                      // Determine the exact date range based on the Period selected
                       const startDay = bulkPeriod === '1' ? 1 : 16;
                       const endDay = bulkPeriod === '1' ? 15 : monthDays;
+                      const totalPeriodDays = endDay - startDay + 1;
 
-                      // Initialize map with empty arrays for the TARGET PERIOD ONLY
+                      const absenceMap = {}; 
                       for(let i=startDay; i<=endDay; i++) absenceMap[`${bulkMonth}-${String(i).padStart(2, '0')}`] = [];
 
-                      // Read Excel and assign absences to correct dates
                       data.forEach(row => {
-                          const wNum = (row['Worker Number'] || row['الرقم الوظيفي'] || '').toString();
-                          const absentCount = parseInt(row['Days Absent'] || row['أيام الغياب']) || 0;
+                          const wName = (row['Worker Name'] || row['اسم العامل'] || '').toString().trim();
+                          const attendRaw = (row['Days Attended'] || row['أيام الحضور'] || '').toString().trim().toLowerCase();
                           
-                          if (wNum && absentCount > 0) {
-                              const emp = employees.find(e => e.workerNumber === wNum);
+                          if (wName && attendRaw !== '') {
+                              // Find worker by exact name match
+                              const emp = employees.find(e => (e.name||'').trim().toLowerCase() === wName.toLowerCase());
+                              
                               if (emp) {
-                                  // Starts mapping absences from the beginning of the period until the absent count is reached
-                                  for(let i=startDay; i<=startDay+absentCount-1 && i<=endDay; i++) {
-                                      absenceMap[`${bulkMonth}-${String(i).padStart(2, '0')}`].push(emp.id);
+                                  let attendedDays = 0;
+                                  
+                                  // SMART TEXT PARSER: Understands "full", "كامل", "6", "6 يوم", etc.
+                                  if (attendRaw.includes('full') || attendRaw.includes('كامل')) {
+                                      attendedDays = totalPeriodDays;
+                                  } else {
+                                      const match = attendRaw.match(/\d+/); // Extracts just the number!
+                                      if (match) attendedDays = parseInt(match[0]);
+                                  }
+                                  
+                                  // Prevent weird over-attendance typos
+                                  if (attendedDays > totalPeriodDays) attendedDays = totalPeriodDays;
+                                  
+                                  // Engine needs Absences, so we calculate it backwards
+                                  const absentCount = totalPeriodDays - attendedDays;
+                                  
+                                  if (absentCount > 0) {
+                                      for(let i=startDay; i<=startDay+absentCount-1 && i<=endDay; i++) {
+                                          absenceMap[`${bulkMonth}-${String(i).padStart(2, '0')}`].push(emp.id);
+                                      }
                                   }
                               }
                           }
                       });
 
-                      // ONLY pull existing docs for the specific days we are targeting!
                       const existingDocs = attendance.filter(a => {
                           if (!a.date?.startsWith(bulkMonth)) return false;
                           const day = parseInt(a.date.split('-')[2]);
@@ -2217,8 +2243,6 @@
                       });
 
                       const promises = [];
-                      
-                      // Push the mapped data into the database
                       for(let i=startDay; i<=endDay; i++) {
                           const dStr = `${bulkMonth}-${String(i).padStart(2, '0')}`;
                           const ids = absenceMap[dStr];
@@ -2351,8 +2375,8 @@
                             </div>
                             
                             <div>
-                                <p className="font-black text-sm text-black mb-3">3. Fill in the "Days Absent" and Upload / تعبئة أيام الغياب ورفع الملف:</p>
-                                <p className="text-xs text-gray-500 font-bold mb-4">*(Ensure the Excel sheet you upload strictly matches the Period you selected above!)*</p>
+                                <p className="font-black text-sm text-black mb-3">3. Fill in the "Days Attended" and Upload / تعبئة أيام الحضور ورفع الملف:</p>
+                                <p className="text-xs text-gray-500 font-bold mb-4">*(You can write numbers like "6", or words like "full", "كامل", "6 يوم". The system is smart enough to read them!)*</p>
                                 <div className="relative w-full md:w-1/2">
                                     <input type="file" accept=".xlsx" onChange={handleBulkExcelUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                     <button className="w-full bg-indigo-600 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest shadow-xl pointer-events-none hover:bg-indigo-700 transition-all">📤 Upload Filled Excel</button>
