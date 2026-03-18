@@ -2106,7 +2106,7 @@
       );
     };
 
-const ManagerDashboard = ({ employees, sections, attendance, overtime, updateAttendance, addOvertime, lockedMonths, lang, t, canEdit, updateOvertime, deleteOvertime, config, currentUser }) => {
+const ManagerDashboard = ({ employees=[], sections=[], attendance=[], overtime=[], updateAttendance, addOvertime, lockedMonths=[], lang, t, canEdit, updateOvertime, deleteOvertime, config={}, currentUser }) => {
       const [selectedDate, setSelectedDate] = React.useState(new Date().toISOString().split('T')[0]);
       const [searchQuery, setSearchQuery] = React.useState('');
       const [activeTab, setActiveTab] = React.useState('attendance');
@@ -3375,8 +3375,8 @@ const ManagerDashboard = ({ employees, sections, attendance, overtime, updateAtt
 
           if (currentUser.role === 'hr' || currentUser.role === 'hr_manager') return <HRDashboard {...props} lockPeriod={handleToggleMonthLock} setPdfConfig={(c)=>db.collection('meta').doc('config').set(c)} addEmployee={(d)=>db.collection('employees').add(d)} updateEmployee={(id,d)=>db.collection('employees').doc(id).update(d)} deleteEmployee={(id)=>db.collection('employees').doc(id).delete()} addSection={(n)=>db.collection('sections').add({name:n})} deleteSection={(id)=>db.collection('sections').doc(id).delete()} resignEmployee={(id)=>db.collection('employees').doc(id).update({isResigned:true})} />;
         
-          if (currentUser.role === 'manager' || currentUser.role === 'data_entry') return <ManagerDashboard currentUser={currentUser} employees={employees} sections={sections} attendance={attendance} overtime={overtime} updateAttendance={updateAttendance} addOvertime={addOvertime} updateOvertime={updateOvertime} deleteOvertime={deleteOvertime} lockedMonths={lockedMonths} lang={lang} t={t} canEdit={canEdit} config={config} />;
-          
+          if (currentUser.role === 'manager' || currentUser.role === 'data_entry') return <ManagerDashboard {...props} updateAttendance={(date, ids) => { const existing = attendance.find(a => a.date === date); if (existing) { db.collection('attendance').doc(existing.id).update({ absentEmployeeIds: ids }); } else { db.collection('attendance').add({ date, absentEmployeeIds: ids }); } }} addOvertime={(eid, hrs, d) => db.collection('overtime').add({ employeeId: eid, hours: hrs, date: d })} updateOvertime={(id, val) => db.collection('overtime').doc(id).update({ hours: val })} deleteOvertime={(id) => db.collection('overtime').doc(id).delete()} canEdit={currentUser.role === 'manager'} />;
+        
           if (currentUser.role === 'finance') return <FinanceDashboard {...props} addAdvance={(eid, amt, d)=>db.collection('advances').add({employeeId:eid, amount:amt, date:d})} updateAdvance={(id, val)=>db.collection('advances').doc(id).update({amount:val})} deleteAdvance={(id)=>db.collection('advances').doc(id).delete()} updateLoan={(eid, tot, pct, period) => { const l = loans.find(x=>x.employeeId===eid); if(tot<=0 && l) db.collection('loans').doc(l.id).delete(); else if(l) db.collection('loans').doc(l.id).update({totalAmount:tot, deductionPercentage:pct, deductionPeriod:period}); else db.collection('loans').add({employeeId:eid, totalAmount:tot, deductionPercentage:pct, deductionPeriod:period}); }} />;
         
           if (currentUser.role === 'cashier') return <CashierDashboard currentUser={currentUser} employees={employees} payoutLogs={payoutLogs} cashRegisters={cashRegisters} addPayout={(data) => db.collection('payout_logs').add(data)} deletePayout={(id) => db.collection('payout_logs').doc(id).delete()} updateCashRegister={(id, balance) => db.collection('cash_registers').doc(id).set({startingBalance: balance})} lang={lang} t={t} config={pdfConfig} attendance={attendance} advances={advances} overtime={overtime} loans={loans} transportation={transportation} bonuses={bonuses} grants={grants} sections={sections} lockedMonths={lockedMonths} />;
