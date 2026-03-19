@@ -1405,7 +1405,7 @@
           let finalWage = parseFloat(formData.wage) || 0;
           let p1Amt = parseFloat(formData.period1Amount) || 0;
           let p2Amt = parseFloat(formData.period2Amount) || 0;
-          if (finalWage === 0 && p1Amt > 0 && p2Amt > 0) finalWage = p1Amt + p2Amt;
+          if (finalWage === 0 && (p1Amt > 0 || p2Amt > 0)) finalWage = p1Amt + p2Amt;
 
           // NEW: Auto-calculate the next available Worker Number
           let maxId = 0;
@@ -1535,7 +1535,7 @@
                   if (wage === 0 && p1 > 0 && p2 > 0) wage = p1 + p2;
                   
                   // Ignore entirely blank rows
-                  if (wage === 0 && dWage === 0 && wWage === 0 && p1 === 0) return; 
+                  if (wage === 0 && dWage === 0 && wWage === 0 && p1 === 0 && p2 === 0) return;
 
                   const rawShift = (row['Shift'] || row['الوردية'] || '').toString().toLowerCase(); 
                   const shiftVal = (rawShift.includes('night') || rawShift.includes('مساء') || rawShift.includes('ليل')) ? 'night' : 'day'; 
