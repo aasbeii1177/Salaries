@@ -482,16 +482,14 @@
             doc.addFileToVFS('Amiri-Regular.ttf', base64Font);
             doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
             
-            // 1. Updated Headers: Removed Days/Night, Added Transport
-            const head = [['الصافي', 'القرض', 'السلفة', 'الاضافي', 'خصم الغياب', 'المواصلات', 'الراتب المقطوع', 'الوظيفة', 'الوردية', 'اسم العامل', 'القسم']];
+            // 1. Updated Headers: Removed Shift (الوردية)
+            const head = [['الصافي', 'القرض', 'السلفة', 'الاضافي', 'خصم الغياب', 'المواصلات', 'الراتب المقطوع', 'الوظيفة', 'اسم العامل', 'القسم']];
 
-            // 2. Updated Totals to match the new columns
             let tNet = 0, tLoan = 0, tAdv = 0, tOt = 0, tAbs = 0, tTrans = 0, tBase = 0;
 
             const body = employees.map(emp => {
                 const pay = calculateEmployeePayroll(emp, targetMonth, targetPeriod, attendance, advances, overtime, loans, transportation, config, bonuses);
                 const sectionName = sections.find(s => s.id === emp.sectionId)?.name || 'القسم العام';
-                const shiftName = emp.shift === 'night' ? 'مسائي' : 'صباحي';
 
                 // Add to totals
                 tNet += pay.netSalary;
@@ -502,7 +500,7 @@
                 tTrans += pay.totalTransport;
                 tBase += pay.periodBaseWage;
 
-                // Map the exact 11 columns
+                // Map the exact 10 columns
                 return [
                     formatBase(pay.netSalary),
                     formatBase(pay.loanDeduction),
@@ -512,13 +510,12 @@
                     formatBase(pay.totalTransport),
                     formatBase(pay.periodBaseWage),
                     emp.jobTitle || 'عامل',
-                    shiftName,
                     emp.name,
                     sectionName
                 ];
             });
 
-            // 3. Create the 11-column Footer
+            // 3. Create the 10-column Footer
             const foot = [[
                 formatBase(tNet),
                 formatBase(tLoan),
@@ -527,7 +524,6 @@
                 formatBase(tAbs),
                 formatBase(tTrans),
                 formatBase(tBase),
-                '',
                 '',
                 'المجموع الإجمالي (Total)',
                 ''
@@ -538,15 +534,14 @@
                 body: body,
                 foot: foot, 
                 showFoot: 'lastPage',
-                // NEW: cellWidth 'auto' prevents stretching, cellPadding adds breathing room
                 styles: { font: 'Amiri', halign: 'right', fontSize: 9, cellPadding: 3, cellWidth: 'auto' }, 
                 headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold', halign: 'center' },
                 footStyles: { fillColor: [17, 24, 39], textColor: 255, fontStyle: 'bold', halign: 'right' }, 
                 columnStyles: { 
                     0: { fontStyle: 'bold', textColor: [20, 83, 45] },
-                    9: { cellWidth: 'wrap' } // Ensures long names don't break the layout
+                    8: { cellWidth: 'wrap' } // Adjusted index to 8 for the Name column to ensure long names wrap safely
                 }, 
-                tableWidth: 'auto', // NEW: Snaps the table width perfectly to the content!
+                tableWidth: 'auto', 
                 theme: 'grid',
                 margin: { top: 25, right: 10, left: 10 },
                 didDrawPage: function (data) {
