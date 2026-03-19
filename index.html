@@ -2710,6 +2710,7 @@ const ManagerDashboard = ({ employees=[], sections=[], attendance=[], overtime=[
       
       const [bonusType, setBonusType] = React.useState('fixed'); 
       const [bonusTarget, setBonusTarget] = React.useState('individual'); 
+      const [bonusBasis, setBonusBasis] = React.useState('full'); // NEW: For percentage calculation basis
       const [selectedBonusEmp, setSelectedBonusEmp] = React.useState('');
       const [bonusValue, setBonusValue] = React.useState(''); 
       const [bonusDesc, setBonusDesc] = React.useState('');
@@ -2796,32 +2797,30 @@ const ManagerDashboard = ({ employees=[], sections=[], attendance=[], overtime=[
           const val = parseFloat(bonusValue); 
           if (!val || !bonusDesc) return; 
 
-          const getPeriodWage = (emp) => {
+          const getBonusTargetWage = (emp) => {
               const basePlusNight = (parseFloat(emp.monthlyWage) || 0) * (emp.shift === 'night' ? (config.nightShiftMultiplier || 1.0) : 1.0);
               const p1Amt = parseFloat(emp.period1Amount) || 0;
-              if (bonusPeriod === '1') return Math.min(basePlusNight, p1Amt);
-              if (bonusPeriod === '2') return Math.max(0, basePlusNight - p1Amt);
+              if (bonusBasis === '1') return Math.min(basePlusNight, p1Amt);
+              if (bonusBasis === '2') return Math.max(0, basePlusNight - p1Amt);
               return basePlusNight;
+          };
+
+          const finalBText = bonusType === 'percent' ? (bonusBasis === '1' ? "راتب" : (bonusBasis === '2' ? "راتب" : "الراتب الأساسي")) : null;
+
+          const processBonusForEmp = (emp) => {
+              const targetWage = getBonusTargetWage(emp);
+              const amount = bonusType === 'percent' ? (targetWage * val / 100) : val; 
+              addBonus(emp.id, amount, date, bonusDesc, bonusPeriod, finalBText, bonusType === 'percent' ? targetWage : null); 
           };
 
           if (bonusTarget === 'all') { 
               const activeEmps = employees.filter(e => !e.isResigned); 
-              activeEmps.forEach(emp => { 
-                  const targetWage = getPeriodWage(emp);
-                  const amount = bonusType === 'percent' ? (targetWage * val / 100) : val; 
-                  const bText = bonusType === 'percent' ? (bonusPeriod === '1' ? "راتب" : (bonusPeriod === '2' ? "راتب" : "الراتب الأساسي")) : null;
-                  addBonus(emp.id, amount, date, bonusDesc, bonusPeriod, bText, bonusType === 'percent' ? targetWage : null); 
-              }); 
+              activeEmps.forEach(emp => processBonusForEmp(emp)); 
               alert(`Distributed bonus to ${activeEmps.length} employees.`); 
           } else { 
               if(!selectedBonusEmp) return; 
               const emp = employees.find(e => e.id === selectedBonusEmp); 
-              if(emp) { 
-                  const targetWage = getPeriodWage(emp);
-                  const amount = bonusType === 'percent' ? (targetWage * val / 100) : val; 
-                  const bText = bonusType === 'percent' ? (bonusPeriod === '1' ? "راتب" : (bonusPeriod === '2' ? "راتب" : "الراتب الأساسي")) : null;
-                  addBonus(emp.id, amount, date, bonusDesc, bonusPeriod, bText, bonusType === 'percent' ? targetWage : null); 
-              } 
+              if(emp) processBonusForEmp(emp); 
           } 
           setBonusValue(''); setBonusDesc(''); 
       };
@@ -3091,8 +3090,22 @@ const ManagerDashboard = ({ employees=[], sections=[], attendance=[], overtime=[
                               <button type="button" onClick={()=>setBonusType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusType==='percent'?'bg-white shadow text-indigo-600':'text-gray-400'}`}>{t('percentage')}</button>
                           </div>
                        </div>
+                       
+                        {bonusType === 'percent' && (
+                          <div className="flex flex-col gap-3">
+                              <div>
+                                  <label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">{t('calcPercentFrom')}</label>
+                                  <div className="flex bg-indigo-50 p-1 rounded-xl border border-indigo-100">
+                                      <button type="button" onClick={()=>setBonusBasis('full')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusBasis==='full'?'bg-white shadow text-indigo-700':'text-indigo-600/50'}`}>{t('fullMonth')}</button>
+                                      <button type="button" onClick={()=>setBonusBasis('1')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusBasis==='1'?'bg-white shadow text-indigo-700':'text-indigo-600/50'}`}>{t('period1')}</button>
+                                      <button type="button" onClick={()=>setBonusBasis('2')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${bonusBasis==='2'?'bg-white shadow text-indigo-700':'text-indigo-600/50'}`}>{t('period2')}</button>
+                                  </div>
+                              </div>
+                          </div>
+                        )}
+
                        <div>
-                          <label className="block text-[10px] font-black uppercase mb-2">{t('payPeriod')}</label>
+                          <label className="block text-[10px] font-black uppercase mb-2">{t('payPeriod')} (Add To)</label>
                           <select className={inputClass} value={bonusPeriod} onChange={e=>setBonusPeriod(e.target.value)}>
                               <option value="1">{t('period1')}</option>
                               <option value="2">{t('period2')}</option>
