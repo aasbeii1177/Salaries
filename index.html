@@ -2167,13 +2167,11 @@ const ManagerDashboard = ({ employees=[], sections=[], attendance=[], overtime=[
               const [bulkPeriod, setBulkPeriod] = React.useState('1'); 
               
               const downloadBulkTemplate = () => {
-                  // Detects language and sets headers accordingly
                   const isAr = document.documentElement.dir === 'rtl' || t('search') === 'بحث'; 
                   const hName = isAr ? 'اسم العامل' : 'Worker Name';
-                  const hAttend = isAr ? 'أيام الحضور' : 'Days Attended';
+                  const hAbsent = isAr ? 'أيام الغياب' : 'Days Absent';
                   
-                  // BONUS: Auto-fill all active workers so the manager doesn't have to type them!
-                  const rows = [[hName, hAttend]];
+                  const rows = [[hName, hAbsent]];
                   employees.filter(e => !e.isResigned).sort((a,b) => a.name.localeCompare(b.name)).forEach(emp => {
                       rows.push([emp.name, '']);
                   });
@@ -2181,7 +2179,7 @@ const ManagerDashboard = ({ employees=[], sections=[], attendance=[], overtime=[
                   const ws = XLSX.utils.aoa_to_sheet(rows);
                   const wb = XLSX.utils.book_new();
                   XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-                  XLSX.writeFile(wb, `Period_${bulkPeriod}_Attendance_Template.xlsx`);
+                  XLSX.writeFile(wb, `Period_${bulkPeriod}_Absences_Template.xlsx`);
               };
 
               const handleBulkExcelUpload = async (e) => {
@@ -2204,28 +2202,22 @@ const ManagerDashboard = ({ employees=[], sections=[], attendance=[], overtime=[
 
                       data.forEach(row => {
                           const wName = (row['Worker Name'] || row['اسم العامل'] || '').toString().trim();
-                          const attendRaw = (row['Days Attended'] || row['أيام الحضور'] || '').toString().trim().toLowerCase();
+                          const absentRaw = (row['Days Absent'] || row['أيام الغياب'] || '').toString().trim().toLowerCase();
                           
-                          if (wName && attendRaw !== '') {
-                              // Find worker by exact name match
+                          if (wName && absentRaw !== '') {
                               const emp = employees.find(e => (e.name||'').trim().toLowerCase() === wName.toLowerCase());
                               
                               if (emp) {
-                                  let attendedDays = 0;
+                                  let absentCount = 0;
                                   
-                                  // SMART TEXT PARSER: Understands "full", "كامل", "6", "6 يوم", etc.
-                                  if (attendRaw.includes('full') || attendRaw.includes('كامل')) {
-                                      attendedDays = totalPeriodDays;
+                                  if (absentRaw.includes('full') || absentRaw.includes('كامل')) {
+                                      absentCount = totalPeriodDays;
                                   } else {
-                                      const match = attendRaw.match(/\d+/); // Extracts just the number!
-                                      if (match) attendedDays = parseInt(match[0]);
+                                      const match = absentRaw.match(/\d+/);
+                                      if (match) absentCount = parseInt(match[0]);
                                   }
                                   
-                                  // Prevent weird over-attendance typos
-                                  if (attendedDays > totalPeriodDays) attendedDays = totalPeriodDays;
-                                  
-                                  // Engine needs Absences, so we calculate it backwards
-                                  const absentCount = totalPeriodDays - attendedDays;
+                                  if (absentCount > totalPeriodDays) absentCount = totalPeriodDays;
                                   
                                   if (absentCount > 0) {
                                       for(let i=startDay; i<=startDay+absentCount-1 && i<=endDay; i++) {
@@ -2256,11 +2248,11 @@ const ManagerDashboard = ({ employees=[], sections=[], attendance=[], overtime=[
                       }
                       
                       await Promise.all(promises);
-                      alert(`Period ${bulkPeriod} Attendance successfully uploaded! / تم رفع حضور الفترة ${bulkPeriod} بنجاح!`);
+                      alert(`Period ${bulkPeriod} Absences successfully uploaded! / تم رفع غيابات الفترة ${bulkPeriod} بنجاح!`);
                       e.target.value = null;
                   };
               };
-
+  
               return (
         <div className="max-w-6xl mx-auto space-y-6 pb-20 relative">
            <section className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row gap-6 items-center justify-between relative overflow-hidden">
@@ -2375,8 +2367,8 @@ const ManagerDashboard = ({ employees=[], sections=[], attendance=[], overtime=[
                             </div>
                             
                             <div>
-                                <p className="font-black text-sm text-black mb-3">3. Fill in the "Days Attended" and Upload / تعبئة أيام الحضور ورفع الملف:</p>
-                                <p className="text-xs text-gray-500 font-bold mb-4">*(You can write numbers like "6", or words like "full", "كامل", "6 يوم". The system is smart enough to read them!)*</p>
+                                <p className="font-black text-sm text-black mb-3">3. Fill in the "Days Absent" and Upload / تعبئة أيام الغياب ورفع الملف:</p>
+                                <p className="text-xs text-gray-500 font-bold mb-4">*(You can write numbers like "2", or words like "full", "كامل" (for full period absence). Blank names are assumed 100% present!)*</p>
                                 <div className="relative w-full md:w-1/2">
                                     <input type="file" accept=".xlsx" onChange={handleBulkExcelUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                     <button className="w-full bg-indigo-600 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest shadow-xl pointer-events-none hover:bg-indigo-700 transition-all">📤 Upload Filled Excel</button>
