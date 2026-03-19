@@ -478,18 +478,30 @@
             for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
             const base64Font = window.btoa(binary);
 
-            // Landscape orientation to fit all those columns!
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
             doc.addFileToVFS('Amiri-Regular.ttf', base64Font);
             doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
             
-            // Reversed order so it renders perfectly Right-to-Left in the PDF grid
             const head = [['الصافي', 'القرض', 'السلفة', 'الاضافي', 'خصم الغياب', 'أيام الغياب', 'أيام الدوام', 'فرق الليل', 'الراتب المقطوع', 'الوظيفة', 'الوردية', 'اسم العامل', 'القسم']];
+
+            // 1. Set up running totals for every column
+            let tNet = 0, tLoan = 0, tAdv = 0, tOt = 0, tAbs = 0, tDaysAbs = 0, tDaysPres = 0, tNight = 0, tBase = 0;
 
             const body = employees.map(emp => {
                 const pay = calculateEmployeePayroll(emp, targetMonth, targetPeriod, attendance, advances, overtime, loans, transportation, config, bonuses);
                 const sectionName = sections.find(s => s.id === emp.sectionId)?.name || 'القسم العام';
                 const shiftName = emp.shift === 'night' ? 'مسائي' : 'صباحي';
+
+                // 2. Add this worker's math to the grand totals
+                tNet += pay.netSalary;
+                tLoan += pay.loanDeduction;
+                tAdv += pay.totalAdvances;
+                tOt += pay.overtimePay;
+                tAbs += pay.totalAbsenceDeduction;
+                tDaysAbs += pay.daysAbsent;
+                tDaysPres += pay.daysPresent;
+                tNight += pay.nightDiff;
+                tBase += pay.periodBaseWage;
 
                 return [
                     formatBase(pay.netSalary),
@@ -508,12 +520,31 @@
                 ];
             });
 
+            // 3. Build the final Footer Row
+            const foot = [[
+                formatBase(tNet),
+                formatBase(tLoan),
+                formatBase(tAdv),
+                formatBase(tOt),
+                formatBase(tAbs),
+                tDaysAbs.toString(),
+                tDaysPres.toString(),
+                formatBase(tNight),
+                formatBase(tBase),
+                '',
+                '',
+                'المجموع الإجمالي (Total)',
+                ''
+            ]];
+
             doc.autoTable({
                 head: head,
                 body: body,
+                foot: foot, // Injects the footer row at the very bottom
                 styles: { font: 'Amiri', halign: 'right', fontSize: 8 },
                 headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold', halign: 'center' },
-                columnStyles: { 0: { fontStyle: 'bold', textColor: [20, 83, 45] } }, // Highlights the Net Pay column
+                footStyles: { fillColor: [17, 24, 39], textColor: 255, fontStyle: 'bold', halign: 'right' }, // Dark background to make totals pop
+                columnStyles: { 0: { fontStyle: 'bold', textColor: [20, 83, 45] } }, 
                 theme: 'grid',
                 margin: { top: 25 },
                 didDrawPage: function (data) {
