@@ -1425,10 +1425,13 @@
          setIsGenerating(true); 
          try {
             const sortedEmps = employees.filter(e=>!e.isResigned && (reportZone === 'all' || (e.cashierZone || '1').toString() === reportZone)).sort((a, b) => a.name.localeCompare(b.name));
-            if (reportType === 'pdf') { await generateAllPayslips(targetReportMonth, periodType, sortedEmps, attendance, advances, overtime, loans, transportation, config, sections, bonuses); }
-            else if (reportType === 'master_pdf') { await generateMasterPayrollPDF(targetReportMonth, periodType, sortedEmps, attendance, advances, overtime, loans, transportation, config, sections, bonuses, lang); }
+            if (reportType === 'pdf') { await generateAllPayslips(targetReportMonth, periodType, sortedEmps, attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses); }
+            else if (reportType === 'master_pdf') { await generateMasterPayrollPDF(targetReportMonth, periodType, sortedEmps, attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses, lang); }
             else if (reportType === 'excel') { generateExcelReport(targetReportMonth, periodType, sortedEmps, attendance, advances, overtime, loans, transportation, pdfConfig, sections, bonuses, lang); }
-         } catch(e) { console.log("Report Error", e); }
+         } catch(e) { 
+             console.log("Report Error", e); 
+             alert("PDF Generation Error: " + e.message); 
+         }
          setIsGenerating(false); setReportType(null); 
       };
 
@@ -2734,7 +2737,10 @@ const ManagerDashboard = ({ employees=[], sections=[], attendance=[], overtime=[
             if (reportType === 'pdf') { await generateAllPayslips(targetReportMonth, periodType, sortedEmps, attendance, advances, overtime, loans, transportation, config, sections, bonuses); }
             else if (reportType === 'master_pdf') { await generateMasterPayrollPDF(targetReportMonth, periodType, sortedEmps, attendance, advances, overtime, loans, transportation, config, sections, bonuses, lang); }
             else if (reportType === 'excel') { generateExcelReport(targetReportMonth, periodType, sortedEmps, attendance, advances, overtime, loans, transportation, config, sections, bonuses, lang); }
-         } catch(e) { console.log("Report Error", e); }
+         } catch(e) { 
+             console.log("Report Error", e); 
+             alert("PDF Generation Error: " + e.message); 
+         }
          setIsGenerating(false); setReportType(null); 
       };
       
