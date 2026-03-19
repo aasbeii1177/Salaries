@@ -541,9 +541,10 @@
                 head: head,
                 body: body,
                 foot: foot, // Injects the footer row at the very bottom
+                showFoot: 'lastPage', // NEW: Forces the totals to ONLY print on the final page!
                 styles: { font: 'Amiri', halign: 'right', fontSize: 8 },
                 headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold', halign: 'center' },
-                footStyles: { fillColor: [17, 24, 39], textColor: 255, fontStyle: 'bold', halign: 'right' }, // Dark background to make totals pop
+                footStyles: { fillColor: [17, 24, 39], textColor: 255, fontStyle: 'bold', halign: 'right' }, 
                 columnStyles: { 0: { fontStyle: 'bold', textColor: [20, 83, 45] } }, 
                 theme: 'grid',
                 margin: { top: 25 },
