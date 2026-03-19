@@ -1483,13 +1483,13 @@
       const downloadTemplate = () => { 
           const isAr = lang === 'ar'; 
           const headers = isAr ? 
-             ['الاسم', 'المسمى الوظيفي', 'القسم', 'رقم الصندوق', 'دورة الدفع (monthly/daily/weekly)', 'تاريخ الانضمام', 'الراتب الشهري', 'مبلغ الفترة الأولى', 'مبلغ الفترة الثانية', 'مواصلات ف1', 'مواصلات ف2', 'الأجر اليومي', 'الأجر الأسبوعي', 'الوردية', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] : 
-             ['Name', 'Job Title', 'Section', 'Cashier Zone', 'Pay Cycle (monthly/daily/weekly)', 'Join Date', 'Monthly Wage', 'Period 1 Amount', 'Period 2 Amount', 'Transport P1', 'Transport P2', 'Daily Wage', 'Weekly Wage', 'Shift', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name']; 
+             ['الاسم', 'المسمى الوظيفي', 'القسم', 'رقم الصندوق', 'دورة الدفع (monthly/daily/weekly)', 'تاريخ الانضمام', 'سنة الميلاد (YYYY)', 'الراتب الشهري', 'مبلغ الفترة الأولى', 'مبلغ الفترة الثانية', 'مواصلات ف1', 'مواصلات ف2', 'الأجر اليومي', 'الأجر الأسبوعي', 'الوردية', 'الرقم الوطني', 'رقم التأمين', 'اسم الأب', 'اسم الأم'] : 
+             ['Name', 'Job Title', 'Section', 'Cashier Zone', 'Pay Cycle (monthly/daily/weekly)', 'Join Date', 'Year of Birth (YYYY)', 'Monthly Wage', 'Period 1 Amount', 'Period 2 Amount', 'Transport P1', 'Transport P2', 'Daily Wage', 'Weekly Wage', 'Shift', 'National ID', 'Insurance ID', 'Father Name', 'Mother Name']; 
           
           const sample = isAr ? 
-             ['أحمد', 'عامل', 'القسم العام', '1', 'monthly', '2024-01-01', '', '250000', '250000', '25000', '25000', '0', '0', 'صباحي', '010101010', '123456', 'محمود', 'فاطمة'] : 
-             ['John Doe', 'Worker', 'General', '1', 'monthly', '2024-01-01', '', '250000', '250000', '25000', '25000', '0', '0', 'day', '010101010', '123456', 'Robert', 'Mary'];  
-        
+             ['أحمد', 'عامل', 'القسم العام', '1', 'monthly', '2024-01-01', '1990', '', '250000', '250000', '25000', '25000', '0', '0', 'صباحي', '010101010', '123456', 'محمود', 'فاطمة'] : 
+             ['John Doe', 'Worker', 'General', '1', 'monthly', '2024-01-01', '1990', '', '250000', '250000', '25000', '25000', '0', '0', 'day', '010101010', '123456', 'Robert', 'Mary'];  
+
           const ws = XLSX.utils.aoa_to_sheet([headers, sample]); 
           const wb = XLSX.utils.book_new(); 
           XLSX.utils.book_append_sheet(wb, ws, "Template"); 
@@ -1565,6 +1565,7 @@
                   const fName = (row['Father Name'] || row['اسم الأب'] || '').toString();
                   const mName = (row['Mother Name'] || row['اسم الأم'] || '').toString();
                   const cZone = (row['Cashier Zone'] || row['رقم الصندوق'] || '').toString();
+                  const yob = (row['Year of Birth (YYYY)'] || row['سنة الميلاد (YYYY)'] || row['مواليد'] || '').toString();
                   let wNum = (row['Worker Number'] || row['الرقم الوظيفي'] || '').toString();
 
                   // NEW: Smart Sync - Check if the employee already exists FIRST
@@ -1582,10 +1583,11 @@
                       if (tp2 > 0) updateData.transportPeriod2Amount = tp2;
                       if (natId) updateData.nationalId = natId;
                       if (insId) updateData.socialInsuranceId = insId;
-                      if (fName) updateData.fatherName = fName;
+                     if (fName) updateData.fatherName = fName;
                       if (mName) updateData.motherName = mName;
                       if (matchedSectionId) updateData.sectionId = matchedSectionId;
                       if (cZone) updateData.cashierZone = cZone;
+                      if (yob) updateData.yearOfBirth = yob;
                       
                       // CRITICAL FIX: Only update ID if Excel explicitly has one. 
                       // If Excel is blank, keep their existing Database ID safely intact!
@@ -1623,9 +1625,10 @@
                           sectionId: matchedSectionId, 
                           cashierZone: cZone || '1',
                           workerNumber: wNum,
+                          yearOfBirth: yob,
                           isResigned: false 
                       }; 
-                      addEmployee(newEmp); 
+                      addEmployee(newEmp);
                   }
                   count++; 
               }); 
@@ -1784,8 +1787,8 @@
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('nationalId')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.nationalId} onChange={e=>setEditFormData({...editFormData, nationalId:e.target.value})} /> : <p className="font-black">{emp.nationalId || '-'}</p>}</div>
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('insuranceId')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.socialInsuranceId} onChange={e=>setEditFormData({...editFormData, socialInsuranceId:e.target.value})} /> : <p className="font-black">{emp.socialInsuranceId || '-'}</p>}</div>
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('joinDate')}</label>{editingId === emp.id ? <input type="date" className={inputClass} value={editFormData.joinDate} onChange={e=>setEditFormData({...editFormData, joinDate:e.target.value})} /> : <p className="font-black">{emp.joinDate || '-'}</p>}</div>
+                                                                  <div><label className="text-[10px] font-black uppercase block mb-1">Year of Birth (سنة الميلاد)</label>{editingId === emp.id ? <input type="number" min="1940" max="2015" className={inputClass} placeholder="e.g. 1990" value={editFormData.yearOfBirth || ''} onChange={e=>setEditFormData({...editFormData, yearOfBirth:e.target.value})} /> : <p className="font-black">{emp.yearOfBirth || '-'}</p>}</div>
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('cashierZone')}</label>{editingId === emp.id ? <input type="number" min="1" className={inputClass} value={editFormData.cashierZone} onChange={e=>setEditFormData({...editFormData, cashierZone:e.target.value})} /> : <p className="font-black">Z-{emp.cashierZone || '1'}</p>}</div>
-                                                                  
                                                                   {(currentUser?.role === 'hr_manager' || currentUser?.role === 'owner') && (
                                                                       <div><label className="text-[10px] font-black uppercase block mb-1 text-red-600">{t('confidentialWorker')}</label>{editingId === emp.id ? <input type="checkbox" className="w-5 h-5 accent-red-600" checked={editFormData.isConfidential || false} onChange={e=>setEditFormData({...editFormData, isConfidential:e.target.checked})} /> : <p className="font-black text-red-600">{emp.isConfidential ? 'YES' : 'NO'}</p>}</div>
                                                                   )}
@@ -1841,6 +1844,10 @@
                       <div>
                           <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('joinDate')}</label>
                           <input type="date" required className={inputClass} value={formData.joinDate} onChange={e => setFormData({...formData, joinDate: e.target.value})} />
+                      </div>
+                      <div>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Year of Birth / سنة الميلاد</label>
+                          <input type="number" min="1940" max="2015" placeholder="e.g. 1990" className={inputClass} value={formData.yearOfBirth || ''} onChange={e => setFormData({...formData, yearOfBirth: e.target.value})} />
                       </div>
                   </div>
                   
