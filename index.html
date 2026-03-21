@@ -1852,11 +1852,13 @@
                                                           <td colSpan={6} className="px-8 py-6">
                                                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                                                   <div><label className="text-[10px] font-black uppercase block mb-1">{t('name')}</label>{editingId === emp.id ? <input className={inputClass} value={editFormData.name} onChange={e=>setEditFormData({...editFormData, name:e.target.value})} /> : <p className="font-black">{emp.name}</p>}</div>
-     <div><label className="text-[10px] font-black uppercase block mb-1">{t('jobTitle')}</label>{editingId === emp.id ? <input className={inputClass} placeholder="e.g. Manager, Worker..." value={editFormData.jobTitle} onChange={e=>setEditFormData({...editFormData, jobTitle:e.target.value})} /> : <p className="font-black">{emp.jobTitle || 'Worker'}</p>}</div>
-    
-    {/* NEW: Worker Number Box */}
-    <div><label className="text-[10px] font-black uppercase block mb-1 text-indigo-600">الرقم الوظيفي (ID)</label>{editingId === emp.id ? <input className={inputClass} placeholder="e.g. 77" value={editFormData.workerNumber || ''} onChange={e=>setEditFormData({...editFormData, workerNumber:e.target.value})} /> : <p className="font-black text-indigo-600">{emp.workerNumber || '-'}</p>}</div>
-    
+ <div><label className="text-[10px] font-black uppercase block mb-1">{t('jobTitle')}</label>{editingId === emp.id ? <input className={inputClass} placeholder="e.g. Manager, Worker..." value={editFormData.jobTitle} onChange={e=>setEditFormData({...editFormData, jobTitle:e.target.value})} /> : <p className="font-black">{emp.jobTitle || 'Worker'}</p>}</div>
+ 
+ {/* NEW: Section Dropdown Box */}
+ <div><label className="text-[10px] font-black uppercase block mb-1">{t('section')}</label>{editingId === emp.id ? <select className={inputClass} value={editFormData.sectionId || ''} onChange={e=>setEditFormData({...editFormData, sectionId:e.target.value})}><option value="">{t('unassigned')}</option>{sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select> : <p className="font-black">{sections.find(s => s.id === emp.sectionId)?.name || t('unassigned')}</p>}</div>
+
+ {/* NEW: Worker Number Box */}
+ <div><label className="text-[10px] font-black uppercase block mb-1 text-indigo-600">الرقم الوظيفي (ID)</label>{editingId === emp.id ? <input className={inputClass} placeholder="e.g. 77" value={editFormData.workerNumber || ''} onChange={e=>setEditFormData({...editFormData, workerNumber:e.target.value})} /> : <p className="font-black text-indigo-600">{emp.workerNumber || '-'}</p>}</div>
     <div><label className="text-[10px] font-black uppercase block mb-1">{t('wage')}</label>{editingId === emp.id ? <MoneyInput className={inputClass} value={editFormData.wage} onChange={e=>setEditFormData({...editFormData, wage:e.target.value})} currency={pdfConfig.mainSymbol || 'SYP'} /> : <p className="font-black">{emp.monthlyWage}</p>}</div>
                                                                   <div className="col-span-full border-t border-gray-200 mt-2 pt-2">
                                                                       <p className="text-[10px] font-black uppercase text-indigo-600 mb-2">{t('paymentSettings')}</p>
