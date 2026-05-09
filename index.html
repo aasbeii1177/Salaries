@@ -1619,18 +1619,29 @@
                   const existingEmp = employees.find(e => e.name.toLowerCase() === name.toString().toLowerCase());
 
                   if (existingEmp) {
-                      // Update existing profile (Only overrides fields if the Excel box wasn't empty)
                       const updateData = {};
                       if (jTitle !== 'Worker') updateData.jobTitle = jTitle;
-                      if (wage > 0) updateData.monthlyWage = wage;
+                      
+                      // NEW SMART SYNC MATH: Combine existing database periods with new uploaded periods!
+                      let currentP1 = p1 > 0 ? p1 : (parseFloat(existingEmp.period1Amount) || 0);
+                      let currentP2 = p2 > 0 ? p2 : (parseFloat(existingEmp.period2Amount) || 0);
+                      
+                      let explicitWage = parseFloat(row['Monthly Wage'] || row['الراتب الشهري']) || 0;
+                      if (explicitWage > 0) {
+                          updateData.monthlyWage = explicitWage;
+                      } else if (currentP1 > 0 || currentP2 > 0) {
+                          updateData.monthlyWage = currentP1 + currentP2; // Perfectly adds them together!
+                      }
+                      
                       if (dWage > 0) updateData.dailyWage = dWage;
                       if (wWage > 0) updateData.weeklyWage = wWage;
                       if (p1 > 0) updateData.period1Amount = p1;
+                      if (p2 > 0) updateData.period2Amount = p2;
                       if (tp1 > 0) updateData.transportPeriod1Amount = tp1;
                       if (tp2 > 0) updateData.transportPeriod2Amount = tp2;
                       if (natId) updateData.nationalId = natId;
                       if (insId) updateData.socialInsuranceId = insId;
-                     if (fName) updateData.fatherName = fName;
+                      if (fName) updateData.fatherName = fName;
                       if (mName) updateData.motherName = mName;
                       if (matchedSectionId) updateData.sectionId = matchedSectionId;
                       if (cZone) updateData.cashierZone = cZone;
