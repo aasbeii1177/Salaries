@@ -380,10 +380,20 @@
         else if (isP1) fixedTransport = tp1;
         else fixedTransport = tp2;
 
+        // --- REPLACE IT WITH THIS ---
         const absenceRecords = monthAttendance.filter(a => (a.absentEmployeeIds || []).includes(emp.id));
         const daysAbsent = absenceRecords.length;
         const daysPresent = Math.max(0, totalPotentialDays - daysAbsent);
-        const dailyRateAbsence = totalWage / absDivisor; 
+        
+        // NEW: Isolated Period-based Daily Rate Math
+        let dailyRateAbsence = totalWage / absDivisor;
+        if (isP1) {
+            dailyRateAbsence = p1Amount > 0 ? (p1Amount / 15) : (totalWage / absDivisor);
+        } else if (!isFull) {
+            const p2Amount = Math.max(0, totalWage - p1Amount);
+            dailyRateAbsence = p2Amount > 0 ? (p2Amount / 15) : (totalWage / absDivisor);
+        }
+        
         const penaltyRate = dailyRateAbsence * (config.absentDeductionFactor || 1);
         const totalAbsenceDeduction = daysAbsent * penaltyRate;
 
