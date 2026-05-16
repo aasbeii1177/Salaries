@@ -397,8 +397,19 @@
         const penaltyRate = dailyRateAbsence * (config.absentDeductionFactor || 1);
         const totalAbsenceDeduction = daysAbsent * penaltyRate;
 
+        // --- REPLACE IT WITH THIS ---
         const empOvertimeHours = overtime.filter(ot => ot.employeeId === emp.id && filterByDate(ot)).reduce((sum, curr) => sum + (parseFloat(curr.hours) || 0), 0);
-        const overtimePay = empOvertimeHours * (totalWage / otDivisor) * (config.otMultiplier || 1.5);
+        
+        // NEW: Isolated Period-based Hourly Rate Math for Overtime
+        let hourlyRateOT = totalWage / otDivisor;
+        if (isP1) {
+            hourlyRateOT = p1Amount > 0 ? (p1Amount / (otDivisor / 2)) : (totalWage / otDivisor);
+        } else if (!isFull) {
+            const p2Amount = Math.max(0, totalWage - p1Amount);
+            hourlyRateOT = p2Amount > 0 ? (p2Amount / (otDivisor / 2)) : (totalWage / otDivisor);
+        }
+        
+        const overtimePay = empOvertimeHours * hourlyRateOT * (config.otMultiplier || 1.5);
 
         const empBonus = bonuses.filter(b => {
              if (b.employeeId !== emp.id) return false;
