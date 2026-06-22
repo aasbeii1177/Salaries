@@ -421,16 +421,27 @@
         const extraTransport = transportation.filter(t => t.employeeId === emp.id && filterByDate(t)).reduce((sum, curr) => sum + (parseFloat(curr.amount) || 0), 0);
         const totalTransport = fixedTransport + extraTransport;
 
+        // --- REPLACE IT WITH THIS ---
         const loan = loans.find(l => l.employeeId === emp.id);
         let loanDeduction = 0;
         let loanBalance = 0;
         let loanRemaining = 0;
         
-        // NEW "TIME TRAVEL" CHECK (CRASH-PROOF):
-        const currentReportMonth = typeof selectedMonth !== 'undefined' ? selectedMonth : '9999-99';
-        const loanMonth = loan && loan.date ? loan.date.substring(0, 7) : '2000-01';
+        // NEW BULLETPROOF CHECK: Guarantees no crashes even if Firebase dates are saved as objects
+        let isLoanValidForThisMonth = true;
+        try {
+            if (loan && loan.date && typeof loan.date === 'string') {
+                const checkLoanMonth = loan.date.substring(0, 7);
+                const checkReportMonth = typeof printGrantDate === 'string' ? printGrantDate.substring(0, 7) : '9999-99';
+                if (checkLoanMonth > checkReportMonth) {
+                    isLoanValidForThisMonth = false; // Loan is from the future, ignore it for this report
+                }
+            }
+        } catch (error) {
+            console.warn("Safely ignored a date format mismatch.");
+        }
         
-        if (loan && loanMonth <= currentReportMonth) {
+        if (loan && isLoanValidForThisMonth) {
              loanBalance = parseFloat(loan.totalAmount) || 0;
              
              let cutP1 = parseFloat(loan.deductionAmountP1) || 0;
