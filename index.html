@@ -426,11 +426,11 @@
         let loanBalance = 0;
         let loanRemaining = 0;
         
-        // NEW "TIME TRAVEL" CHECK: Ignore the loan entirely if it was issued AFTER the target report month.
-        // (If the loan has no date because it is an older contract, it defaults to always applying).
+        // NEW "TIME TRAVEL" CHECK (CRASH-PROOF):
+        const currentReportMonth = typeof selectedMonth !== 'undefined' ? selectedMonth : '9999-99';
         const loanMonth = loan && loan.date ? loan.date.substring(0, 7) : '2000-01';
         
-        if (loan && loanMonth <= targetMonth) {
+        if (loan && loanMonth <= currentReportMonth) {
              loanBalance = parseFloat(loan.totalAmount) || 0;
              
              let cutP1 = parseFloat(loan.deductionAmountP1) || 0;
