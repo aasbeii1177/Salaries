@@ -37,6 +37,7 @@
 </head>
 <body>
   <div id="root"></div>
+
   <script>
     // --- 1. FIREBASE INIT ---
     const firebaseConfig = {
@@ -53,8 +54,7 @@
       firebase.firestore().enablePersistence({ synchronizeTabs: true }).catch(err => console.log("Persistence Error:", err));
     }
     const db = firebase.firestore();
-    </script>
-    <script type="text/babel">
+   <script type="text/babel">
     // --- 2. TRANSLATIONS ---
     const translations = {
       appTitle: { en: "SalaryMaster", ar: "ماستر الرواتب" },
@@ -424,12 +424,17 @@
         const loan = loans.find(l => l.employeeId === emp.id);
         let loanDeduction = 0;
         let loanBalance = 0;
-             let loanRemaining = 0;
-             if (loan) {
-                  loanBalance = parseFloat(loan.totalAmount) || 0;
-                  
-                  let cutP1 = parseFloat(loan.deductionAmountP1) || 0;
-                  let cutP2 = parseFloat(loan.deductionAmountP2) || 0;
+        let loanRemaining = 0;
+        
+        // NEW "TIME TRAVEL" CHECK: Ignore the loan entirely if it was issued AFTER the target report month.
+        // (If the loan has no date because it is an older contract, it defaults to always applying).
+        const loanMonth = loan && loan.date ? loan.date.substring(0, 7) : '2000-01';
+        
+        if (loan && loanMonth <= targetMonth) {
+             loanBalance = parseFloat(loan.totalAmount) || 0;
+             
+             let cutP1 = parseFloat(loan.deductionAmountP1) || 0;
+             let cutP2 = parseFloat(loan.deductionAmountP2) || 0;
                   
                   // Legacy adapter for old loans
                   if (!loan.deductionAmountP1 && !loan.deductionAmountP2 && (loan.deductionAmount || loan.deductionPercentage)) {
@@ -2658,6 +2663,7 @@ const ManagerDashboard = ({ employees=[], sections=[], attendance=[], overtime=[
       const [addLoanAmount, setAddLoanAmount] = React.useState('');
       const [loanDeductP1, setLoanDeductP1] = React.useState('');
       const [loanDeductP2, setLoanDeductP2] = React.useState('');
+      const [loanDate, setLoanDate] = React.useState(new Date().toISOString().split('T')[0]); // NEW: Date Tracker
       
       // Advances States
       const [advanceAmount, setAdvanceAmount] = React.useState({});
@@ -2666,8 +2672,7 @@ const ManagerDashboard = ({ employees=[], sections=[], attendance=[], overtime=[
 
       // --- Logic for Loans ---
       const activeEmployees = employees.filter(emp => !emp.isResigned && ((emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (emp.workerNumber || '').toString() === searchQuery.trim())).sort((a, b) => a.name.localeCompare(b.name));
-      const handleSaveLoan = () => { if (loanTarget) { updateLoan(loanTarget.id, parseFloat(loanAmount), parseFloat(loanDeductP1) || 0, parseFloat(loanDeductP2) || 0); setLoanTarget(null); }};
-
+      const handleSaveLoan = () => { if (loanTarget) { updateLoan(loanTarget.id, parseFloat(loanAmount), parseFloat(loanDeductP1) || 0, parseFloat(loanDeductP2) || 0, loanDate); setLoanTarget(null); }};
       // --- Logic for Advances ---
       const monthStr = selectedDate.substring(0, 7);
       const dayNum = parseInt(selectedDate.split('-')[2]);
@@ -2730,12 +2735,13 @@ const ManagerDashboard = ({ employees=[], sections=[], attendance=[], overtime=[
                                               setAddLoanAmount(''); 
                                               let p1 = loan?.deductionAmountP1 || ''; 
                                               let p2 = loan?.deductionAmountP2 || ''; 
-                                              if (!p1 && !p2 && (loan?.deductionAmount || loan?.deductionPercentage)) { 
+                                             if (!p1 && !p2 && (loan?.deductionAmount || loan?.deductionPercentage)) { 
                                                   let leg = loan?.deductionAmount || loan?.deductionPercentage; 
                                                   if (loan?.deductionPeriod === '1') p1 = leg; else p2 = leg; 
                                               } 
                                               setLoanDeductP1(p1); 
                                               setLoanDeductP2(p2); 
+                                              setLoanDate(loan?.date || new Date().toISOString().split('T')[0]); // NEW: Grab existing date or use today
                                           }} className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest ${loan ? 'bg-white text-black border-2 border-black' : 'bg-indigo-600 text-white'}`}>{loan ? t('editContract') : t('issueLoan')}</button>
                                       </td>
                                    </tr>
@@ -2833,9 +2839,15 @@ const ManagerDashboard = ({ employees=[], sections=[], attendance=[], overtime=[
                      <p className="font-black uppercase text-xs">{t('managingProfile')} <span className="text-indigo-600 underline">{loanTarget.name}</span></p>
                      
                      <div className="space-y-4">
-                         <div>
-                             <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Current Total Debt / إجمالي الدين الحالي ({config.mainSymbol || 'SYP'})</label>
-                             <input type="number" className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-black text-xl text-black" value={loanAmount} onChange={e=>setLoanAmount(e.target.value)} />
+                         <div className="flex gap-4">
+                             <div className="w-2/3">
+                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Current Total Debt / إجمالي الدين الحالي ({config.mainSymbol || 'SYP'})</label>
+                                 <input type="number" className="w-full px-5 py-4 bg-gray-50 border-2 border-black rounded-2xl font-black text-xl text-black" value={loanAmount} onChange={e=>setLoanAmount(e.target.value)} />
+                             </div>
+                             <div className="w-1/3">
+                                 <label className="block text-[10px] font-black uppercase mb-2 text-gray-500">Issue Date / التاريخ</label>
+                                 <input type="date" className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-300 rounded-2xl font-black text-sm text-black outline-none" value={loanDate} onChange={e=>setLoanDate(e.target.value)} />
+                             </div>
                          </div>
                          <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
                              <label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">+ Add New Loan / إضافة قرض جديد</label>
@@ -3650,7 +3662,7 @@ const ManagerDashboard = ({ employees=[], sections=[], attendance=[], overtime=[
         
           if (currentUser.role === 'manager' || currentUser.role === 'data_entry') return <ManagerDashboard {...props} updateAttendance={(date, ids) => { const existing = attendance.find(a => a.date === date); if (existing) { db.collection('attendance').doc(existing.id).update({ absentEmployeeIds: ids }); } else { db.collection('attendance').add({ date, absentEmployeeIds: ids }); } }} addOvertime={(eid, hrs, d) => db.collection('overtime').add({ employeeId: eid, hours: hrs, date: d })} updateOvertime={(id, val) => db.collection('overtime').doc(id).update({ hours: val })} deleteOvertime={(id) => db.collection('overtime').doc(id).delete()} canEdit={currentUser.role === 'manager'} />;
         
-          if (currentUser.role === 'finance') return <FinanceDashboard {...props} addAdvance={(eid, amt, d)=>db.collection('advances').add({employeeId:eid, amount:amt, date:d})} updateAdvance={(id, val)=>db.collection('advances').doc(id).update({amount:val})} deleteAdvance={(id)=>db.collection('advances').doc(id).delete()} updateLoan={(eid, tot, dP1, dP2) => { const l = loans.find(x=>x.employeeId===eid); if(tot<=0 && l) db.collection('loans').doc(l.id).delete(); else if(l) db.collection('loans').doc(l.id).update({totalAmount:tot, deductionAmountP1:dP1, deductionAmountP2:dP2}); else db.collection('loans').add({employeeId:eid, totalAmount:tot, deductionAmountP1:dP1, deductionAmountP2:dP2}); }} />;
+          if (currentUser.role === 'finance') return <FinanceDashboard {...props} addAdvance={(eid, amt, d)=>db.collection('advances').add({employeeId:eid, amount:amt, date:d})} updateAdvance={(id, val)=>db.collection('advances').doc(id).update({amount:val})} deleteAdvance={(id)=>db.collection('advances').doc(id).delete()} updateLoan={(eid, tot, dP1, dP2, date) => { const l = loans.find(x=>x.employeeId===eid); if(tot<=0 && l) db.collection('loans').doc(l.id).delete(); else if(l) db.collection('loans').doc(l.id).update({totalAmount:tot, deductionAmountP1:dP1, deductionAmountP2:dP2, date:date}); else db.collection('loans').add({employeeId:eid, totalAmount:tot, deductionAmountP1:dP1, deductionAmountP2:dP2, date:date}); }} />;
 
           if (currentUser.role === 'cashier') return <CashierDashboard currentUser={currentUser} employees={employees} payoutLogs={payoutLogs} cashRegisters={cashRegisters} addPayout={(data) => db.collection('payout_logs').add(data)} deletePayout={(id) => db.collection('payout_logs').doc(id).delete()} updateCashRegister={(id, balance) => db.collection('cash_registers').doc(id).set({startingBalance: balance})} lang={lang} t={t} config={pdfConfig} attendance={attendance} advances={advances} overtime={overtime} loans={loans} transportation={transportation} bonuses={bonuses} grants={grants} sections={sections} lockedMonths={lockedMonths} />;
 
