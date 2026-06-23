@@ -37,8 +37,7 @@
 </head>
 <body>
   <div id="root"></div>
-
-  <script type="text/babel">
+  <script>
     // --- 1. FIREBASE INIT ---
     const firebaseConfig = {
       apiKey: "AIzaSyAemN5PLR3R5Rc1AwswGtv7E3EjHqzcm78",
@@ -54,7 +53,8 @@
       firebase.firestore().enablePersistence({ synchronizeTabs: true }).catch(err => console.log("Persistence Error:", err));
     }
     const db = firebase.firestore();
-
+    </script>
+    <script type="text/babel">
     // --- 2. TRANSLATIONS ---
     const translations = {
       appTitle: { en: "SalaryMaster", ar: "ماستر الرواتب" },
