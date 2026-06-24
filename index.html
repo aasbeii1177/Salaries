@@ -2428,7 +2428,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
       const handleSave = () => { setConfig(tempConfig); alert(t('logicSync')); };
 
       const handleSpecificReset = async (collectionName, displayName) => {
-          if (!confirm(`\u26a0\ufe0f WARNING: DELETE ALL ${displayName}?\n\nAre you sure?`)) return;
+          if (!confirm(`⚠️ WARNING: DELETE ALL ${displayName}?\n\nAre you sure?`)) return;
           const code = prompt(`Type 'DELETE' to confirm wiping ${displayName}:`);
           if (code !== 'DELETE') return alert("Cancelled.");
           try {
@@ -2437,7 +2437,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
               const batch = db.batch();
               snap.docs.forEach(doc => batch.delete(doc.ref));
               await batch.commit();
-              alert(`\u2705 Success: All ${displayName} records have been deleted.`);
+              alert(`✅ Success: All ${displayName} records have been deleted.`);
           } catch (err) { alert("Error during deletion: " + err.message); }
       };
 
@@ -2488,7 +2488,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
               if (bonusBasis==='2') return Math.max(0, basePlusNight - p1Amt);
               return basePlusNight;
           };
-          const finalBText = bonusType==='percent' ? (bonusBasis==='1' ? "\u0631\u0627\u062a\u0628" : (bonusBasis==='2' ? "\u0631\u0627\u062a\u0628" : "\u0627\u0644\u0631\u0627\u062a\u0628 \u0627\u0644\u0623\u0633\u0627\u0633\u064a")) : null;
+          const finalBText = bonusType==='percent' ? (bonusBasis==='1' ? "راتب" : (bonusBasis==='2' ? "راتب" : "الراتب الأساسي")) : null;
           const processBonusForEmp = (emp) => {
               const targetWage = getBonusTargetWage(emp);
               const amount = bonusType==='percent' ? (targetWage * val / 100) : val;
@@ -2517,7 +2517,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
               if (grantBasis==='2') return Math.max(0, basePlusNight - p1Amt);
               return basePlusNight;
           };
-          let finalBText = grantType==='percent' ? (grantBasis==='1' ? "\u0631\u0627\u062a\u0628" : (grantBasis==='2' ? "\u0631\u0627\u062a\u0628" : "\u0627\u0644\u0631\u0627\u062a\u0628 \u0627\u0644\u0623\u0633\u0627\u0633\u064a")) : null;
+          let finalBText = grantType==='percent' ? (grantBasis==='1' ? "راتب" : (grantBasis==='2' ? "راتب" : "الراتب الأساسي")) : null;
           const processGrantForEmp = (emp) => {
               let baseWage = getGrantTargetWage(emp);
               let tAmt = 0;
@@ -2580,7 +2580,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <h2 className="text-4xl font-black text-black uppercase">{t('strategicControl')}</h2>
               <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-gray-100 flex-wrap items-center gap-2">
-                 <button onClick={handleExcelBackup} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-green-600 text-white hover:bg-green-700 transition-colors shadow-lg">\ud83d\udcca {t('downloadExcel')}</button>
+                 <button onClick={handleExcelBackup} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-green-600 text-white hover:bg-green-700 transition-colors shadow-lg">📊 {t('downloadExcel')}</button>
                  <button onClick={handleBackupJSON} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors border border-orange-200">{t('backupData')} (JSON)</button>
                  {['logic','periods','bonuses','grants','registers','users','dictionary','reset'].map(tab => (
                     <button key={tab} onClick={() => setActiveOwnerTab(tab)} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeOwnerTab===tab ? 'bg-indigo-600 text-white shadow-lg' : 'text-black'}`}>
@@ -2599,7 +2599,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                     {cashRegisters.slice().sort((a,b)=>b.id.localeCompare(a.id)).map(reg => (
                         <div key={reg.id} className="p-4 flex flex-col md:flex-row justify-between md:items-center gap-4 hover:bg-gray-50 transition-colors">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black text-lg shadow-inner">\ud83d\udcb0</div>
+                                <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black text-lg shadow-inner">💰</div>
                                 <div><p className="font-black text-black">{reg.id}</p><p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('startingBalance')}</p></div>
                             </div>
                             {editingRegDate===reg.id ? (
@@ -2622,7 +2622,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
 
            {activeOwnerTab==='reset' && (
               <div className="bg-red-50 rounded-[2rem] shadow-xl border-2 border-red-100 p-8">
-                 <h3 className="text-xl font-black text-red-700 uppercase mb-2 flex items-center gap-2">\u26a0\ufe0f {t('dataMaintenanceReset')}</h3>
+                 <h3 className="text-xl font-black text-red-700 uppercase mb-2 flex items-center gap-2">⚠️ {t('dataMaintenanceReset')}</h3>
                  <p className="text-sm font-bold text-red-900/60 mb-8">{t('resetSubtext')}</p>
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {[
@@ -2652,12 +2652,12 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                      <h4 className="font-black text-indigo-800 uppercase tracking-widest text-xs mb-2">{t('dualCurrencyEngine')}</h4>
                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                          <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">{t('mainName')}</label><input type="text" className={inputClass} placeholder="e.g. SYP" value={tempConfig.mainCurrency||'SYP'} onChange={e=>setTempConfig({...tempConfig,mainCurrency:e.target.value})} /></div>
-                         <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">{t('mainSymbol')}</label><input type="text" className={inputClass} placeholder="e.g. \u0644.\u0633" value={tempConfig.mainSymbol||'\u0644.\u0633'} onChange={e=>setTempConfig({...tempConfig,mainSymbol:e.target.value})} /></div>
+                         <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">{t('mainSymbol')}</label><input type="text" className={inputClass} placeholder="e.g. ل.س" value={tempConfig.mainSymbol||'ل.س'} onChange={e=>setTempConfig({...tempConfig,mainSymbol:e.target.value})} /></div>
                          <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">{t('secName')}</label><input type="text" className={inputClass} placeholder="e.g. USD" value={tempConfig.secCurrency||'USD'} onChange={e=>setTempConfig({...tempConfig,secCurrency:e.target.value})} /></div>
                          <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">{t('secSymbol')}</label><input type="text" className={inputClass} placeholder="e.g. $" value={tempConfig.secSymbol||'$'} onChange={e=>setTempConfig({...tempConfig,secSymbol:e.target.value})} /></div>
                          <div><label className="block text-[10px] font-black uppercase mb-2 text-indigo-700">{t('exchangeRate')}</label><input type="number" step="0.01" className={inputClass} placeholder="e.g. 15000" value={tempConfig.exchangeRate||1} onChange={e=>setTempConfig({...tempConfig,exchangeRate:Math.max(0.0001,+e.target.value)})} /></div>
                      </div>
-                     <p className="text-[10px] text-indigo-600 font-bold mt-2">{t('preview')}: 150,000 {tempConfig.mainSymbol||'\u0644.\u0633'} = {formatSec(150000,tempConfig)} {tempConfig.secSymbol||'$'}</p>
+                     <p className="text-[10px] text-indigo-600 font-bold mt-2">{t('preview')}: 150,000 {tempConfig.mainSymbol||'ل.س'} = {formatSec(150000,tempConfig)} {tempConfig.secSymbol||'$'}</p>
                  </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div><label className="block text-[10px] font-black uppercase mb-2">{t('daysPerMonth')}</label><input type="number" className={inputClass} value={tempConfig.daysInMonth} onChange={e=>setTempConfig({...tempConfig,daysInMonth:+e.target.value})} /></div>
@@ -2684,7 +2684,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                                <p className="text-2xl font-black text-black tracking-tight">{month}</p>
                                <div className="flex gap-2 flex-wrap justify-center">
-                                  <button onClick={()=>handleViewTotals(month)} className="px-4 py-2 bg-amber-100 text-amber-800 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-200 transition-all">\ud83d\udcb0 {t('viewTotals')}</button>
+                                  <button onClick={()=>handleViewTotals(month)} className="px-4 py-2 bg-amber-100 text-amber-800 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-200 transition-all">💰 {t('viewTotals')}</button>
                                   <button onClick={()=>{setReportType('excel');setTargetReportMonth(month);}} className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-green-200 transition-all">{t('exportCsv')}</button>
                                   <button onClick={()=>{setReportType('pdf');setTargetReportMonth(month);}} className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-200 transition-all">{t('generatePdf')} (SLIPS)</button>
                                   <button onClick={()=>{setReportType('master_pdf');setTargetReportMonth(month);}} className="px-4 py-2 bg-slate-800 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">MASTER PDF</button>
@@ -2719,7 +2719,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                  <div className="bg-white rounded-[2rem] shadow-xl p-8 max-h-[500px] overflow-y-auto">
                     <h3 className="text-xl font-black uppercase mb-6">{t('distributionLogs')}</h3>
                     {bonuses.length===0 && <p className="text-center text-gray-400 font-bold text-xs py-10">{t('noRecordsFound')}</p>}
-                    {bonuses.map(b => (<div key={b.id} className="flex justify-between items-center p-3 border-b hover:bg-gray-50 transition-colors"><div><p className="font-black">{employees.find(e=>e.id===b.employeeId)?.name||'Unknown'}</p><p className="text-[10px] font-bold text-gray-400 uppercase">{b.description} \u2022 {parseFloat(b.amount).toLocaleString()} {config.mainSymbol||'SYP'} ({b.period==='full'?t('fullMonth'):`P${b.period||'?'}`})</p></div><button onClick={()=>deleteBonus(b.id)} className="text-red-500 font-black text-[10px] uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button></div>))}
+                    {bonuses.map(b => (<div key={b.id} className="flex justify-between items-center p-3 border-b hover:bg-gray-50 transition-colors"><div><p className="font-black">{employees.find(e=>e.id===b.employeeId)?.name||'Unknown'}</p><p className="text-[10px] font-bold text-gray-400 uppercase">{b.description} • {parseFloat(b.amount).toLocaleString()} {config.mainSymbol||'SYP'} ({b.period==='full'?t('fullMonth'):`P${b.period||'?'}`})</p></div><button onClick={()=>deleteBonus(b.id)} className="text-red-500 font-black text-[10px] uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button></div>))}
                  </div>
               </div>
            )}
@@ -2731,7 +2731,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                     <form onSubmit={handleDistributeGrant} className="space-y-4">
                        <div><label className="block text-[10px] font-black uppercase mb-2">{t('target')}</label><div className="flex bg-gray-100 p-1 rounded-xl"><button type="button" onClick={()=>setGrantTarget('individual')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantTarget==='individual'?'bg-white shadow text-black':'text-gray-400'}`}>{t('individual')}</button><button type="button" onClick={()=>setGrantTarget('all')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantTarget==='all'?'bg-white shadow text-teal-600':'text-gray-400'}`}>{t('allActive')}</button></div></div>
                        <div><label className="block text-[10px] font-black uppercase mb-2">{t('distType')}</label><div className="flex bg-gray-100 p-1 rounded-xl"><button type="button" onClick={()=>setGrantType('fixed')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantType==='fixed'?'bg-white shadow text-black':'text-gray-400'}`}>{t('fixedAmount')}</button><button type="button" onClick={()=>setGrantType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantType==='percent'?'bg-white shadow text-teal-600':'text-gray-400'}`}>{t('percentage')}</button></div></div>
-                       {grantType==='percent' && (<div className="flex flex-col gap-3"><div><label className="block text-[10px] font-black uppercase mb-2 text-teal-700">{t('calcPercentFrom')}</label><div className="flex bg-teal-50 p-1 rounded-xl border border-teal-100"><button type="button" onClick={()=>setGrantBasis('full')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='full'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('fullMonth')}</button><button type="button" onClick={()=>setGrantBasis('1')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='1'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('period1')}</button><button type="button" onClick={()=>setGrantBasis('2')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='2'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('period2')}</button></div></div><label className="flex items-center gap-2 text-[11px] font-black text-teal-700 cursor-pointer"><input type="checkbox" className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500" checked={grantIncludeTransport} onChange={e=>setGrantIncludeTransport(e.target.checked)} />\u062a\u0636\u0645\u064a\u0646 \u0628\u062f\u0644 \u0627\u0644\u0646\u0642\u0644 (Include Transport)</label></div>)}
+                       {grantType==='percent' && (<div className="flex flex-col gap-3"><div><label className="block text-[10px] font-black uppercase mb-2 text-teal-700">{t('calcPercentFrom')}</label><div className="flex bg-teal-50 p-1 rounded-xl border border-teal-100"><button type="button" onClick={()=>setGrantBasis('full')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='full'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('fullMonth')}</button><button type="button" onClick={()=>setGrantBasis('1')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='1'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('period1')}</button><button type="button" onClick={()=>setGrantBasis('2')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${grantBasis==='2'?'bg-white shadow text-teal-700':'text-teal-600/50'}`}>{t('period2')}</button></div></div><label className="flex items-center gap-2 text-[11px] font-black text-teal-700 cursor-pointer"><input type="checkbox" className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500" checked={grantIncludeTransport} onChange={e=>setGrantIncludeTransport(e.target.checked)} />تضمين بدل النقل (Include Transport)</label></div>)}
                        <div><label className="block text-[10px] font-black uppercase mb-2">{t('eventDate')}</label><input type="date" className={inputClass} value={grantDate} onChange={e=>setGrantDate(e.target.value)} required /></div>
                        {grantTarget==='individual' && (<div className="flex gap-2"><input type="text" placeholder={t('search')} className="w-1/3 px-4 py-3 bg-white border-2 border-gray-300 rounded-xl font-bold text-black outline-none focus:border-teal-600 transition-all" value={grantEmpSearch} onChange={e=>setGrantEmpSearch(e.target.value)} /><select className={`${inputClass} w-2/3`} value={selectedGrantEmp} onChange={e=>setSelectedGrantEmp(e.target.value)} required={grantTarget==='individual'}><option value="">{t('selectEmployee')}</option>{employees.filter(e=>!e.isResigned&&(!grantEmpSearch||(e.name||'').toLowerCase().includes(grantEmpSearch.toLowerCase())||(e.workerNumber||'').toString()===grantEmpSearch.trim())).sort((a,b)=>a.name.localeCompare(b.name)).map(e=><option key={e.id} value={e.id}>{e.name}</option>)}</select></div>)}
                        <input className={inputClass} type="number" placeholder={grantType==='fixed'?`${t('amount')} (${config.mainCurrency||'SYP'})`:t('percentage')} value={grantValue} onChange={e=>setGrantValue(e.target.value)} required />
@@ -2745,15 +2745,15 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                             <p className="text-xs font-black text-teal-800 uppercase w-full md:w-auto">{t('printInstantSlips')}</p>
                             <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-                                <select className="px-3 py-2 border border-teal-200 rounded text-xs font-bold w-full md:w-auto outline-none focus:border-teal-500" value={reportZone} onChange={e=>setReportZone(e.target.value)}><option value="all">\u0643\u0644 \u0627\u0644\u0635\u0646\u0627\u062f\u064a\u0642</option>{[...new Set(employees.map(e=>(e.cashierZone||'1').toString()))].sort().map(z=>(<option key={z} value={z}>\u0627\u0644\u0635\u0646\u062f\u0648\u0642 {z}</option>))}</select>
+                                <select className="px-3 py-2 border border-teal-200 rounded text-xs font-bold w-full md:w-auto outline-none focus:border-teal-500" value={reportZone} onChange={e=>setReportZone(e.target.value)}><option value="all">كل الصناديق</option>{[...new Set(employees.map(e=>(e.cashierZone||'1').toString()))].sort().map(z=>(<option key={z} value={z}>الصندوق {z}</option>))}</select>
                                 <input type="date" className="px-3 py-2 border border-teal-200 rounded text-xs font-bold w-full md:w-auto outline-none focus:border-teal-500" value={printGrantDate} onChange={e=>setPrintGrantDate(e.target.value)} />
                                 <button onClick={()=>generateAidPayslips(printGrantDate,employees.filter(e=>reportZone==='all'||(e.cashierZone||'1').toString()===reportZone),grants,config,sections)} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded text-[10px] uppercase font-black tracking-widest transition-all">{t('printBtn')}</button>
                             </div>
                         </div>
-                        {(()=>{const targetG=grants.filter(g=>{if(g.date!==printGrantDate)return false;const emp=employees.find(e=>e.id===g.employeeId);return emp&&(reportZone==='all'||(emp.cashierZone||'1').toString()===reportZone);});const totalAmt=targetG.reduce((s,g)=>s+parseFloat(g.amount||0),0);if(targetG.length===0)return null;return(<div className="mt-4 bg-white px-4 py-2 rounded-lg border border-teal-200 flex justify-between items-center shadow-sm"><span className="text-[10px] font-black uppercase text-teal-800 tracking-widest">\u0625\u062c\u0645\u0627\u0644\u064a \u0645\u0628\u0644\u063a \u0627\u0644\u0637\u0628\u0627\u0639\u0629:</span><span className="font-black text-teal-700 text-base">{totalAmt.toLocaleString()} {config.mainSymbol||'SYP'} <span className="text-[10px] bg-teal-100 px-2 py-1 rounded ml-2">{targetG.length} workers</span></span></div>);})()}
+                        {(()=>{const targetG=grants.filter(g=>{if(g.date!==printGrantDate)return false;const emp=employees.find(e=>e.id===g.employeeId);return emp&&(reportZone==='all'||(emp.cashierZone||'1').toString()===reportZone);});const totalAmt=targetG.reduce((s,g)=>s+parseFloat(g.amount||0),0);if(targetG.length===0)return null;return(<div className="mt-4 bg-white px-4 py-2 rounded-lg border border-teal-200 flex justify-between items-center shadow-sm"><span className="text-[10px] font-black uppercase text-teal-800 tracking-widest">إجمالي مبلغ الطباعة:</span><span className="font-black text-teal-700 text-base">{totalAmt.toLocaleString()} {config.mainSymbol||'SYP'} <span className="text-[10px] bg-teal-100 px-2 py-1 rounded ml-2">{targetG.length} workers</span></span></div>);})()}
                     </div>
                     <div className="max-h-[300px] overflow-y-auto divide-y">
-                        {(()=>{const visibleGrants=grants.filter(g=>{if(g.date!==printGrantDate)return false;const emp=employees.find(e=>e.id===g.employeeId);return emp&&(reportZone==='all'||(emp.cashierZone||'1').toString()===reportZone);});if(visibleGrants.length===0)return<p className="text-center text-gray-400 font-bold text-xs py-10">{t('noRecordsFound')}</p>;return visibleGrants.map(g=>(<div key={g.id} className="flex justify-between items-center py-3 hover:bg-gray-50 transition-colors"><div><p className="font-black text-sm">{employees.find(e=>e.id===g.employeeId)?.name||'Unknown'}</p><p className="text-[10px] font-bold text-teal-600 uppercase">{g.description} \u2022 {parseFloat(g.amount).toLocaleString()} {config.mainSymbol||'SYP'} ({g.date})</p></div><button onClick={()=>deleteGrant(g.id)} className="text-red-500 font-black text-[10px] uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button></div>));})()}
+                        {(()=>{const visibleGrants=grants.filter(g=>{if(g.date!==printGrantDate)return false;const emp=employees.find(e=>e.id===g.employeeId);return emp&&(reportZone==='all'||(emp.cashierZone||'1').toString()===reportZone);});if(visibleGrants.length===0)return<p className="text-center text-gray-400 font-bold text-xs py-10">{t('noRecordsFound')}</p>;return visibleGrants.map(g=>(<div key={g.id} className="flex justify-between items-center py-3 hover:bg-gray-50 transition-colors"><div><p className="font-black text-sm">{employees.find(e=>e.id===g.employeeId)?.name||'Unknown'}</p><p className="text-[10px] font-bold text-teal-600 uppercase">{g.description} • {parseFloat(g.amount).toLocaleString()} {config.mainSymbol||'SYP'} ({g.date})</p></div><button onClick={()=>deleteGrant(g.id)} className="text-red-500 font-black text-[10px] uppercase hover:bg-red-50 px-2 py-1 rounded">{t('delete')}</button></div>));})()}
                     </div>
                  </div>
               </div>
@@ -2815,7 +2815,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center animate-in fade-in zoom-in duration-200">
                    <h4 className="text-xl font-black mb-6 text-black uppercase tracking-widest">{t('selectReport')} {reportType==='excel'?'(EXCEL)':'(PDF)'}</h4>
-                   <select className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-black outline-none focus:border-indigo-600 transition-all mb-6 text-center" value={reportZone} onChange={e=>setReportZone(e.target.value)}><option value="all">\u0643\u0644 \u0627\u0644\u0635\u0646\u0627\u062f\u064a\u0642 (All Zones)</option>{[...new Set(employees.map(e=>(e.cashierZone||'1').toString()))].sort().map(z=>(<option key={z} value={z}>\u0627\u0644\u0635\u0646\u062f\u0648\u0642 {z} (Zone {z})</option>))}</select>
+                   <select className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-black outline-none focus:border-indigo-600 transition-all mb-6 text-center" value={reportZone} onChange={e=>setReportZone(e.target.value)}><option value="all">كل الصناديق (All Zones)</option>{[...new Set(employees.map(e=>(e.cashierZone||'1').toString()))].sort().map(z=>(<option key={z} value={z}>الصندوق {z} (Zone {z})</option>))}</select>
                    <div className="space-y-4">
                        <button onClick={()=>handleGenerateReport('p1')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period1')}</button>
                        <button onClick={()=>handleGenerateReport('p2')} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-indigo-100 transition-all">{t('period2')}</button>
