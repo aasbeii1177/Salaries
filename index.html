@@ -300,6 +300,49 @@ const translations = {
   finalSettlement: { en: "Final Settlement", ar: "تصفية حساب نهائية" },
   printAndArchive: { en: "Print & Archive", ar: "طباعة وأرشفة" },
   eraseConfirm: { en: "Permanently delete", ar: "حذف نهائي" },
+
+  // ── Bulk Raise ─────────────────────────────────────────
+  bulkRaise: { en: "Bulk Salary Raise", ar: "زيادة رواتب جماعية" },
+  bulkRaiseSubtext: { en: "Apply salary increases to workers in bulk. Preview before committing.", ar: "تطبيق زيادات الرواتب على العمال بشكل جماعي. معاينة قبل التأكيد." },
+  targetWorkers: { en: "Target Workers", ar: "العمال المستهدفون" },
+  allActive: { en: "All Active", ar: "جميع النشطين" },
+  bySection: { en: "By Section", ar: "حسب القسم" },
+  customSelect: { en: "Custom Select", ar: "اختيار مخصص" },
+  selectSection: { en: "Select Section", ar: "اختر القسم" },
+  searchWorkers: { en: "Search workers...", ar: "بحث عن عمال..." },
+  workersSelected: { en: "workers selected", ar: "عمال محددون" },
+  clearSelection: { en: "Clear", ar: "مسح" },
+  waiseRaiseSettings: { en: "Wage Raise Settings", ar: "إعدادات زيادة الراتب" },
+  raiseType: { en: "Raise Type", ar: "نوع الزيادة" },
+  percentageRaise: { en: "% Percentage", ar: "نسبة مئوية %" },
+  fixedRaise: { en: "Fixed Amount", ar: "مبلغ ثابت" },
+  raisePercent: { en: "Raise Percentage (%)", ar: "نسبة الزيادة (%)" },
+  raiseAmount: { en: "Raise Amount", ar: "مبلغ الزيادة" },
+  raisePercentPlaceholder: { en: "e.g. 10 (for 10%)", ar: "مثال: 10 (لزيادة 10%)" },
+  raiseAmountPlaceholder: { en: "e.g. 50000", ar: "مثال: 50000" },
+  applyTo: { en: "Apply To", ar: "تطبيق على" },
+  period1Label: { en: "Period 1 (1-15)", ar: "الفترة 1 (1-15)" },
+  period2Label: { en: "Period 2 (16-End)", ar: "الفترة 2 (16-النهاية)" },
+  transportRaise: { en: "Transport Raise (Optional)", ar: "زيادة المواصلات (اختياري)" },
+  enableTransportRaise: { en: "Enable", ar: "تفعيل" },
+  transportRaiseType: { en: "Transport Raise Type", ar: "نوع زيادة المواصلات" },
+  transportRaisePercent: { en: "Transport Raise (%)", ar: "نسبة زيادة المواصلات (%)" },
+  transportRaiseAmount: { en: "Transport Raise Amount", ar: "مبلغ زيادة المواصلات" },
+  applyTransportTo: { en: "Apply Transport Raise To", ar: "تطبيق زيادة المواصلات على" },
+  transportP1Label: { en: "Transport P1", ar: "مواصلات ف1" },
+  transportP2Label: { en: "Transport P2", ar: "مواصلات ف2" },
+  previewRaise: { en: "Preview Raise", ar: "معاينة الزيادة" },
+  workersAffected: { en: "Workers Affected", ar: "العمال المتأثرون" },
+  wageIncreaseMonth: { en: "Wage Increase/Month", ar: "زيادة الراتب/شهر" },
+  transportIncreaseMonth: { en: "Transport Increase/Month", ar: "زيادة المواصلات/شهر" },
+  workerPreview: { en: "Worker Preview (first 10 shown)", ar: "معاينة العمال (أول 10 فقط)" },
+  andMore: { en: "more workers", ar: "عامل آخر" },
+  applyRaise: { en: "Apply to", ar: "تطبيق على" },
+  workers: { en: "Workers", ar: "عمال" },
+  applyingRaise: { en: "Applying...", ar: "جاري التطبيق..." },
+  configureAndPreview: { en: "Configure raise settings and click Preview", ar: "اضبط إعدادات الزيادة ثم اضغط معاينة" },
+  cancelRaise: { en: "Cancel", ar: "إلغاء" },
+  raiseAppliedSuccess: { en: "Raise applied successfully to", ar: "تم تطبيق الزيادة بنجاح على" },
 };
 
 
@@ -2677,7 +2720,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                  <button onClick={handleBackupJSON} className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors border border-orange-200">{t('backupData')} (JSON)</button>
                  {['logic','periods','bonuses','grants','raise','registers','users','dictionary','reset'].map(tab => (
                     <button key={tab} onClick={() => setActiveOwnerTab(tab)} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeOwnerTab===tab ? (tab==='raise' ? 'bg-emerald-600 text-white shadow-lg' : 'bg-indigo-600 text-white shadow-lg') : 'text-black'}`}>
-                        {tab==='reset' ? t('dataMaintenance') : tab==='registers' ? t('cashierAudit') : tab==='raise' ? '📈 Bulk Raise' : t(tab==='logic' ? 'systemLogic' : tab==='users' ? 'userAccess' : tab==='bonuses' ? 'bonusCenter' : tab==='grants' ? 'supportAid' : tab)}
+                        {tab==='reset' ? t('dataMaintenance') : tab==='registers' ? t('cashierAudit') : tab==='raise' ? `📈 ${t('bulkRaise')}` : t(tab==='logic' ? 'systemLogic' : tab==='users' ? 'userAccess' : tab==='bonuses' ? 'bonusCenter' : tab==='grants' ? 'supportAid' : tab)}
                     </button>
                  ))}
               </div>
@@ -2908,7 +2951,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
               <div className="space-y-8 animate-in fade-in">
                 <div className="bg-white rounded-[2rem] shadow-xl p-8">
                   <h3 className="text-xl font-black text-emerald-600 uppercase mb-2">📈 Bulk Salary Raise</h3>
-                  <p className="text-xs font-bold text-gray-500 mb-8">Apply salary increases to workers in bulk. Preview before committing.</p>
+                  <p className="text-xs font-bold text-gray-500 mb-8">{t('bulkRaiseSubtext')}</p>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* ── LEFT: Configuration ── */}
@@ -2916,16 +2959,16 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
 
                       {/* Target */}
                       <div>
-                        <label className="block text-[10px] font-black uppercase mb-2 text-gray-600">1. Target Workers</label>
+                        <label className="block text-[10px] font-black uppercase mb-2 text-gray-600">1. {t('targetWorkers')}</label>
                         <div className="flex bg-gray-100 p-1 rounded-xl mb-3">
-                          <button type="button" onClick={()=>{setRaiseTarget('all');setRaiseSelectedEmps([]);}} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${raiseTarget==='all'?'bg-white shadow text-emerald-700':'text-gray-400'}`}>All Active</button>
-                          <button type="button" onClick={()=>setRaiseTarget('section')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${raiseTarget==='section'?'bg-white shadow text-emerald-700':'text-gray-400'}`}>By Section</button>
-                          <button type="button" onClick={()=>setRaiseTarget('custom')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${raiseTarget==='custom'?'bg-white shadow text-emerald-700':'text-gray-400'}`}>Custom Select</button>
+                          <button type="button" onClick={()=>{setRaiseTarget('all');setRaiseSelectedEmps([]);}} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${raiseTarget==='all'?'bg-white shadow text-emerald-700':'text-gray-400'}`}>{t('allActive')}</button>
+                          <button type="button" onClick={()=>setRaiseTarget('section')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${raiseTarget==='section'?'bg-white shadow text-emerald-700':'text-gray-400'}`}>{t('bySection')}</button>
+                          <button type="button" onClick={()=>setRaiseTarget('custom')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${raiseTarget==='custom'?'bg-white shadow text-emerald-700':'text-gray-400'}`}>{t('customSelect')}</button>
                         </div>
 
                         {raiseTarget==='section' && (
                           <select className={inputClass} value={raiseSection} onChange={e=>setRaiseSection(e.target.value)}>
-                            <option value="">-- Select Section --</option>
+                            <option value="">-- {t('selectSection')} --</option>
                             {sections.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
                           </select>
                         )}
@@ -2933,7 +2976,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                         {raiseTarget==='custom' && (
                           <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
                             <div className="p-3 bg-gray-50 border-b border-gray-200">
-                              <input type="text" placeholder="Search workers..." className="w-full px-3 py-2 rounded-lg border border-gray-300 font-bold text-sm outline-none" value={raiseEmpSearch} onChange={e=>setRaiseEmpSearch(e.target.value)} />
+                              <input type="text" placeholder={t('searchWorkers')} className="w-full px-3 py-2 rounded-lg border border-gray-300 font-bold text-sm outline-none" value={raiseEmpSearch} onChange={e=>setRaiseEmpSearch(e.target.value)} />
                             </div>
                             <div className="max-h-48 overflow-y-auto divide-y divide-gray-100">
                               {employees.filter(e=>!e.isResigned && e.payCycle!=='daily' && e.payCycle!=='weekly' && (!raiseEmpSearch || (e.name||'').toLowerCase().includes(raiseEmpSearch.toLowerCase()) || (e.workerNumber||'').toString()===raiseEmpSearch.trim())).sort((a,b)=>a.name.localeCompare(b.name)).map(emp=>(
@@ -2943,7 +2986,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                                   </div>
                                   <div>
                                     <p className="font-black text-sm text-black">{emp.name}</p>
-                                    <p className="text-[10px] text-gray-400 uppercase">{sections.find(s=>s.id===emp.sectionId)?.name||'Unassigned'} • #{emp.workerNumber||'-'}</p>
+                                    <p className="text-[10px] text-gray-400 uppercase">{sections.find(s=>s.id===emp.sectionId)?.name||t('unassigned')} • #{emp.workerNumber||'-'}</p>
                                   </div>
                                   <span className="ml-auto text-[10px] font-black text-gray-500">{(parseFloat(emp.monthlyWage)||0).toLocaleString()}</span>
                                 </div>
@@ -2951,8 +2994,8 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                             </div>
                             {raiseSelectedEmps.length > 0 && (
                               <div className="p-3 bg-emerald-50 border-t border-emerald-200 flex justify-between items-center">
-                                <span className="text-[10px] font-black text-emerald-700 uppercase">{raiseSelectedEmps.length} workers selected</span>
-                                <button onClick={()=>setRaiseSelectedEmps([])} className="text-[10px] font-black text-red-500 uppercase">Clear</button>
+                                <span className="text-[10px] font-black text-emerald-700 uppercase">{raiseSelectedEmps.length} {t('workersSelected')}</span>
+                                <button onClick={()=>setRaiseSelectedEmps([])} className="text-[10px] font-black text-red-500 uppercase">{t('clearSelection')}</button>
                               </div>
                             )}
                           </div>
@@ -2961,31 +3004,31 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
 
                       {/* Wage Raise */}
                       <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-100 space-y-4">
-                        <p className="text-[10px] font-black uppercase text-emerald-800 tracking-widest">2. Wage Raise Settings</p>
+                        <p className="text-[10px] font-black uppercase text-emerald-800 tracking-widest">2. {t('waiseRaiseSettings')}</p>
 
                         <div>
-                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-600">Raise Type</label>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-600">{t('raiseType')}</label>
                           <div className="flex bg-white p-1 rounded-xl border border-emerald-200">
-                            <button type="button" onClick={()=>setRaiseType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${raiseType==='percent'?'bg-emerald-600 text-white shadow':'text-gray-400'}`}>% Percentage</button>
-                            <button type="button" onClick={()=>setRaiseType('fixed')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${raiseType==='fixed'?'bg-emerald-600 text-white shadow':'text-gray-400'}`}>Fixed Amount</button>
+                            <button type="button" onClick={()=>setRaiseType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${raiseType==='percent'?'bg-emerald-600 text-white shadow':'text-gray-400'}`}>{t('percentageRaise')}</button>
+                            <button type="button" onClick={()=>setRaiseType('fixed')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${raiseType==='fixed'?'bg-emerald-600 text-white shadow':'text-gray-400'}`}>{t('fixedRaise')}</button>
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-600">{raiseType==='percent'?'Raise Percentage (%)':'Raise Amount'}</label>
-                          <input type="number" min="0" step={raiseType==='percent'?'0.1':'500'} className={inputClass} placeholder={raiseType==='percent'?'e.g. 10 (for 10%)':'e.g. 50000'} value={raiseValue} onChange={e=>setRaiseValue(e.target.value)} />
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-600">{raiseType==='percent'?t('raisePercent'):t('raiseAmount')}</label>
+                          <input type="number" min="0" step={raiseType==='percent'?'0.1':'500'} className={inputClass} placeholder={raiseType==='percent'?t('raisePercentPlaceholder'):t('raiseAmountPlaceholder')} value={raiseValue} onChange={e=>setRaiseValue(e.target.value)} />
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-600">Apply To</label>
+                          <label className="block text-[10px] font-black uppercase mb-2 text-gray-600">{t('applyTo')}</label>
                           <div className="flex gap-4">
                             <label className="flex items-center gap-2 cursor-pointer">
                               <input type="checkbox" className="w-4 h-4 accent-emerald-600" checked={raiseApplyP1} onChange={e=>setRaiseApplyP1(e.target.checked)} />
-                              <span className="text-[11px] font-black text-emerald-800">Period 1 (1-15)</span>
+                              <span className="text-[11px] font-black text-emerald-800">{t('period1Label')}</span>
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer">
                               <input type="checkbox" className="w-4 h-4 accent-emerald-600" checked={raiseApplyP2} onChange={e=>setRaiseApplyP2(e.target.checked)} />
-                              <span className="text-[11px] font-black text-emerald-800">Period 2 (16-End)</span>
+                              <span className="text-[11px] font-black text-emerald-800">{t('period2Label')}</span>
                             </label>
                           </div>
                         </div>
@@ -2994,36 +3037,36 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                       {/* Transport Raise */}
                       <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 space-y-4">
                         <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-black uppercase text-blue-800 tracking-widest">3. Transport Raise (Optional)</p>
+                          <p className="text-[10px] font-black uppercase text-blue-800 tracking-widest">3. {t('transportRaise')}</p>
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" className="w-4 h-4 accent-blue-600" checked={raiseApplyTransport} onChange={e=>setRaiseApplyTransport(e.target.checked)} />
-                            <span className="text-[10px] font-black text-blue-700">Enable</span>
+                            <span className="text-[10px] font-black text-blue-700">{t('enableTransportRaise')}</span>
                           </label>
                         </div>
 
                         {raiseApplyTransport && (
                           <>
                             <div>
-                              <label className="block text-[10px] font-black uppercase mb-2 text-gray-600">Transport Raise Type</label>
+                              <label className="block text-[10px] font-black uppercase mb-2 text-gray-600">{t('transportRaiseType')}</label>
                               <div className="flex bg-white p-1 rounded-xl border border-blue-200">
-                                <button type="button" onClick={()=>setRaiseTransportType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${raiseTransportType==='percent'?'bg-blue-600 text-white shadow':'text-gray-400'}`}>% Percentage</button>
-                                <button type="button" onClick={()=>setRaiseTransportType('fixed')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${raiseTransportType==='fixed'?'bg-blue-600 text-white shadow':'text-gray-400'}`}>Fixed Amount</button>
+                                <button type="button" onClick={()=>setRaiseTransportType('percent')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${raiseTransportType==='percent'?'bg-blue-600 text-white shadow':'text-gray-400'}`}>{t('percentageRaise')}</button>
+                                <button type="button" onClick={()=>setRaiseTransportType('fixed')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${raiseTransportType==='fixed'?'bg-blue-600 text-white shadow':'text-gray-400'}`}>{t('fixedRaise')}</button>
                               </div>
                             </div>
                             <div>
-                              <label className="block text-[10px] font-black uppercase mb-2 text-gray-600">{raiseTransportType==='percent'?'Transport Raise (%)':'Transport Raise Amount'}</label>
-                              <input type="number" min="0" step={raiseTransportType==='percent'?'0.1':'500'} className={inputClass} placeholder={raiseTransportType==='percent'?'e.g. 10':'e.g. 10000'} value={raiseTransportValue} onChange={e=>setRaiseTransportValue(e.target.value)} />
+                              <label className="block text-[10px] font-black uppercase mb-2 text-gray-600">{raiseTransportType==='percent'?t('transportRaisePercent'):t('transportRaiseAmount')}</label>
+                              <input type="number" min="0" step={raiseTransportType==='percent'?'0.1':'500'} className={inputClass} placeholder={raiseTransportType==='percent'?t('raisePercentPlaceholder'):t('raiseAmountPlaceholder')} value={raiseTransportValue} onChange={e=>setRaiseTransportValue(e.target.value)} />
                             </div>
                             <div>
-                              <label className="block text-[10px] font-black uppercase mb-2 text-gray-600">Apply Transport Raise To</label>
+                              <label className="block text-[10px] font-black uppercase mb-2 text-gray-600">{t('applyTransportTo')}</label>
                               <div className="flex gap-4">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                   <input type="checkbox" className="w-4 h-4 accent-blue-600" checked={raiseTransportP1} onChange={e=>setRaiseTransportP1(e.target.checked)} />
-                                  <span className="text-[11px] font-black text-blue-800">Transport P1</span>
+                                  <span className="text-[11px] font-black text-blue-800">{t('transportP1Label')}</span>
                                 </label>
                                 <label className="flex items-center gap-2 cursor-pointer">
                                   <input type="checkbox" className="w-4 h-4 accent-blue-600" checked={raiseTransportP2} onChange={e=>setRaiseTransportP2(e.target.checked)} />
-                                  <span className="text-[11px] font-black text-blue-800">Transport P2</span>
+                                  <span className="text-[11px] font-black text-blue-800">{t('transportP2Label')}</span>
                                 </label>
                               </div>
                             </div>
@@ -3032,7 +3075,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                       </div>
 
                       <button onClick={handleRaisePreview} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl uppercase text-xs tracking-widest shadow-xl transition-all">
-                        👁️ Preview Raise
+                        👁️ {t('previewRaise')}
                       </button>
                     </div>
 
@@ -3042,7 +3085,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                         <div className="h-full flex items-center justify-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center">
                           <div>
                             <p className="text-4xl mb-4">📈</p>
-                            <p className="font-black text-gray-400 uppercase text-sm">Configure raise settings and click Preview</p>
+                            <p className="font-black text-gray-400 uppercase text-sm">{t('configureAndPreview')}</p>
                           </div>
                         </div>
                       ) : (
@@ -3050,19 +3093,19 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                           {/* Summary cards */}
                           <div className="grid grid-cols-2 gap-3">
                             <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 text-center">
-                              <p className="text-[10px] font-black uppercase text-gray-500 mb-1">Workers Affected</p>
+                              <p className="text-[10px] font-black uppercase text-gray-500 mb-1">{t('workersAffected')}</p>
                               <p className="text-3xl font-black text-black">{raisePreview.targeted.length}</p>
                             </div>
                             {raiseValue && (
                               <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 text-center">
-                                <p className="text-[10px] font-black uppercase text-emerald-700 mb-1">Wage Increase/Month</p>
+                                <p className="text-[10px] font-black uppercase text-emerald-700 mb-1">{t('wageIncreaseMonth')}</p>
                                 <p className="text-lg font-black text-emerald-700">+{(raisePreview.totalNewWage - raisePreview.totalOldWage).toLocaleString()}</p>
                                 <p className="text-[10px] text-gray-500">{raisePreview.totalOldWage.toLocaleString()} → {raisePreview.totalNewWage.toLocaleString()}</p>
                               </div>
                             )}
                             {raiseApplyTransport && raiseTransportValue && (
                               <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 text-center col-span-2">
-                                <p className="text-[10px] font-black uppercase text-blue-700 mb-1">Transport Increase/Month</p>
+                                <p className="text-[10px] font-black uppercase text-blue-700 mb-1">{t('transportIncreaseMonth')}</p>
                                 <p className="text-lg font-black text-blue-700">+{(raisePreview.totalNewTransport - raisePreview.totalOldTransport).toLocaleString()}</p>
                                 <p className="text-[10px] text-gray-500">{raisePreview.totalOldTransport.toLocaleString()} → {raisePreview.totalNewTransport.toLocaleString()}</p>
                               </div>
@@ -3072,7 +3115,7 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                           {/* Worker list preview */}
                           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                             <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                              <p className="text-[10px] font-black uppercase text-gray-500">Worker Preview (first 10 shown)</p>
+                              <p className="text-[10px] font-black uppercase text-gray-500">{t('workerPreview')}</p>
                             </div>
                             <div className="max-h-64 overflow-y-auto divide-y divide-gray-100">
                               {raisePreview.targeted.slice(0,10).map(emp=>{
@@ -3092,16 +3135,16 @@ const OwnerDashboard = ({ config, setConfig, lockedMonths, toggleMonthLock, atte
                               })}
                               {raisePreview.targeted.length > 10 && (
                                 <div className="px-4 py-3 bg-gray-50 text-center">
-                                  <p className="text-[10px] font-black text-gray-400 uppercase">...and {raisePreview.targeted.length - 10} more workers</p>
+                                  <p className="text-[10px] font-black text-gray-400 uppercase">...{raisePreview.targeted.length - 10} {t('andMore')}</p>
                                 </div>
                               )}
                             </div>
                           </div>
 
                           <div className="flex gap-3">
-                            <button onClick={()=>setRaisePreview(null)} className="flex-1 py-3 bg-gray-100 text-black font-black rounded-xl uppercase text-xs">Cancel</button>
+                            <button onClick={()=>setRaisePreview(null)} className="flex-1 py-3 bg-gray-100 text-black font-black rounded-xl uppercase text-xs">{t('cancelRaise')}</button>
                             <button onClick={handleApplyRaise} disabled={raiseApplying} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl uppercase text-xs tracking-widest shadow-lg transition-all disabled:opacity-50">
-                              {raiseApplying ? 'Applying...' : `✅ Apply to ${raisePreview.targeted.length} Workers`}
+                              {raiseApplying ? t('applyingRaise') : `✅ ${t('applyRaise')} ${raisePreview.targeted.length} ${t('workers')}`}
                             </button>
                           </div>
                         </div>
