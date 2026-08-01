@@ -698,14 +698,15 @@ const generateAllPayslips = async (targetMonth, targetPeriod, employees, attenda
       }
 
       y += 5;
-      doc.setFillColor(0, 0, 0);
-      doc.rect(leftMargin, y - 5, (rightMargin - leftMargin), 16, 'F');
-      doc.setTextColor(255, 255, 255);
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(0, 0, 0);
+      doc.rect(leftMargin, y - 5, (rightMargin - leftMargin), 16, 'FD');
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(11);
       doc.setFont('Amiri', 'normal');
       doc.text("الصافي للدفع", rightMargin - 2, y + 1, { align: 'right' });
       doc.text(`${formatBase(pay.netSalary)} ${config.mainSymbol || 'ل.س'}`, leftMargin + 2, y + 1, { align: 'left' });
-      doc.setTextColor(200, 200, 200);
+      doc.setTextColor(80, 80, 80);
       doc.setFontSize(9);
       doc.text("يعادل", rightMargin - 2, y + 8, { align: 'right' });
       doc.text(`${formatSec(pay.netSalary, config)} ${config.secSymbol || '$'}`, leftMargin + 2, y + 8, { align: 'left' });
@@ -787,13 +788,14 @@ const generateAidPayslips = async (targetDate, employees, grants, config, sectio
       drawRow("التفاصيل", grant.description, config.sizeReason);
 
       y += 10;
-      doc.setFillColor(0, 0, 0);
-      doc.rect(leftMargin, y - 5, (rightMargin - leftMargin), 16, 'F');
-      doc.setTextColor(255, 255, 255);
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(0, 0, 0);
+      doc.rect(leftMargin, y - 5, (rightMargin - leftMargin), 16, 'FD');
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(12);
       doc.text("المبلغ المستحق", rightMargin - 2, y + 1, { align: 'right' });
       doc.text(`${formatBase(grant.amount)} ${config.mainSymbol || 'ل.س'}`, leftMargin + 2, y + 1, { align: 'left' });
-      doc.setTextColor(200, 200, 200);
+      doc.setTextColor(80, 80, 80);
       doc.setFontSize(9);
       doc.text("يعادل", rightMargin - 2, y + 8, { align: 'right' });
       doc.text(`${formatSec(grant.amount, config)} ${config.secSymbol || '$'}`, leftMargin + 2, y + 8, { align: 'left' });
@@ -860,13 +862,14 @@ const generateSingleResignationSlip = async (emp, settlementData, config) => {
     if (settlementData.penalty > 0) drawRow("غرامة الغياب", formatBase(settlementData.penalty));
 
     y += 10;
-    doc.setFillColor(0);
-    doc.rect(5, y - 6, 100, 16, 'F');
-    doc.setTextColor(255);
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(0, 0, 0);
+    doc.rect(5, y - 6, 100, 16, 'FD');
+    doc.setTextColor(0, 0, 0);
     doc.setFontSize(11);
     doc.text("الصافي المستحق", 100, y, { align: 'right' });
     doc.text(`${formatBase(settlementData.net)} ${config.mainSymbol || 'ل.س'}`, 10, y, { align: 'left' });
-    doc.setTextColor(200);
+    doc.setTextColor(80, 80, 80);
     doc.setFontSize(9);
     doc.text("يعادل", 100, y + 6, { align: 'right' });
     doc.text(`${formatSec(settlementData.net, config)} ${config.secSymbol || '$'}`, 10, y + 6, { align: 'left' });
@@ -1159,11 +1162,11 @@ const CashierDashboard = ({
           dayBonuses.forEach(b => { if (b.basisText && b.basisAmt) drawRow(b.basisText, formatBase(b.basisAmt)); });
           drawRow("التفاصيل", dayBonuses.map(b => b.description).join(" + "));
         }
-        y += 10; doc.setFillColor(0, 0, 0); doc.rect(10, y - 5, 90, 16, 'F');
-        doc.setTextColor(255, 255, 255); doc.setFontSize(12);
+        y += 10; doc.setFillColor(255, 255, 255); doc.setDrawColor(0,0,0); doc.rect(10, y - 5, 90, 16, 'FD');
+        doc.setTextColor(0, 0, 0); doc.setFontSize(12);
         doc.text("المبلغ المستحق", 98, y + 1, { align: 'right' });
         doc.text(`${formatBase(log.amount)} ${config.mainSymbol || 'ل.س'}`, 12, y + 1, { align: 'left' });
-        doc.setTextColor(200, 200, 200); doc.setFontSize(9);
+        doc.setTextColor(80, 80, 80); doc.setFontSize(9);
         doc.text("يعادل", 98, y + 8, { align: 'right' });
         doc.text(`${formatSec(log.amount, config)} ${config.secSymbol || '$'}`, 12, y + 8, { align: 'left' });
         doc.autoPrint();
