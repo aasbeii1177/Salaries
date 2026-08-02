@@ -2225,9 +2225,32 @@ const HRDashboard = ({ currentUser, employees, sections, addEmployee, updateEmpl
         let tp1=emp.transportPeriod1Amount||'',tp2=emp.transportPeriod2Amount||'';
         if(!tp1&&!tp2&&emp.transportationAllowance){const leg=parseFloat(emp.transportationAllowance)||0,pref=emp.transportPeriod||'2';if(pref==='1')tp1=leg;else if(pref==='split'){tp1=leg/2;tp2=leg/2;}else tp2=leg;}
         setEditingId(emp.id);
-        setEditFormData({...emp,wage:emp.monthlyWage,jobTitle:emp.jobTitle||'',transportPeriod1Amount:tp1,transportPeriod2Amount:tp2,cashierZone:emp.cashierZone||'1',joinDate:emp.joinDate||new Date().toISOString().split('T')[0],payCycle:emp.payCycle||'monthly',dailyWage:emp.dailyWage||'',weeklyWage:emp.weeklyWage||'',isConfidential:emp.isConfidential||false});
+        const p1Val = parseFloat(emp.period1Amount) || 0;
+        const p2Val = parseFloat(emp.period2Amount) || Math.max(0, (parseFloat(emp.monthlyWage)||0) - p1Val);
+        const displayWage = (p1Val > 0 || p2Val > 0) ? (p1Val + p2Val) : (parseFloat(emp.monthlyWage) || 0);
+        setEditFormData({...emp,wage:displayWage,period1Amount:p1Val,period2Amount:p2Val,jobTitle:emp.jobTitle||'',transportPeriod1Amount:tp1,transportPeriod2Amount:tp2,cashierZone:emp.cashierZone||'1',joinDate:emp.joinDate||new Date().toISOString().split('T')[0],payCycle:emp.payCycle||'monthly',dailyWage:emp.dailyWage||'',weeklyWage:emp.weeklyWage||'',isConfidential:emp.isConfidential||false});
       };
-      const handleUpdate = () => { updateEmployee(editingId,{...editFormData,monthlyWage:parseFloat(editFormData.wage),jobTitle:editFormData.jobTitle||'Worker',workerNumber:(editFormData.workerNumber||'').toString(),transportPeriod1Amount:parseFloat(editFormData.transportPeriod1Amount)||0,transportPeriod2Amount:parseFloat(editFormData.transportPeriod2Amount)||0,cashierZone:(editFormData.cashierZone||'1').toString(),dailyWage:parseFloat(editFormData.dailyWage)||0,weeklyWage:parseFloat(editFormData.weeklyWage)||0,isConfidential:!!editFormData.isConfidential}); setEditingId(null); };
+      const handleUpdate = () => {
+        const p1 = parseFloat(editFormData.period1Amount) || 0;
+        const p2 = parseFloat(editFormData.period2Amount) || 0;
+        // If both P1 and P2 are set, monthlyWage = P1 + P2 automatically
+        // Otherwise fall back to the manually entered wage field
+        const computedWage = (p1 > 0 || p2 > 0) ? (p1 + p2) : parseFloat(editFormData.wage) || 0;
+        updateEmployee(editingId, {
+          ...editFormData,
+          monthlyWage: computedWage,
+          period1Amount: p1,
+          jobTitle: editFormData.jobTitle || 'Worker',
+          workerNumber: (editFormData.workerNumber || '').toString(),
+          transportPeriod1Amount: parseFloat(editFormData.transportPeriod1Amount) || 0,
+          transportPeriod2Amount: parseFloat(editFormData.transportPeriod2Amount) || 0,
+          cashierZone: (editFormData.cashierZone || '1').toString(),
+          dailyWage: parseFloat(editFormData.dailyWage) || 0,
+          weeklyWage: parseFloat(editFormData.weeklyWage) || 0,
+          isConfidential: !!editFormData.isConfidential
+        });
+        setEditingId(null);
+      };
 
       const handleViewTotals = (month) => {
         const activeEmps = employees.filter(e=>!e.isResigned);
