@@ -204,6 +204,7 @@ const translations = {
   transportP2: { en: "Transport P2", ar: "مواصلات ف2" },
   hr_manager: { en: "HR Manager", ar: "مدير الموارد البشرية" },
   confidentialWorker: { en: "Confidential (Hidden from HR)", ar: "عامل سري (مخفي عن الموارد البشرية)" },
+  hiddenFromManager: { en: "Hidden from Manager & Data Entry", ar: "مخفي عن المدير ومدخل البيانات" },
   jobTitle: { en: "Job Title", ar: "المسمى الوظيفي" },
   financialLoans: { en: "Financial: Loans", ar: "المالية: القروض" },
   delLoans: { en: "Deletes all loan contracts.", ar: "حذف جميع عقود القروض." },
@@ -1035,6 +1036,7 @@ const DataEntryFinanceDashboard = ({
 
   const activeEmployees = employees
     .filter(emp => !emp.isResigned &&
+      !emp.isHiddenFromManager &&
       ((emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (emp.workerNumber || '').toString() === searchQuery.trim()))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -2162,6 +2164,7 @@ const ManagerDashboard = ({
 
   const filteredEmployees = employees
     .filter(emp => !emp.isResigned &&
+      !emp.isHiddenFromManager &&
       ((emp.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (emp.workerNumber || '').toString() === searchQuery.trim()))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -2528,7 +2531,7 @@ const HRDashboard = ({ currentUser, employees, sections, addEmployee, updateEmpl
         let finalWage = parseFloat(formData.wage)||0, p1Amt = parseFloat(formData.period1Amount)||0, p2Amt = parseFloat(formData.period2Amount)||0;
         if (finalWage===0 && (p1Amt>0||p2Amt>0)) finalWage=p1Amt+p2Amt;
         let maxId=0; employees.forEach(emp=>{const num=parseInt(emp.workerNumber);if(!isNaN(num)&&num>maxId)maxId=num;});
-        addEmployee({...formData,workerNumber:(maxId+1).toString(),monthlyWage:finalWage,jobTitle:formData.jobTitle||'Worker',period1Amount:p1Amt,transportPeriod1Amount:parseFloat(formData.transportPeriod1Amount)||0,transportPeriod2Amount:parseFloat(formData.transportPeriod2Amount)||0,sectionId:formData.sectionId||undefined,cashierZone:(formData.cashierZone||'1').toString(),payCycle:formData.payCycle||'monthly',dailyWage:parseFloat(formData.dailyWage)||0,weeklyWage:parseFloat(formData.weeklyWage)||0,isConfidential:formData.isConfidential!==undefined?formData.isConfidential:(currentUser?.role==='hr_manager')});
+        addEmployee({...formData,workerNumber:(maxId+1).toString(),monthlyWage:finalWage,jobTitle:formData.jobTitle||'Worker',period1Amount:p1Amt,transportPeriod1Amount:parseFloat(formData.transportPeriod1Amount)||0,transportPeriod2Amount:parseFloat(formData.transportPeriod2Amount)||0,sectionId:formData.sectionId||undefined,cashierZone:(formData.cashierZone||'1').toString(),payCycle:formData.payCycle||'monthly',dailyWage:parseFloat(formData.dailyWage)||0,weeklyWage:parseFloat(formData.weeklyWage)||0,isConfidential:formData.isConfidential!==undefined?formData.isConfidential:(currentUser?.role==='hr_manager'),isHiddenFromManager:formData.isHiddenFromManager||false});
         setFormData({...formData,name:'',jobTitle:'',wage:'',dailyWage:'',weeklyWage:'',period1Amount:'',period2Amount:'',transportPeriod1Amount:'',transportPeriod2Amount:'',nationalId:'',socialInsuranceId:'',fatherName:'',motherName:'',isConfidential:currentUser?.role==='hr_manager'});
         alert("Worker Added Successfully!");
       };
@@ -2540,7 +2543,7 @@ const HRDashboard = ({ currentUser, employees, sections, addEmployee, updateEmpl
         const p1Val = parseFloat(emp.period1Amount) || 0;
         const p2Val = parseFloat(emp.period2Amount) || Math.max(0, (parseFloat(emp.monthlyWage)||0) - p1Val);
         const displayWage = (p1Val > 0 || p2Val > 0) ? (p1Val + p2Val) : (parseFloat(emp.monthlyWage) || 0);
-        setEditFormData({...emp,wage:displayWage,period1Amount:p1Val,period2Amount:p2Val,jobTitle:emp.jobTitle||'',transportPeriod1Amount:tp1,transportPeriod2Amount:tp2,cashierZone:emp.cashierZone||'1',joinDate:emp.joinDate||new Date().toISOString().split('T')[0],payCycle:emp.payCycle||'monthly',dailyWage:emp.dailyWage||'',weeklyWage:emp.weeklyWage||'',isConfidential:emp.isConfidential||false});
+        setEditFormData({...emp,wage:displayWage,period1Amount:p1Val,period2Amount:p2Val,jobTitle:emp.jobTitle||'',transportPeriod1Amount:tp1,transportPeriod2Amount:tp2,cashierZone:emp.cashierZone||'1',joinDate:emp.joinDate||new Date().toISOString().split('T')[0],payCycle:emp.payCycle||'monthly',dailyWage:emp.dailyWage||'',weeklyWage:emp.weeklyWage||'',isConfidential:emp.isConfidential||false,isHiddenFromManager:emp.isHiddenFromManager||false});
       };
       const handleUpdate = () => {
         const p1 = parseFloat(editFormData.period1Amount) || 0;
@@ -2559,7 +2562,8 @@ const HRDashboard = ({ currentUser, employees, sections, addEmployee, updateEmpl
           cashierZone: (editFormData.cashierZone || '1').toString(),
           dailyWage: parseFloat(editFormData.dailyWage) || 0,
           weeklyWage: parseFloat(editFormData.weeklyWage) || 0,
-          isConfidential: !!editFormData.isConfidential
+          isConfidential: !!editFormData.isConfidential,
+          isHiddenFromManager: !!editFormData.isHiddenFromManager
         });
         setEditingId(null);
       };
@@ -2743,6 +2747,7 @@ const HRDashboard = ({ currentUser, employees, sections, addEmployee, updateEmpl
                                         <div><label className="text-[10px] font-black uppercase block mb-1">Year of Birth</label>{editingId===emp.id?<input type="number" min="1940" max="2015" className={inputClass} placeholder="e.g. 1990" value={editFormData.yearOfBirth||''} onChange={e=>setEditFormData({...editFormData,yearOfBirth:e.target.value})} />:<p className="font-black">{emp.yearOfBirth||'-'}</p>}</div>
                                         <div><label className="text-[10px] font-black uppercase block mb-1">{t('cashierZone')}</label>{editingId===emp.id?<input type="number" min="1" className={inputClass} value={editFormData.cashierZone||'1'} onChange={e=>setEditFormData({...editFormData,cashierZone:e.target.value})} />:<p className="font-black">Z-{emp.cashierZone||'1'}</p>}</div>
                                         {(currentUser?.role==='hr_manager'||currentUser?.role==='owner')&&(<div><label className="text-[10px] font-black uppercase block mb-1 text-red-600">{t('confidentialWorker')}</label>{editingId===emp.id?<input type="checkbox" className="w-5 h-5 accent-red-600" checked={editFormData.isConfidential||false} onChange={e=>setEditFormData({...editFormData,isConfidential:e.target.checked})} />:<p className="font-black text-red-600">{emp.isConfidential?'YES':'NO'}</p>}</div>)}
+                                        <div><label className="text-[10px] font-black uppercase block mb-1 text-orange-600">{t('hiddenFromManager')}</label>{editingId===emp.id?<input type="checkbox" className="w-5 h-5 accent-orange-500" checked={editFormData.isHiddenFromManager||false} onChange={e=>setEditFormData({...editFormData,isHiddenFromManager:e.target.checked})} />:<p className="font-black text-orange-600">{emp.isHiddenFromManager?'YES':'NO'}</p>}</div>
                                         {editingId===emp.id&&<div className="col-span-full flex justify-end gap-2 mt-4"><button onClick={handleUpdate} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-black uppercase text-xs">{t('save')}</button><button onClick={()=>setEditingId(null)} className="bg-gray-200 text-black px-6 py-2 rounded-lg font-black uppercase text-xs">{t('cancel')}</button></div>}
                                       </div>
                                     </td>
@@ -2817,6 +2822,7 @@ const HRDashboard = ({ currentUser, employees, sections, addEmployee, updateEmpl
                     <div><label className="block text-[10px] font-black uppercase mb-2 text-gray-500">{t('cashierZone')}</label><input type="number" min="1" className={inputClass} placeholder="e.g. 1 or 2" value={formData.cashierZone||'1'} onChange={e=>setFormData({...formData,cashierZone:e.target.value})} required /></div>
                   </div>
                   {(currentUser?.role==='hr_manager'||currentUser?.role==='owner')&&(<div className="flex items-center gap-3 bg-red-50 p-4 rounded-xl border border-red-100"><input type="checkbox" id="isConf" className="w-5 h-5 accent-red-600" checked={formData.isConfidential!==undefined?formData.isConfidential:(currentUser?.role==='hr_manager')} onChange={e=>setFormData({...formData,isConfidential:e.target.checked})} /><label htmlFor="isConf" className="text-[10px] font-black uppercase text-red-700 tracking-widest">{t('confidentialWorker')}</label></div>)}
+                  <div className="flex items-center gap-3 bg-orange-50 p-4 rounded-xl border border-orange-100"><input type="checkbox" id="isHiddenMgr" className="w-5 h-5 accent-orange-500" checked={formData.isHiddenFromManager||false} onChange={e=>setFormData({...formData,isHiddenFromManager:e.target.checked})} /><label htmlFor="isHiddenMgr" className="text-[10px] font-black uppercase text-orange-700 tracking-widest">{t('hiddenFromManager')}</label></div>
                   <button type="submit" className="w-full bg-black text-white font-black py-5 rounded-xl shadow-xl hover:bg-gray-800 transition-all uppercase tracking-widest text-sm mt-6">{t('confirm')}</button>
                 </form>
               </section>
