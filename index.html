@@ -1024,8 +1024,8 @@ const Login = ({ onLogin, users, lang, t, toggleLanguage }) => {
 
 const DataEntryFinanceDashboard = ({
   employees, sections, loans, advances, overtime, attendance,
-  addAdvance, addLoan,
-  lang, t, config, lockedMonths
+  addAdvance, addLoan, updateAdvance, deleteAdvance,
+  lang, t, config, lockedMonths, dataEntryEditAccess
 }) => {
   const [activeTab, setActiveTab] = React.useState('advances');
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -1175,20 +1175,36 @@ const DataEntryFinanceDashboard = ({
                                       {t('logged')}: {todayAdvances.toLocaleString()}
                                     </span>
                                   )}
+                                  {dataEntryEditAccess && (
+                                    <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg">✏️ Edit ON</span>
+                                  )}
                                 </div>
                               )}
                             </div>
                           </div>
-                          <div className="flex gap-2">
-                            <input
-                              type="number"
-                              className="w-28 px-3 py-2 font-bold text-black bg-white rounded-xl border-2 border-gray-300"
-                              min="0"
-                              placeholder={`0 ${config.mainSymbol || 'SYP'}`}
-                              value={advanceAmount[emp.id] || ''}
-                              onChange={e => setAdvanceAmount({ ...advanceAmount, [emp.id]: e.target.value })}
-                            />
-                            <button onClick={() => handleAddAdv(emp.id)} className="px-4 py-2 bg-black text-white rounded-xl font-black uppercase text-[10px]">{t('add')}</button>
+                          <div className="flex flex-col gap-2 items-end">
+                            <div className="flex gap-2">
+                              <input
+                                type="number"
+                                className="w-28 px-3 py-2 font-bold text-black bg-white rounded-xl border-2 border-gray-300"
+                                min="0"
+                                placeholder={`0 ${config.mainSymbol || 'SYP'}`}
+                                value={advanceAmount[emp.id] || ''}
+                                onChange={e => setAdvanceAmount({ ...advanceAmount, [emp.id]: e.target.value })}
+                              />
+                              <button onClick={() => handleAddAdv(emp.id)} className="px-4 py-2 bg-black text-white rounded-xl font-black uppercase text-[10px]">{t('add')}</button>
+                            </div>
+                            {dataEntryEditAccess && workerAdvances.length > 0 && (
+                              <div className="flex gap-1 flex-wrap justify-end max-h-24 overflow-y-auto">
+                                {workerAdvances.map(adv => (
+                                  <div key={adv.id} className="flex items-center gap-1 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">
+                                    <span className="text-[9px] font-black text-gray-500">{adv.date}</span>
+                                    <span className="text-[9px] font-black text-orange-600">{parseFloat(adv.amount).toLocaleString()}</span>
+                                    <button onClick={() => deleteAdvance && deleteAdvance(adv.id)} className="text-red-500 hover:text-red-700 font-black text-[9px] ml-1">✕</button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -2491,7 +2507,8 @@ const FinanceDashboard = ({
 const ManagerDashboard = ({
   employees = [], sections = [], attendance = [], overtime = [],
   updateAttendance, addOvertime, lockedMonths = [], lang, t,
-  canEdit, updateOvertime, deleteOvertime, config = {}, currentUser
+  canEdit, updateOvertime, deleteOvertime, config = {}, currentUser,
+  dataEntryEditAccess, toggleDataEntryAccess
 }) => {
   const [selectedDate, setSelectedDate] = React.useState(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -2567,7 +2584,7 @@ const ManagerDashboard = ({
     if (count > 0) alert(`${count} overtime records saved successfully.`);
   };
 
-  const openEditModal = (empId) => { if (!canEdit || isLocked) return; setEditingEntries({ empId }); };
+  const openEditModal = (empId) => { if ((!canEdit && !dataEntryEditAccess) || isLocked) return; setEditingEntries({ empId }); };
   const handleEditSave = (recordId, newVal) => { const val = parseFloat(newVal); if (val <= 0) return alert(t('mustBePositive')); updateOvertime(recordId, val); };
   const handleEditDelete = (recordId) => { deleteOvertime(recordId); };
 
@@ -2727,7 +2744,7 @@ const ManagerDashboard = ({
                                 {existingOT > 0 && (
                                   <div className="flex items-center gap-2">
                                     <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">{t('logged')}: {existingOT}h</span>
-                                    {canEdit && <button onClick={() => openEditModal(emp.id)} className="text-xs">✏️</button>}
+                                    {(canEdit || dataEntryEditAccess) && <button onClick={() => openEditModal(emp.id)} className="text-xs">✏️</button>}
                                   </div>
                                 )}
                                 <div className="flex gap-2">
@@ -2753,6 +2770,30 @@ const ManagerDashboard = ({
             </h3>
             <p className="text-xs text-gray-500 font-bold">{t('historyProtected')}</p>
           </section>
+
+          {/* Data Entry Edit Access Toggle — Manager only */}
+          {currentUser?.role === 'manager' && toggleDataEntryAccess && (
+            <section className={`rounded-[2rem] shadow-sm border p-6 transition-all ${dataEntryEditAccess ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-100'}`}>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h4 className="font-black text-sm uppercase tracking-widest text-black">🔐 Data Entry</h4>
+                  <p className="text-[10px] font-bold text-gray-500 mt-0.5">Edit Access Control</p>
+                </div>
+                <button
+                  onClick={toggleDataEntryAccess}
+                  className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors shadow-inner ${dataEntryEditAccess ? 'bg-amber-500' : 'bg-gray-300'}`}
+                >
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform ${dataEntryEditAccess ? 'translate-x-8' : 'translate-x-1'}`} />
+                </button>
+              </div>
+              <div className={`text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-lg text-center ${dataEntryEditAccess ? 'bg-amber-200 text-amber-800' : 'bg-gray-100 text-gray-500'}`}>
+                {dataEntryEditAccess ? '✅ Edit Access ON' : '🔒 Edit Access OFF'}
+              </div>
+              {dataEntryEditAccess && (
+                <p className="text-[9px] text-amber-700 font-bold mt-2 text-center">Data entry can now edit advances & overtime</p>
+              )}
+            </section>
+          )}
         </div>
       </div>
 
@@ -4210,6 +4251,7 @@ const App = () => {
   const [payoutLogs, setPayoutLogs] = React.useState([]);
   const [cashRegisters, setCashRegisters] = React.useState([]);
   const [lockedMonths, setLockedMonths] = React.useState([]);
+  const [dataEntryEditAccess, setDataEntryEditAccess] = React.useState(false);
 
   const [pdfConfig, setPdfConfig] = React.useState({
     companyName: 'SalaryMaster',
@@ -4258,6 +4300,7 @@ const App = () => {
       db.collection('cash_registers').onSnapshot(s => setCashRegisters(s.docs.map(d => ({ id: d.id, ...d.data() })))),
       db.collection('meta').doc('config').onSnapshot(d => d.exists && setPdfConfig(d.data())),
       db.collection('meta').doc('locks').onSnapshot(d => d.exists && setLockedMonths(d.data().months || [])),
+      db.collection('meta').doc('settings').onSnapshot(d => d.exists && setDataEntryEditAccess(d.data().dataEntryEditAccess || false)),
       db.collection('meta').doc('translations').onSnapshot(d =>
         d.exists ? setCustomTranslations(d.data()) : setCustomTranslations({})
       )
@@ -4314,7 +4357,8 @@ const App = () => {
   const sharedProps = {
     employees, sections, attendance, advances, bonuses, grants,
     overtime, transportation, loans, pdfConfig, config: pdfConfig,
-    lockedMonths, lang, t, toggleMonthLock: handleToggleMonthLock, currentUser
+    lockedMonths, lang, t, toggleMonthLock: handleToggleMonthLock, currentUser,
+    dataEntryEditAccess
   };
 
   // ── Role Router ───────────────────────────────────────────
@@ -4366,6 +4410,10 @@ const App = () => {
       const managerDash = (
         <ManagerDashboard
           {...sharedProps}
+          toggleDataEntryAccess={() => {
+            const newVal = !dataEntryEditAccess;
+            db.collection('meta').doc('settings').set({ dataEntryEditAccess: newVal }, { merge: true });
+          }}
           updateAttendance={(date, ids) => {
             const existing = attendance.find(a => a.date === date);
             if (existing) {
@@ -4398,12 +4446,15 @@ const App = () => {
               overtime={overtime}
               attendance={attendance}
               lockedMonths={lockedMonths}
+              dataEntryEditAccess={dataEntryEditAccess}
               lang={lang}
               t={t}
               config={pdfConfig}
               addAdvance={(eid, amt, d) =>
                 db.collection('advances').add({ employeeId: eid, amount: amt, date: d })
               }
+              updateAdvance={(id, val) => db.collection('advances').doc(id).update({ amount: val })}
+              deleteAdvance={(id) => db.collection('advances').doc(id).delete()}
               addLoan={(eid, tot, dP1, dP2, date) => {
                 db.collection('loans').add({
                   employeeId: eid,
