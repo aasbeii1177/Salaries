@@ -1023,7 +1023,7 @@ const Login = ({ onLogin, users, lang, t, toggleLanguage }) => {
 // ============================================================
 
 const DataEntryFinanceDashboard = ({
-  employees, sections, loans, advances,
+  employees, sections, loans, advances, overtime, attendance,
   addAdvance, addLoan,
   lang, t, config, lockedMonths
 }) => {
@@ -1039,6 +1039,10 @@ const DataEntryFinanceDashboard = ({
   const [loanDeductP1, setLoanDeductP1] = React.useState('');
   const [loanDeductP2, setLoanDeductP2] = React.useState('');
   const [loanDate, setLoanDate] = React.useState(new Date().toISOString().split('T')[0]);
+
+  // Worker inquiry states
+  const [inquiryTarget, setInquiryTarget] = React.useState(null);
+  const [inquiryMonth, setInquiryMonth] = React.useState(new Date().toISOString().substring(0, 7));
 
   const inputClass = "w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl font-bold text-black outline-none focus:border-indigo-600 transition-all";
 
@@ -1159,7 +1163,7 @@ const DataEntryFinanceDashboard = ({
                               {emp.name.charAt(0)}
                             </div>
                             <div>
-                              <p className="font-black text-base text-black">{emp.name}</p>
+                              <p className="font-black text-base text-black cursor-pointer hover:text-indigo-600 hover:underline transition-colors" onClick={() => { setInquiryTarget(emp); setInquiryMonth(monthStr); }}>{emp.name}</p>
                               <p className="text-[10px] font-black uppercase opacity-60 text-gray-500">{t(emp.shift || 'day')}</p>
                               {totalAdvances > 0 && (
                                 <div className="flex gap-2 mt-1 flex-wrap">
@@ -1226,7 +1230,7 @@ const DataEntryFinanceDashboard = ({
                 return (
                   <div key={emp.id} className="px-8 py-5 flex items-center justify-between hover:bg-gray-50 transition-colors">
                     <div>
-                      <p className="font-black text-black">{emp.name}</p>
+                      <p className="font-black text-black cursor-pointer hover:text-indigo-600 hover:underline transition-colors" onClick={() => { setInquiryTarget(emp); setInquiryMonth(monthStr); }}>{emp.name}</p>
                       <p className="text-[10px] font-black uppercase text-gray-400">{sections.find(s => s.id === emp.sectionId)?.name || t('unassigned')} • #{emp.workerNumber || '-'}</p>
                     </div>
                     <div>
@@ -1247,6 +1251,124 @@ const DataEntryFinanceDashboard = ({
                 );
               })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Worker Inquiry Popup ── */}
+      {inquiryTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg p-8 animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-xl font-black text-black uppercase">{inquiryTarget.name}</h3>
+                <p className="text-[10px] font-black uppercase text-gray-400 mt-1">
+                  {sections.find(s => s.id === inquiryTarget.sectionId)?.name || t('unassigned')} • #{inquiryTarget.workerNumber || '-'} • {t(inquiryTarget.shift || 'day')}
+                </p>
+              </div>
+              <button onClick={() => setInquiryTarget(null)} className="text-gray-400 hover:text-black text-xl font-black">✕</button>
+            </div>
+
+            {/* Month selector */}
+            <div className="flex items-center gap-3 mb-6 bg-gray-50 p-3 rounded-xl">
+              <label className="text-[10px] font-black uppercase text-gray-500 whitespace-nowrap">{t('selectReport')}</label>
+              <input
+                type="month"
+                className="flex-1 px-4 py-2 border-2 border-gray-300 rounded-xl font-bold text-black outline-none focus:border-indigo-600"
+                value={inquiryMonth}
+                onChange={e => setInquiryMonth(e.target.value)}
+              />
+            </div>
+
+            {/* Attendance */}
+            {(() => {
+              const monthAttendance = attendance.filter(a => a.date?.startsWith(inquiryMonth));
+              const daysAbsent = monthAttendance.filter(a => (a.absentEmployeeIds || []).includes(inquiryTarget.id)).length;
+              const totalDays = new Date(inquiryMonth.split('-')[0], inquiryMonth.split('-')[1], 0).getDate();
+              const daysPresent = totalDays - daysAbsent;
+              return (
+                <div className="bg-blue-50 rounded-2xl p-5 mb-4 border border-blue-100">
+                  <p className="text-[10px] font-black uppercase text-blue-700 tracking-widest mb-3">📅 {t('attendance')}</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-white rounded-xl p-3 text-center border border-blue-100">
+                      <p className="text-2xl font-black text-black">{totalDays}</p>
+                      <p className="text-[9px] font-black uppercase text-gray-400">Total Days</p>
+                    </div>
+                    <div className="bg-white rounded-xl p-3 text-center border border-green-100">
+                      <p className="text-2xl font-black text-green-600">{daysPresent}</p>
+                      <p className="text-[9px] font-black uppercase text-gray-400">{t('present')}</p>
+                    </div>
+                    <div className="bg-white rounded-xl p-3 text-center border border-red-100">
+                      <p className="text-2xl font-black text-red-600">{daysAbsent}</p>
+                      <p className="text-[9px] font-black uppercase text-gray-400">{t('absent')}</p>
+                    </div>
+                  </div>
+                  {daysAbsent > 0 && (
+                    <div className="mt-3 space-y-1 max-h-32 overflow-y-auto">
+                      {monthAttendance.filter(a => (a.absentEmployeeIds || []).includes(inquiryTarget.id)).map(a => (
+                        <div key={a.id} className="flex items-center gap-2 bg-red-50 px-3 py-1.5 rounded-lg">
+                          <span className="text-red-500 text-xs">✕</span>
+                          <span className="text-[11px] font-black text-red-700">{a.date}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Overtime */}
+            {(() => {
+              const monthOT = (overtime || []).filter(o => o.employeeId === inquiryTarget.id && o.date?.startsWith(inquiryMonth));
+              const totalHours = monthOT.reduce((sum, o) => sum + (parseFloat(o.hours) || 0), 0);
+              return (
+                <div className="bg-indigo-50 rounded-2xl p-5 mb-4 border border-indigo-100">
+                  <p className="text-[10px] font-black uppercase text-indigo-700 tracking-widest mb-3">⏰ {t('overtime')}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-3xl font-black text-indigo-700">{totalHours} <span className="text-sm font-bold text-gray-400">hrs</span></p>
+                    {totalHours === 0 && <p className="text-xs font-bold text-gray-400">{t('noRecordsFound')}</p>}
+                  </div>
+                  {monthOT.length > 0 && (
+                    <div className="mt-3 space-y-1 max-h-32 overflow-y-auto">
+                      {monthOT.map(o => (
+                        <div key={o.id} className="flex justify-between items-center bg-white px-3 py-1.5 rounded-lg border border-indigo-100">
+                          <span className="text-[11px] font-black text-gray-500">{o.date}</span>
+                          <span className="text-[11px] font-black text-indigo-600">{o.hours} hrs</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Advances */}
+            {(() => {
+              const monthAdv = advances.filter(a => a.employeeId === inquiryTarget.id && a.date?.startsWith(inquiryMonth));
+              const totalAdv = monthAdv.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+              return (
+                <div className="bg-orange-50 rounded-2xl p-5 border border-orange-100">
+                  <p className="text-[10px] font-black uppercase text-orange-700 tracking-widest mb-3">💰 {t('advances')}</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-3xl font-black text-orange-700">{totalAdv.toLocaleString()} <span className="text-sm font-bold text-gray-400">{config.mainSymbol || 'SYP'}</span></p>
+                    {totalAdv === 0 && <p className="text-xs font-bold text-gray-400">{t('noRecordsFound')}</p>}
+                  </div>
+                  {monthAdv.length > 0 && (
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {monthAdv.sort((a,b) => a.date?.localeCompare(b.date)).map(a => (
+                        <div key={a.id} className="flex justify-between items-center bg-white px-3 py-1.5 rounded-lg border border-orange-100">
+                          <span className="text-[11px] font-black text-gray-500">{a.date}</span>
+                          <span className="text-[11px] font-black text-orange-600">{parseFloat(a.amount).toLocaleString()} {config.mainSymbol || 'SYP'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            <button onClick={() => setInquiryTarget(null)} className="w-full mt-6 py-3 bg-black text-white font-black rounded-xl uppercase text-xs tracking-widest">{t('cancel')}</button>
           </div>
         </div>
       )}
@@ -2381,6 +2503,10 @@ const ManagerDashboard = ({
   const [bulkMonth, setBulkMonth] = React.useState(new Date().toISOString().substring(0, 7));
   const [bulkPeriod, setBulkPeriod] = React.useState('1');
 
+  // Worker inquiry states
+  const [inquiryTarget, setInquiryTarget] = React.useState(null);
+  const [inquiryMonth, setInquiryMonth] = React.useState(new Date().toISOString().substring(0, 7));
+
   const monthStr = selectedDate.substring(0, 7);
   const dayNum = parseInt(selectedDate.split('-')[2]);
   const pStr = dayNum <= 15 ? 'p1' : 'p2';
@@ -2586,7 +2712,7 @@ const ManagerDashboard = ({
                               {emp.name.charAt(0)}
                             </div>
                             <div>
-                              <p className={`font-black text-base ${isAbsent && activeTab === 'attendance' ? 'text-red-700' : 'text-black'}`}>{emp.name}</p>
+                              <p onClick={() => { setInquiryTarget(emp); setInquiryMonth(selectedDate.substring(0,7)); }} className={`font-black text-base cursor-pointer hover:underline transition-colors ${isAbsent && activeTab === 'attendance' ? 'text-red-700' : 'text-black hover:text-indigo-600'}`}>{emp.name}</p>
                               <p className="text-[11px] font-black uppercase opacity-60">{t(emp.shift || 'day')}</p>
                             </div>
                           </div>
@@ -2671,6 +2797,80 @@ const ManagerDashboard = ({
             <span>{t('saveAll')} {t('overtime')}</span>
             <div className="w-2 h-2 bg-green-400 rounded-full"></div>
           </button>
+        </div>
+      )}
+
+      {/* ── Worker Inquiry Popup ── */}
+      {inquiryTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg p-8 animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-xl font-black text-black uppercase">{inquiryTarget.name}</h3>
+                <p className="text-[10px] font-black uppercase text-gray-400 mt-1">
+                  {sections.find(s => s.id === inquiryTarget.sectionId)?.name || t('unassigned')} • #{inquiryTarget.workerNumber || '-'} • {t(inquiryTarget.shift || 'day')}
+                </p>
+              </div>
+              <button onClick={() => setInquiryTarget(null)} className="text-gray-400 hover:text-black text-xl font-black">✕</button>
+            </div>
+
+            <div className="flex items-center gap-3 mb-6 bg-gray-50 p-3 rounded-xl">
+              <label className="text-[10px] font-black uppercase text-gray-500 whitespace-nowrap">{t('selectReport')}</label>
+              <input type="month" className="flex-1 px-4 py-2 border-2 border-gray-300 rounded-xl font-bold text-black outline-none focus:border-indigo-600" value={inquiryMonth} onChange={e => setInquiryMonth(e.target.value)} />
+            </div>
+
+            {/* Attendance */}
+            {(() => {
+              const monthAttendance = attendance.filter(a => a.date?.startsWith(inquiryMonth));
+              const daysAbsent = monthAttendance.filter(a => (a.absentEmployeeIds || []).includes(inquiryTarget.id)).length;
+              const totalDays = new Date(inquiryMonth.split('-')[0], inquiryMonth.split('-')[1], 0).getDate();
+              const daysPresent = totalDays - daysAbsent;
+              return (
+                <div className="bg-blue-50 rounded-2xl p-5 mb-4 border border-blue-100">
+                  <p className="text-[10px] font-black uppercase text-blue-700 tracking-widest mb-3">📅 {t('attendance')}</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-white rounded-xl p-3 text-center border border-blue-100"><p className="text-2xl font-black text-black">{totalDays}</p><p className="text-[9px] font-black uppercase text-gray-400">Total Days</p></div>
+                    <div className="bg-white rounded-xl p-3 text-center border border-green-100"><p className="text-2xl font-black text-green-600">{daysPresent}</p><p className="text-[9px] font-black uppercase text-gray-400">{t('present')}</p></div>
+                    <div className="bg-white rounded-xl p-3 text-center border border-red-100"><p className="text-2xl font-black text-red-600">{daysAbsent}</p><p className="text-[9px] font-black uppercase text-gray-400">{t('absent')}</p></div>
+                  </div>
+                  {daysAbsent > 0 && (
+                    <div className="mt-3 space-y-1 max-h-32 overflow-y-auto">
+                      {monthAttendance.filter(a => (a.absentEmployeeIds || []).includes(inquiryTarget.id)).map(a => (
+                        <div key={a.id} className="flex items-center gap-2 bg-red-50 px-3 py-1.5 rounded-lg">
+                          <span className="text-red-500 text-xs">✕</span>
+                          <span className="text-[11px] font-black text-red-700">{a.date}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Overtime */}
+            {(() => {
+              const monthOT = overtime.filter(o => o.employeeId === inquiryTarget.id && o.date?.startsWith(inquiryMonth));
+              const totalHours = monthOT.reduce((sum, o) => sum + (parseFloat(o.hours) || 0), 0);
+              return (
+                <div className="bg-indigo-50 rounded-2xl p-5 mb-4 border border-indigo-100">
+                  <p className="text-[10px] font-black uppercase text-indigo-700 tracking-widest mb-3">⏰ {t('overtime')}</p>
+                  <p className="text-3xl font-black text-indigo-700">{totalHours} <span className="text-sm font-bold text-gray-400">hrs</span></p>
+                  {monthOT.length > 0 && (
+                    <div className="mt-3 space-y-1 max-h-32 overflow-y-auto">
+                      {monthOT.map(o => (
+                        <div key={o.id} className="flex justify-between items-center bg-white px-3 py-1.5 rounded-lg border border-indigo-100">
+                          <span className="text-[11px] font-black text-gray-500">{o.date}</span>
+                          <span className="text-[11px] font-black text-indigo-600">{o.hours} hrs</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            <button onClick={() => setInquiryTarget(null)} className="w-full mt-2 py-3 bg-black text-white font-black rounded-xl uppercase text-xs tracking-widest">{t('cancel')}</button>
+          </div>
         </div>
       )}
 
@@ -4195,6 +4395,8 @@ const App = () => {
               sections={sections}
               loans={loans}
               advances={advances}
+              overtime={overtime}
+              attendance={attendance}
               lockedMonths={lockedMonths}
               lang={lang}
               t={t}
