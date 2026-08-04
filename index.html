@@ -1140,6 +1140,28 @@ const DataEntryFinanceDashboard = ({
             </div>
           </section>
 
+          {/* Daily Total Box */}
+          {(() => {
+            const todayAllAdvances = advances.filter(a => a.date === selectedDate);
+            const todayTotal = todayAllAdvances.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+            const workerCount = [...new Set(todayAllAdvances.map(a => a.employeeId))].length;
+            return (
+              <div className="bg-indigo-600 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl">💰</div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-indigo-200 tracking-widest">{t('totalPaid')} — {selectedDate}</p>
+                    <p className="text-3xl font-black text-white">{todayTotal.toLocaleString()} <span className="text-sm text-indigo-200">{config.mainSymbol || 'SYP'}</span></p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-black uppercase text-indigo-200 tracking-widest">Workers</p>
+                  <p className="text-2xl font-black text-white">{workerCount}</p>
+                </div>
+              </div>
+            );
+          })()}
+
           <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
             <div className={`divide-y divide-gray-50 ${isLocked ? 'pointer-events-none opacity-50' : ''}`}>
               {sortedSectionIds.map(sId => {
