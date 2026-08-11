@@ -487,10 +487,7 @@ const calculateEmployeePayroll = (emp, targetMonth, targetPeriod, attendance, ad
     .reduce((sum, curr) => sum + (parseFloat(curr.hours) || 0), 0);
 
   let hourlyRateOT = totalWage / otDivisor;
-  if (overtimeAlwaysP2 && !isFull) {
-    // When always P2 mode: use full monthly wage for hourly rate regardless of period
-    hourlyRateOT = totalWage / otDivisor;
-  } else if (isP1) {
+  if (isP1) {
     hourlyRateOT = p1Amount > 0 ? (p1Amount / (otDivisor / 2)) : (totalWage / otDivisor);
   } else if (!isFull) {
     const p2Amount = Math.max(0, totalWage - p1Amount);
