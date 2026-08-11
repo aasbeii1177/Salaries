@@ -1068,6 +1068,7 @@ const DataEntryFinanceDashboard = ({
   // Worker inquiry states
   const [inquiryTarget, setInquiryTarget] = React.useState(null);
   const [inquiryMonth, setInquiryMonth] = React.useState(new Date().toISOString().substring(0, 7));
+  const [periodMonth, setPeriodMonth] = React.useState(new Date().toISOString().substring(0, 7));
 
   const inputClass = "w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl font-bold text-black outline-none focus:border-indigo-600 transition-all";
 
@@ -1165,23 +1166,52 @@ const DataEntryFinanceDashboard = ({
             </div>
           </section>
 
-          {/* Daily Total Box */}
+          {/* Daily Total + Period Total Boxes */}
           {(() => {
             const todayAllAdvances = advances.filter(a => a.date === selectedDate);
             const todayTotal = todayAllAdvances.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
             const workerCount = [...new Set(todayAllAdvances.map(a => a.employeeId))].length;
+            const periodAdvances = advances.filter(a => a.date?.startsWith(periodMonth));
+            const periodTotal = periodAdvances.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+            const periodWorkerCount = [...new Set(periodAdvances.map(a => a.employeeId))].length;
             return (
-              <div className="bg-indigo-600 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl">💰</div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-indigo-200 tracking-widest">{t('totalPaid')} — {selectedDate}</p>
-                    <p className="text-3xl font-black text-white">{todayTotal.toLocaleString()} <span className="text-sm text-indigo-200">{config.mainSymbol || 'SYP'}</span></p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Daily Total */}
+                <div className="bg-indigo-600 rounded-2xl p-5 flex items-center justify-between gap-4 shadow-lg">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl">💰</div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-indigo-200 tracking-widest">{t('totalPaid')} — {selectedDate}</p>
+                      <p className="text-3xl font-black text-white">{todayTotal.toLocaleString()} <span className="text-sm text-indigo-200">{config.mainSymbol || 'SYP'}</span></p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black uppercase text-indigo-200 tracking-widest">{lang === 'ar' ? 'عمال' : 'Workers'}</p>
+                    <p className="text-2xl font-black text-white">{workerCount}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-black uppercase text-indigo-200 tracking-widest">Workers</p>
-                  <p className="text-2xl font-black text-white">{workerCount}</p>
+
+                {/* Period Total */}
+                <div className="bg-emerald-600 rounded-2xl p-5 shadow-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-xl">📅</div>
+                      <p className="text-[10px] font-black uppercase text-emerald-200 tracking-widest">{lang === 'ar' ? 'إجمالي الفترة' : 'Period Total'}</p>
+                    </div>
+                    <input
+                      type="month"
+                      className="px-3 py-1.5 bg-white/20 text-white font-black text-xs rounded-lg border border-white/30 outline-none"
+                      value={periodMonth}
+                      onChange={e => setPeriodMonth(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex items-end justify-between">
+                    <p className="text-2xl font-black text-white">{periodTotal.toLocaleString()} <span className="text-sm text-emerald-200">{config.mainSymbol || 'SYP'}</span></p>
+                    <div className="text-right">
+                      <p className="text-[10px] font-black uppercase text-emerald-200">{lang === 'ar' ? 'عمال' : 'Workers'}</p>
+                      <p className="text-xl font-black text-white">{periodWorkerCount}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             );
