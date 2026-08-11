@@ -494,7 +494,7 @@ const calculateEmployeePayroll = (emp, targetMonth, targetPeriod, attendance, ad
     hourlyRateOT = p2Amount > 0 ? (p2Amount / (otDivisor / 2)) : (totalWage / otDivisor);
   }
 
-  const overtimePay = empOvertimeHours * hourlyRateOT * (config.otMultiplier || 1.5);
+  const overtimePay = (empOvertimeHours * 2) * hourlyRateOT * (config.otMultiplier || 1.5);
 
   const empBonus = bonuses.filter(b => {
     if (b.employeeId !== emp.id) return false;
