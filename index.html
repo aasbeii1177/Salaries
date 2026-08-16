@@ -4683,14 +4683,12 @@ const App = () => {
           payoutLogs={payoutLogs}
           cashRegisters={cashRegisters}
           addPayout={async (data) => {
-            // Log the payout
-            await db.collection('payout_logs').add(data);
             // Auto-reduce loan balance if applicable
             const empLoan = loans.find(l => l.employeeId === data.employeeId);
+            let deductNow = 0;
             if (empLoan && ['period1', 'period2', 'fullMonth'].includes(data.type)) {
               const cutP1 = parseFloat(empLoan.deductionAmountP1) || 0;
               const cutP2 = parseFloat(empLoan.deductionAmountP2) || 0;
-              let deductNow = 0;
               if (data.type === 'period1') deductNow = cutP1;
               else if (data.type === 'period2') deductNow = cutP2;
               else if (data.type === 'fullMonth') deductNow = cutP1 + cutP2;
@@ -4698,10 +4696,16 @@ const App = () => {
                 const currentBalance = parseFloat(empLoan.totalAmount) || 0;
                 const newBalance = Math.max(0, currentBalance - deductNow);
                 await db.collection('loans').doc(empLoan.id).update({ totalAmount: newBalance });
-                // Update the payout log with loan deduction info
-                // (we can't easily get the doc id here, but the balance is updated)
               }
             }
+            // Log the payout WITH loanDeducted so repayment history works
+            const logData = {
+              ...data,
+              loanPeriod: data.type === 'period1' ? 'p1' : data.type === 'period2' ? 'p2' : 'full',
+              targetMonth: data.date ? data.date.substring(0, 7) : new Date().toISOString().substring(0, 7),
+            };
+            if (deductNow > 0) logData.loanDeducted = deductNow;
+            await db.collection('payout_logs').add(logData);
           }}
           deletePayout={(id) => db.collection('payout_logs').doc(id).delete()}
           updateCashRegister={(id, balance) =>
