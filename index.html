@@ -3147,9 +3147,9 @@ const HRDashboard = ({ currentUser, employees, sections, addEmployee, updateEmpl
       const handleUpdate = () => {
         const p1 = parseFloat(editFormData.period1Amount) || 0;
         const p2 = parseFloat(editFormData.period2Amount) || 0;
-        // If both P1 and P2 are set, monthlyWage = P1 + P2 automatically
-        // Otherwise fall back to the manually entered wage field
         const computedWage = (p1 > 0 || p2 > 0) ? (p1 + p2) : parseFloat(editFormData.wage) || 0;
+        // Clear isPendingHRReview if wage is now filled in
+        const isPendingHRReview = computedWage > 0 ? false : (editFormData.isPendingHRReview || false);
         updateEmployee(editingId, {
           ...editFormData,
           monthlyWage: computedWage,
@@ -3162,7 +3162,8 @@ const HRDashboard = ({ currentUser, employees, sections, addEmployee, updateEmpl
           dailyWage: parseFloat(editFormData.dailyWage) || 0,
           weeklyWage: parseFloat(editFormData.weeklyWage) || 0,
           isConfidential: !!editFormData.isConfidential,
-          isHiddenFromManager: !!editFormData.isHiddenFromManager
+          isHiddenFromManager: !!editFormData.isHiddenFromManager,
+          isPendingHRReview
         });
         setEditingId(null);
       };
